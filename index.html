@@ -91,6 +91,15 @@
         <!-- Text -->
         <section class="card">
           <h2>Text</h2>
+          <!-- Format-Leiste: setzt die Markierungen ins Textfeld (siehe „Formatierung“) -->
+          <div class="fmt-bar" id="fmt-bar" role="toolbar" aria-label="Formatierung">
+            <button class="fmt" data-line="# " title="Überschrift (# am Zeilenanfang)"><b>H1</b></button>
+            <button class="fmt" data-line="## " title="Kleine Überschrift (##)"><b>H2</b></button>
+            <button class="fmt" data-line="- " title="Aufzählungspunkt (- am Zeilenanfang)" aria-label="Aufzählungspunkt"><b>•</b></button>
+            <button class="fmt" data-wrap="==" title="Textmarker (==Text==)"><span class="fmt-hl">Marker</span></button>
+            <button class="fmt" data-wrap="**" title="Zweitfarbe (**Text**)"><span class="fmt-em">Farbe</span></button>
+            <button class="fmt" data-wrap="__" title="Unterstreichen (__Text__)" aria-label="Unterstreichen"><b><u>U</u></b></button>
+          </div>
           <textarea id="text-input" rows="7" placeholder="Hier tippen oder Text einfügen …" spellcheck="true"></textarea>
           <div class="missing" id="missing" hidden></div>
         </section>
@@ -115,12 +124,50 @@
           <div class="field range" data-key="wordSpacing" data-min="0.2" data-max="1.5" data-step="0.05" data-unit="%" data-label="Wortabstand"></div>
         </section>
 
+        <!-- Formatierung -->
+        <section class="card">
+          <h2>Formatierung</h2>
+          <div class="field">
+            <span class="field-label">Zweitfarbe für **Text**</span>
+            <div class="seg" id="seg-accent">
+              <button data-value="red"><i class="swatch" style="background:#c62828"></i>Rot</button>
+              <button data-value="green"><i class="swatch" style="background:#2e7d32"></i>Grün</button>
+              <button data-value="orange"><i class="swatch" style="background:#e0670b"></i>Orange</button>
+            </div>
+          </div>
+          <div class="field">
+            <span class="field-label">Textmarker für ==Text==</span>
+            <div class="seg" id="seg-highlight">
+              <button data-value="yellow"><i class="swatch" style="background:#ffe83d"></i>Gelb</button>
+              <button data-value="green"><i class="swatch" style="background:#86f08a"></i>Grün</button>
+              <button data-value="pink"><i class="swatch" style="background:#ff86d6"></i>Pink</button>
+              <button data-value="blue"><i class="swatch" style="background:#7fd6ff"></i>Blau</button>
+            </div>
+          </div>
+          <details class="help">
+            <summary>So funktioniert's</summary>
+            <p>Text markieren und oben einen Knopf antippen – oder direkt tippen:</p>
+            <ul>
+              <li><code># Titel</code> große, unterstrichene Überschrift</li>
+              <li><code>## Titel</code> kleinere Überschrift</li>
+              <li><code>- Punkt</code> Aufzählung (Folgezeilen eingerückt)</li>
+              <li><code>==wichtig==</code> Textmarker</li>
+              <li><code>**Merke**</code> Zweitfarbe</li>
+              <li><code>__unterstrichen__</code></li>
+            </ul>
+          </details>
+        </section>
+
         <!-- Realismus -->
         <section class="card">
           <h2>Natürlichkeit</h2>
           <label class="toggle toggle-block">
             <input type="checkbox" id="chk-variants">
             <span>Zufällige Variante pro Buchstabe</span>
+          </label>
+          <label class="toggle toggle-block">
+            <input type="checkbox" id="chk-ligatures">
+            <span>Buchstabenpaare verwenden (sch, ch, ck …)</span>
           </label>
           <div class="field range" data-key="jitterSize" data-min="0" data-max="1" data-step="0.05" data-unit="%" data-label="Schwankung Größe"></div>
           <div class="field range" data-key="jitterRotate" data-min="0" data-max="1" data-step="0.05" data-unit="%" data-label="Schwankung Neigung"></div>

@@ -18,14 +18,32 @@ Alles läuft im Browser. Nichts wird hochgeladen: Deine Zeichen bleiben im Speic
 3. **Nächstes Zeichen ▶** geht weiter. Rechts siehst du alle Zeichen und den Fortschritt; tippe ein Zeichen an, um direkt dorthin zu springen.
 4. Gespeichert wird automatisch nach jedem Strich. Du kannst jederzeit aufhören und später weitermachen.
 
+**Buchstabenpaare (optional):** Ganz unten im Raster stehen Paare wie *sch, ch, ck, st, ie, en, er, ll, tt*. Schreib sie verbunden in einem Zug, so wie mitten im Wort.
+Die App setzt sie dann automatisch statt der Einzelbuchstaben ein, aber nicht jedes Mal, damit es natürlich bleibt. Fehlende Paare sind kein Problem: Dann nimmt die App die Einzelbuchstaben.
+
 **Apple Pencil:** Sobald die App den Stift erkennt, schaltet sie „Finger zeichnet“ aus, damit dein Handballen keine Striche macht. Mit dem Schalter kannst du das ändern.
 
 ### 2 · Text & Export
 - Links Text eintippen oder einfügen, rechts siehst du die Live-Vorschau auf A4 (lange Texte → mehrere Seiten).
 - Fehlt ein Zeichen, erscheint ein Hinweis. Antippen bringt dich direkt zum Erfassen. Zeichen wie € oder @ kannst du dort als **eigene Zeichen** hinzufügen.
 - Einstellungen: Farbe, Strichdicke, Schriftgröße, Zeilen-, Buchstaben- und Wortabstand, Schwankungen (Größe, Neigung, Abstand), wellige Zeilen, Papier (Weiß, Linien, Karo, Kariert 5 mm, vergilbt).
+- **Buchstabenpaare verwenden** lässt sich unter „Natürlichkeit“ abschalten.
 - **🎲 Neu mischen** würfelt die kleinen Unregelmäßigkeiten neu.
 - **PDF erstellen** / **PNG erstellen** → danach **Teilen / Sichern …** (iPad-Teilen-Menü: „In Dateien sichern“, „Drucken“, AirDrop …) oder **Herunterladen**.
+
+### Formatierung (z. B. für Lernzettel)
+Text im Textfeld markieren und oben einen Knopf antippen – oder die Zeichen direkt tippen:
+
+| Eingabe | Ergebnis |
+|---|---|
+| `# Titel` (am Zeilenanfang) | große, unterstrichene Überschrift |
+| `## Titel` | kleinere Überschrift |
+| `- Punkt` (auch `* ` oder `• `) | Aufzählungspunkt, Folgezeilen eingerückt |
+| `==wichtig==` | Textmarker (Gelb, Grün, Pink oder Blau) |
+| `**Merke**` | Zweitfarbe (Rot, Grün oder Orange) |
+| `__Text__` | unterstrichen |
+
+Die Farben stellst du in der Karte „Formatierung“ ein. Ein Marker ohne Gegenstück (z. B. nur ein `**`) bleibt als normaler Text stehen.
 
 ### ⚠️ Backup nicht vergessen!
 Safari kann Website-Daten löschen (z. B. wenn der Speicher knapp ist oder du die App lange nicht öffnest).
@@ -64,7 +82,7 @@ Du brauchst dafür keinen Computer – alles geht auf dem iPad.
 > Wichtig: Die App auf dem Home-Bildschirm und die Seite in Safari haben **getrennte Speicher**. Erfasse deine Handschrift also in der installierten App (oder übertrage sie per Backup).
 
 ### Updates
-Wenn sich am Code etwas ändert: In `sw.js` die Zeile `CACHE_VERSION = 'handschrift-v1'` hochzählen (v2, v3 …) und neu hochladen.
+Wenn sich am Code etwas ändert: In `sw.js` die Zeile `CACHE_VERSION = 'handschrift-v2'` hochzählen (v3, v4 …) und neu hochladen.
 Die App holt sich die neue Version beim nächsten Start mit Internet (eventuell zweimal öffnen).
 
 ---

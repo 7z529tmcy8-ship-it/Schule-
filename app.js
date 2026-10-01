@@ -33,7 +33,19 @@ const CHAR_GROUPS = [
   { title: 'Umlaute & ß', chars: [...'äöüÄÖÜß'] },
   { title: 'Satzzeichen', chars: [...'.,!?:;-()"\''] },
 ];
+
+/**
+ * Optionale Buchstabenpaare (Ligaturen). In echter Handschrift werden diese
+ * Paare verbunden geschrieben und sehen anders aus als zwei Einzelbuchstaben.
+ * Ist ein Paar erfasst, nimmt das Layout es statt der Einzelbuchstaben.
+ */
+const LIGATURES = ['sch', 'ch', 'ck', 'st', 'ie', 'ei', 'eu', 'au', 'en', 'er', 'in', 'un', 'ge', 'te', 'll', 'tt', 'ss', 'nn', 'mm', 'ff'];
+const LIGATURE_SET = new Set(LIGATURES);
+CHAR_GROUPS.push({ title: 'Buchstabenpaare (optional)', chars: LIGATURES });
+
 const BASE_CHARS = CHAR_GROUPS.flatMap(g => g.chars);
+/** Ist das ein Buchstabenpaar statt eines einzelnen Zeichens? */
+const isPair = ch => [...ch].length > 1;
 const MAX_VARIANTS = 3;
 
 /** Lage der Hilfslinien im Zeichenfeld, als Anteil der Feldhöhe. */
@@ -56,6 +68,10 @@ const PAGE = { w: 210, h: 297, ml: 25, mr: 15, mt: 20, mb: 15 };
 const EXPORT_DPI = 200;
 
 const INK = { blue: '#1b3a94', black: '#1c1c1e' };
+/** Zweitfarbe für **hervorgehobene** Wörter */
+const ACCENT = { red: '#c62828', green: '#2e7d32', orange: '#e0670b' };
+/** Textmarker-Farben für ==markierte== Stellen */
+const HIGHLIGHT = { yellow: '#ffe83d', green: '#86f08a', pink: '#ff86d6', blue: '#7fd6ff' };
 
 /** Standard-Einstellungen für Bereich 2. Abstände in U, Schwankungen 0…1. */
 const DEFAULT_SETTINGS = {
@@ -73,6 +89,9 @@ const DEFAULT_SETTINGS = {
   wave: 0.3,
   paper: 'lined',        // white | lined | karo | grid5
   aged: false,
+  ligatures: true,       // Buchstabenpaare verwenden
+  accent: 'red',         // Zweitfarbe für **Text**
+  highlight: 'yellow',   // Textmarker für ==Text==
   seed: 1,
 };
 
@@ -261,7 +280,8 @@ const state = {
 };
 
 const allChars = () => [...BASE_CHARS, ...state.extraChars];
-const glyphId = (ch, v) => `${ch.codePointAt(0)}_${v}`;
+/** ID eines Glyphs, z. B. „97_0“ für a/Variante 1 oder „99-104_0“ für das Paar „ch“. */
+const glyphId = (ch, v) => `${[...ch].map(c => c.codePointAt(0)).join('-')}_${v}`;
 const variantsOf = ch => (state.glyphs.get(ch) || []).filter(Boolean);
 
 function setGlyph(g) {
@@ -678,6 +698,7 @@ function loadVariantIntoPad() {
 }
 
 function charDescription(ch) {
+  if (isPair(ch)) return `Buchstabenpaar „${ch}“`;
   if (CHAR_NAMES[ch]) return CHAR_NAMES[ch];
   if (/[a-z]/.test(ch)) return `Kleinbuchstabe ${ch}`;
   if (/[A-Z]/.test(ch)) return `Großbuchstabe ${ch}`;
@@ -688,6 +709,7 @@ function charDescription(ch) {
 }
 
 function charHint(ch) {
+  if (isPair(ch)) return 'Verbunden in einem Zug schreiben – so wie mitten im Wort. Optional: fehlt ein Paar, nimmt die App die Einzelbuchstaben.';
   if ('gjpqy'.includes(ch)) return 'Unterlänge bis zur Unterlinie ziehen.';
   if (ch === 'ß') return 'Oberlänge bis zur Oberlinie, Unterlänge nach Gefühl.';
   if (/[a-zäöü]/.test(ch)) return 'Bauch bis zur gestrichelten Mittellinie, Oberlängen bis zur Oberlinie.';
@@ -701,6 +723,7 @@ function charHint(ch) {
 function renderCaptureHead() {
   const ch = allChars()[state.capIndex];
   $('#cap-char').textContent = ch;
+  $('#cap-char').classList.toggle('is-pair', isPair(ch));
   $('#cap-name').textContent = charDescription(ch);
   $('#cap-hint').textContent = charHint(ch);
 }
@@ -733,11 +756,17 @@ function renderVariantButtons() {
     c.width = w * dpr; c.height = h * dpr;
     const ctx = c.getContext('2d');
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const U = h * PAD.unit * 0.95, by = h * PAD.baseline;
+    const by = h * PAD.baseline;
     ctx.strokeStyle = '#d5dbe8';
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(0, by); ctx.lineTo(w, by); ctx.stroke();
-    if (g?.strokes) drawStrokes(ctx, g.strokes, U, w / 2, by, CAPTURE_STROKE * U, INK.blue);
+    if (g?.strokes) {
+      // Zentriert und bei breiten Zeichen (Paare) verkleinert, damit nichts abgeschnitten wird
+      const bw = g.bbox.x1 - g.bbox.x0;
+      const U = Math.min(h * PAD.unit * 0.95, (w * 0.85) / Math.max(bw, 0.01));
+      const ox = w / 2 - ((g.bbox.x0 + g.bbox.x1) / 2) * U;
+      drawStrokes(ctx, g.strokes, U, ox, by, CAPTURE_STROKE * U, INK.blue);
+    }
   });
 }
 
@@ -755,7 +784,7 @@ function updateCharGrid(scrollToCurrent = false) {
       grid.appendChild(h);
       for (const ch of grp.chars) {
         const b = document.createElement('button');
-        b.className = 'cg';
+        b.className = isPair(ch) ? 'cg pair' : 'cg';
         b.dataset.index = chars.indexOf(ch);
         b.innerHTML = `<span></span><span class="dots"></span>`;
         b.firstChild.textContent = ch;
@@ -767,18 +796,20 @@ function updateCharGrid(scrollToCurrent = false) {
     grid.dataset.count = chars.length;
   }
 
-  let done = 0;
+  // Fortschritt zählt nur Einzelzeichen; die Paare sind freiwillig und werden extra gezählt
+  let done = 0, singles = 0, pairsDone = 0;
   for (const b of $$('.cg', grid)) {
     const i = +b.dataset.index;
     const n = variantsOf(chars[i]).length;
-    if (n) done++;
+    if (isPair(chars[i])) { if (n) pairsDone++; }
+    else { singles++; if (n) done++; }
     b.classList.toggle('done', n > 0);
     b.classList.toggle('current', i === state.capIndex);
     b.lastChild.textContent = '●'.repeat(n);
   }
-  $('#progress-text').textContent = `${done} von ${chars.length} Zeichen`;
-  $('#progress-variants').textContent = `${glyphCount()} Varianten`;
-  $('#progress-bar').style.width = `${(done / chars.length) * 100}%`;
+  $('#progress-text').textContent = `${done} von ${singles} Zeichen`;
+  $('#progress-variants').textContent = `${glyphCount()} Varianten · ${pairsDone}/${LIGATURES.length} Paare`;
+  $('#progress-bar').style.width = `${(done / singles) * 100}%`;
 
   if (scrollToCurrent) {
     $(`.cg[data-index="${state.capIndex}"]`, grid)?.scrollIntoView({ block: 'nearest' });
@@ -805,9 +836,8 @@ function updateBackupNote() {
 
 /* =====================================================================
    7. LAYOUT
-   Wandelt den Text in eine Liste von Seiten um. Jede Seite enthält
-   platzierte Zeichen { g, x, y, sc, rot } in mm (x = linke Kante,
-   y = Grundlinie). Alles ist unabhängig von der Bildschirmauflösung.
+   Wandelt den Text in Seiten mit platzierten Zeichen um (in mm).
+   Alles ist unabhängig von der Bildschirmauflösung.
    ===================================================================== */
 
 /** Auf Karo-Papier liegt jede Zeile auf einer Karolinie (Vielfaches von 5 mm). */
@@ -832,6 +862,73 @@ function resolveChar(ch) {
   return null;
 }
 
+/* ---------- Formatierung ----------
+   Zeilenanfang:  "# Text"  große, unterstrichene Überschrift
+                  "## Text" kleinere Überschrift
+                  "- Text"  Aufzählungspunkt (auch "* " oder "• ")
+   Im Text:       ==Text==  Textmarker
+                  **Text**  Zweitfarbe (z. B. rot)
+                  __Text__  unterstrichen
+   Ein Marker ohne passendes Gegenstück bleibt als normales Zeichen stehen. */
+
+const INLINE_MARKS = [['==', 'hl'], ['**', 'em'], ['__', 'ul']];
+
+/** Zerlegt eine Zeile in Zeichen mit Stil-Infos { ch, hl, em, ul }. */
+function parseInline(str) {
+  const chars = [...str];
+  const marks = new Map();               // Position → Stil, der dort umschaltet
+  for (const [mk, key] of INLINE_MARKS) {
+    const pos = [];
+    for (let i = 0; i < chars.length - 1; i++) {
+      if (chars[i] === mk[0] && chars[i + 1] === mk[1]) { pos.push(i); i++; }
+    }
+    if (pos.length % 2) pos.pop();       // einzelner Marker ohne Partner → normaler Text
+    for (const p of pos) marks.set(p, key);
+  }
+  const style = { hl: false, em: false, ul: false };
+  const out = [];
+  for (let i = 0; i < chars.length; i++) {
+    const key = marks.get(i);
+    if (key) { style[key] = !style[key]; i++; continue; }
+    out.push({ ch: chars[i], ...style });
+  }
+  return out;
+}
+
+/** Erkennt Überschrift / Aufzählung am Zeilenanfang. */
+function parseLine(line) {
+  let m;
+  if ((m = line.match(/^(#{1,2})\s+/))) return { level: m[1].length, bullet: false, chars: parseInline(line.slice(m[0].length)) };
+  if ((m = line.match(/^\s*[-*•]\s+/))) return { level: 0, bullet: true, chars: parseInline(line.slice(m[0].length)) };
+  return { level: 0, bullet: false, chars: parseInline(line) };
+}
+
+/** Teilt gestylte Zeichen in Wörter; jedes Wort merkt sich die Leerzeichen davor. */
+function splitWords(chars) {
+  const words = [];
+  let w = { sp: [], chars: [] };
+  for (const c of chars) {
+    if (c.ch === ' ') {
+      if (w.chars.length) { words.push(w); w = { sp: [], chars: [] }; }
+      w.sp.push(c);
+    } else {
+      w.chars.push(c);
+    }
+  }
+  if (w.chars.length) words.push(w);
+  return words;
+}
+
+const sameStyle = (a, b) => a.hl === b.hl && a.em === b.em && a.ul === b.ul;
+
+/**
+ * Wandelt den Text in eine Liste von Seiten um. Jede Seite enthält Einträge in mm:
+ *   Zeichen:  { g, x, y, by, sc, rot, w, us, hl, em, ul, line }
+ *   Leerraum: { space: true, x, w, by, ... }  (für durchgehende Marker/Linien)
+ *   Punkt:    { bullet: true, x, y, us, em, line }
+ * x = linke Kante, y = Grundlinie (mit Zufall), by = Grundlinie der Zeile,
+ * us = Größenfaktor (Überschriften > 1).
+ */
 function computeLayout(rawText, s) {
   const text = normalizeText(rawText);
   const U = s.fontSize;
@@ -849,6 +946,7 @@ function computeLayout(rawText, s) {
   let lineNo = 0;
   let line;            // Zufallsparameter der aktuellen Zeile
   let x;
+  let indent = 0;      // Einzug in mm (bei Aufzählungen auch für Folgezeilen)
 
   function startLine() {
     line = {
@@ -858,7 +956,8 @@ function computeLayout(rawText, s) {
       amp: s.wave * 0.13 * U * (0.6 + 0.4 * rnd(seed, lineNo, 14)),   // mm
       slope: rnd2(seed, lineNo, 15) * s.wave * 0.006,                 // leichtes Ansteigen/Abfallen
     };
-    x = line.x0;
+    line.start = line.x0 + indent;
+    x = line.start;
   }
   function newLine() {
     y += ls;
@@ -873,19 +972,45 @@ function computeLayout(rawText, s) {
   /** y-Versatz durch wellige Zeilen an Position xx */
   const waveAt = xx => line.amp * Math.sin(line.phase + (xx - left) / line.period * Math.PI * 2) + line.slope * (xx - left);
 
+  /**
+   * Zerlegt ein Wort in Bausteine: erfasste Buchstabenpaare (z. B. „sch“)
+   * haben Vorrang vor Einzelbuchstaben – aber nicht immer, damit es natürlich bleibt.
+   */
+  function tokenize(chars, pi, wi) {
+    const tokens = [];
+    for (let i = 0; i < chars.length;) {
+      let len = 1;
+      if (s.ligatures) {
+        for (const L of [3, 2]) {
+          if (i + L > chars.length) continue;
+          const part = chars.slice(i, i + L);
+          const str = part.map(c => c.ch).join('');
+          if (LIGATURE_SET.has(str) && variantsOf(str).length && part.every(c => sameStyle(c, part[0]))
+              && rnd(seed, pi, wi, i, 21) < 0.85) { len = L; break; }
+        }
+      }
+      const part = chars.slice(i, i + len);
+      tokens.push({ str: part.map(c => c.ch).join(''), style: part[0], ci: i });
+      i += len;
+    }
+    return tokens;
+  }
+
   /** Misst ein Wort und bereitet die Zeichen vor (Positionen relativ zum Wortanfang). */
-  function measureWord(word, pi, wi) {
+  function measureWord(chars, pi, wi, us) {
     const items = [];
+    const Uw = U * us;
     let dx = 0;
     const lastVariant = {};
-    [...word].forEach((ch, ci) => {
-      const key = resolveChar(ch);
-      const gap = s.letterSpacing * U + rnd2(seed, pi, wi, ci, 4) * 0.12 * U * s.jitterSpacing;
+    for (const { str, style, ci } of tokenize(chars, pi, wi)) {
+      const key = isPair(str) ? str : resolveChar(str);
+      const gap = s.letterSpacing * Uw + rnd2(seed, pi, wi, ci, 4) * 0.12 * Uw * s.jitterSpacing;
+      const base = { hl: style.hl, em: style.em, ul: style.ul, us };
       if (!key) {
-        if (ch.trim()) missing.add(ch);
-        items.push({ g: null, dx, w: 0.5 * U });
-        dx += 0.5 * U + gap;
-        return;
+        if (str.trim()) missing.add(str);
+        items.push({ ...base, g: null, dx, w: 0.5 * Uw });
+        dx += 0.5 * Uw + gap;
+        continue;
       }
       const vars = variantsOf(key);
       let vi = 0;
@@ -897,11 +1022,11 @@ function computeLayout(rawText, s) {
       const g = vars[vi];
       const sc = 1 + rnd2(seed, pi, wi, ci, 1) * 0.08 * s.jitterSize;
       const rot = rnd2(seed, pi, wi, ci, 2) * (5 * Math.PI / 180) * s.jitterRotate;
-      const dy = rnd2(seed, pi, wi, ci, 3) * 0.04 * U * s.jitterSize;
-      const w = (g.bbox.x1 - g.bbox.x0) * U * sc;
-      items.push({ g, dx, w, sc, rot, dy });
+      const dy = rnd2(seed, pi, wi, ci, 3) * 0.04 * Uw * s.jitterSize;
+      const w = (g.bbox.x1 - g.bbox.x0) * Uw * sc;
+      items.push({ ...base, g, dx, w, sc, rot, dy });
       dx += w + gap;
-    });
+    }
     const last = items[items.length - 1];
     return { items, width: last ? last.dx + last.w : 0 };
   }
@@ -909,25 +1034,45 @@ function computeLayout(rawText, s) {
   function place(items, offset) {
     for (const it of items) {
       const gx = x + it.dx - offset;
-      page.push({ g: it.g, x: gx, y: y + (it.dy || 0) + waveAt(gx + it.w / 2), sc: it.sc || 1, rot: it.rot || 0, w: it.w });
+      const by = y + waveAt(gx + it.w / 2);
+      page.push({
+        g: it.g, x: gx, y: by + (it.dy || 0), by, sc: it.sc || 1, rot: it.rot || 0, w: it.w,
+        us: it.us, hl: it.hl, em: it.em, ul: it.ul, line: lineNo,
+      });
     }
   }
 
   startLine();
-  text.split('\n').forEach((para, pi) => {
-    if (pi > 0) newLine();
-    let pendingSpace = 0;
-    para.split(' ').forEach((word, wi) => {
-      if (wi > 0) pendingSpace += s.wordSpacing * U * (1 + rnd2(seed, pi, wi, 9) * 0.25 * s.jitterSpacing);
-      if (!word) return;                                 // mehrere Leerzeichen hintereinander
-      const m = measureWord(word, pi, wi);
-      const atLineStart = x === line.x0;
-      if (!atLineStart && x + pendingSpace + m.width > right) {
+  text.split('\n').forEach((raw, pi) => {
+    if (pi > 0) { indent = 0; newLine(); }
+    const para = parseLine(raw);
+
+    // Überschriften größer – aber nur so groß, dass sie noch in eine Zeile passen
+    const us = para.level ? Math.max(1, Math.min(para.level === 1 ? 1.6 : 1.3, (ls * 0.8) / U)) : 1;
+    const headingUnderline = para.level === 1;
+
+    if (para.bullet) {
+      const bx = line.x0 + 0.35 * U;
+      page.push({ bullet: true, x: bx, y: y + waveAt(bx) - 0.38 * U, us: 1, em: para.chars[0]?.em, line: lineNo, seed: pi });
+      indent = 1.3 * U;                                  // Text und Folgezeilen eingerückt
+      line.start = line.x0 + indent;
+      x = line.start;
+    }
+
+    splitWords(para.chars).forEach((word, wi) => {
+      if (headingUnderline) for (const c of word.chars) c.ul = true;
+      const spaceStyle = word.sp[0];
+      const space = word.sp.length * s.wordSpacing * U * us * (1 + rnd2(seed, pi, wi, 9) * 0.25 * s.jitterSpacing);
+      const m = measureWord(word.chars, pi, wi, us);
+      const atLineStart = x === line.start;
+      if (!atLineStart && x + space + m.width > right) {
         newLine();                                       // Wort passt nicht mehr → neue Zeile
-      } else if (!atLineStart) {
-        x += pendingSpace;
+      } else if (!atLineStart && space) {
+        // Leerraum merken, damit Marker/Unterstreichung über Wortgrenzen durchlaufen
+        const st = headingUnderline ? { ...spaceStyle, ul: true } : spaceStyle;
+        page.push({ space: true, x, w: space, by: y + waveAt(x + space / 2), us, hl: st.hl, em: st.em, ul: st.ul, line: lineNo });
+        x += space;
       }
-      pendingSpace = 0;
 
       if (x + m.width <= right || m.width <= 0) {
         place(m.items, 0);
@@ -936,8 +1081,7 @@ function computeLayout(rawText, s) {
       }
       // Wort ist länger als eine ganze Zeile → Zeichen für Zeichen umbrechen
       let offset = 0;
-      for (let i = 0; i < m.items.length; i++) {
-        const it = m.items[i];
+      for (const it of m.items) {
         if (x + it.dx - offset + it.w > right && it.dx - offset > 0) {
           newLine();
           offset = it.dx;
@@ -1028,15 +1172,104 @@ function drawAging(ctx, k, pageIndex) {
   ctx.restore();
 }
 
-/** Zeichnet eine komplette Seite (Papier + Schrift) mit k Pixel pro mm. */
+/** Zweitfarbe für **hervorgehobenen** Text */
+const accentColor = s => ACCENT[s.accent] || ACCENT.red;
+
+/**
+ * Fasst benachbarte Einträge derselben Zeile mit gesetztem Stil (hl/ul)
+ * zu durchgehenden Abschnitten zusammen – für Textmarker und Unterstreichung.
+ */
+function styleRuns(items, flag, U) {
+  const runs = [];
+  let r = null;
+  for (const it of items) {
+    if (it.bullet) continue;
+    if (!it[flag]) { r = null; continue; }
+    if (r && r.line === it.line && it.x <= r.x1 + 0.6 * U * it.us) {
+      r.x1 = Math.max(r.x1, it.x + it.w);
+      r.by1 = it.by;
+      r.us = Math.max(r.us, it.us);
+    } else {
+      r = { line: it.line, x0: it.x, x1: it.x + it.w, by0: it.by, by1: it.by, us: it.us, em: it.em };
+      runs.push(r);
+    }
+  }
+  // Abschnitte, die nur aus Leerraum bestehen (z. B. Marker endet am Zeilenende), weglassen
+  return runs.filter(run => items.some(it => !it.space && !it.bullet && it.line === run.line && it[flag] && it.x >= run.x0 && it.x < run.x1));
+}
+
+/** Textmarker: leicht schräges, unregelmäßiges Band hinter der Schrift. */
+function drawHighlights(ctx, items, k, s) {
+  const runs = styleRuns(items, 'hl', s.fontSize);
+  if (!runs.length) return;
+  ctx.save();
+  ctx.globalCompositeOperation = 'multiply';     // Papierlinien scheinen durch wie bei echtem Marker
+  ctx.globalAlpha = 0.55;
+  ctx.fillStyle = HIGHLIGHT[s.highlight] || HIGHLIGHT.yellow;
+  for (const r of runs) {
+    const U = s.fontSize * r.us * k;
+    const j = i => rnd2(s.seed, r.line, Math.round(r.x0 * 10), i) * 0.08 * U;
+    const x0 = r.x0 * k - 0.15 * U, x1 = r.x1 * k + 0.15 * U;
+    const y0 = r.by0 * k, y1 = r.by1 * k;
+    ctx.beginPath();
+    ctx.moveTo(x0 + j(1), y0 - 0.95 * U + j(2));
+    ctx.lineTo(x1 + j(3), y1 - 0.92 * U + j(4));
+    ctx.quadraticCurveTo(x1 + 0.12 * U, (y1 - 0.3 * U), x1 + j(5), y1 + 0.3 * U + j(6));
+    ctx.lineTo(x0 + j(7), y0 + 0.28 * U + j(8));
+    ctx.quadraticCurveTo(x0 - 0.1 * U, y0 - 0.3 * U, x0 + j(1), y0 - 0.95 * U + j(2));
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+/** Unterstreichung: leicht gebogener Strich mit dem Stift. */
+function drawUnderlines(ctx, items, k, s) {
+  const runs = styleRuns(items, 'ul', s.fontSize);
+  if (!runs.length) return;
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineWidth = Math.max(1, s.thickness * k);
+  for (const r of runs) {
+    const U = s.fontSize * r.us * k;
+    const j = i => rnd2(s.seed, r.line, Math.round(r.x0 * 10), 40 + i);
+    const x0 = r.x0 * k - 0.05 * U, x1 = r.x1 * k + 0.1 * U;
+    const y0 = r.by0 * k + 0.3 * U + j(1) * 0.05 * U;
+    const y1 = r.by1 * k + 0.3 * U + j(2) * 0.08 * U;
+    ctx.strokeStyle = r.em ? accentColor(s) : inkColor(s);
+    ctx.beginPath();
+    ctx.moveTo(x0, y0);
+    ctx.quadraticCurveTo((x0 + x1) / 2, (y0 + y1) / 2 + j(3) * 0.1 * U, x1, y1);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/** Aufzählungspunkt: kleiner, nicht ganz runder Tintenpunkt. */
+function drawBullet(ctx, it, k, s) {
+  const r = 0.13 * s.fontSize * k;
+  ctx.save();
+  ctx.fillStyle = it.em ? accentColor(s) : inkColor(s);
+  ctx.translate(it.x * k, it.y * k);
+  ctx.rotate(rnd(s.seed, it.seed, 50) * Math.PI);
+  ctx.beginPath();
+  ctx.ellipse(0, 0, r * (1 + 0.15 * rnd(s.seed, it.seed, 51)), r * 0.85, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+/** Zeichnet eine komplette Seite mit k Pixel pro mm: Papier → Marker → Schrift → Unterstreichungen. */
 function renderPage(ctx, items, pageIndex, k, s) {
   drawPaper(ctx, k, s, pageIndex);
-  const color = inkColor(s);
+  drawHighlights(ctx, items, k, s);
+  const ink = inkColor(s);
+  const accent = accentColor(s);
   const pxPerU = s.fontSize * k;
   const lineW = s.thickness * k;
   for (const it of items) {
+    if (it.bullet) { drawBullet(ctx, it, k, s); continue; }
     if (!it.g) continue;
-    const img = glyphImage(it.g, pxPerU, color, lineW);
+    // Überschriften werden in ihrer Größe neu gerendert (scharf), die Strichdicke bleibt gleich
+    const img = glyphImage(it.g, pxPerU * it.us, it.em ? accent : ink, lineW);
     if (!img) continue;
     const half = img.w / 2;
     ctx.save();
@@ -1047,6 +1280,7 @@ function renderPage(ctx, items, pageIndex, k, s) {
     ctx.drawImage(img.canvas, -img.ox - half, -img.oy);
     ctx.restore();
   }
+  drawUnderlines(ctx, items, k, s);
 }
 
 /* =====================================================================
@@ -1326,7 +1560,8 @@ async function importBackup(file) {
 
   const incoming = [];
   for (const raw of data.glyphs) {
-    const ch = typeof raw?.char === 'string' ? [...raw.char.normalize('NFC')][0] : null;
+    let ch = typeof raw?.char === 'string' ? raw.char.normalize('NFC') : null;
+    if (ch && isPair(ch) && !LIGATURE_SET.has(ch)) ch = null;   // nur bekannte Paare zulassen
     const v = Number(raw?.variant);
     if (!ch || !(v >= 0 && v < MAX_VARIANTS)) continue;
     const strokes = cleanStrokes(raw.strokes);
@@ -1428,6 +1663,9 @@ function syncSettingsUI() {
   $('#color-custom').hidden = s.color !== 'custom';
   $('#swatch-custom').style.background = s.customColor;
   $('#chk-variants').checked = s.randomVariants;
+  $('#chk-ligatures').checked = s.ligatures;
+  for (const b of $$('#seg-accent button')) b.classList.toggle('is-active', b.dataset.value === s.accent);
+  for (const b of $$('#seg-highlight button')) b.classList.toggle('is-active', b.dataset.value === s.highlight);
   $('#chk-aged').checked = s.aged;
 }
 
@@ -1436,6 +1674,51 @@ function changeSetting(key, value) {
   syncSettingsUI();
   saveSettings();
   schedulePreview();
+}
+
+/**
+ * Umschließt die Auswahl im Textfeld mit einem Marker (z. B. ==…==).
+ * Ist sie schon umschlossen, wird der Marker wieder entfernt.
+ */
+function wrapSelection(ta, mark) {
+  const { selectionStart: a, selectionEnd: b, value } = ta;
+  const n = mark.length;
+  const sel = value.slice(a, b);
+  if (value.slice(a - n, a) === mark && value.slice(b, b + n) === mark) {
+    ta.setRangeText(sel, a - n, b + n, 'select');
+    return;
+  }
+  if (sel.length >= 2 * n && sel.startsWith(mark) && sel.endsWith(mark)) {
+    ta.setRangeText(sel.slice(n, -n), a, b, 'select');
+    return;
+  }
+  // Leerzeichen am Rand nicht mit einschließen (iPad markiert gern das folgende Leerzeichen mit)
+  const a2 = a + sel.match(/^\s*/)[0].length;
+  const b2 = Math.max(a2, b - sel.match(/\s*$/)[0].length);
+  if (a2 === b2) {
+    // Nichts markiert: leere Marker einfügen, Cursor in die Mitte
+    ta.setRangeText(mark + mark, a, b, 'end');
+    ta.selectionStart = ta.selectionEnd = a + n;
+  } else {
+    ta.setRangeText(mark + value.slice(a2, b2) + mark, a2, b2, 'select');
+  }
+}
+
+/** Setzt/entfernt ein Zeilen-Präfix („# “, „## “, „- “) für alle markierten Zeilen. */
+function toggleLinePrefix(ta, prefix) {
+  const { selectionStart: a, selectionEnd: b, value } = ta;
+  const start = value.lastIndexOf('\n', a - 1) + 1;
+  let end = value.indexOf('\n', Math.max(a, b - 1));
+  if (end < 0) end = value.length;
+  const lines = value.slice(start, end).split('\n');
+  const PREFIX = /^(#{1,2}\s+|\s*[-*•]\s+)/;
+  const allHave = lines.filter(l => l.trim()).every(l => l.startsWith(prefix));
+  const out = lines.map(l => {
+    const bare = l.replace(PREFIX, '');
+    if (allHave) return bare;
+    return bare.trim() || lines.length === 1 ? prefix + bare : bare;
+  });
+  ta.setRangeText(out.join('\n'), start, end, 'end');
 }
 
 function switchView(view) {
@@ -1502,6 +1785,19 @@ function bindUI() {
   for (const b of $$('#seg-paper button')) b.addEventListener('click', () => changeSetting('paper', b.dataset.value));
   $('#color-custom').addEventListener('input', e => changeSetting('customColor', e.target.value));
   $('#chk-variants').addEventListener('change', e => changeSetting('randomVariants', e.target.checked));
+  $('#chk-ligatures').addEventListener('change', e => changeSetting('ligatures', e.target.checked));
+  for (const b of $$('#seg-accent button')) b.addEventListener('click', () => changeSetting('accent', b.dataset.value));
+  for (const b of $$('#seg-highlight button')) b.addEventListener('click', () => changeSetting('highlight', b.dataset.value));
+
+  // Format-Leiste: Fokus im Textfeld behalten (sonst verschwindet auf dem iPad die Auswahl)
+  for (const b of $$('#fmt-bar .fmt')) {
+    for (const t of ['pointerdown', 'mousedown']) b.addEventListener(t, e => e.preventDefault());
+    b.addEventListener('click', () => {
+      if (b.dataset.wrap) wrapSelection(ta, b.dataset.wrap);
+      else toggleLinePrefix(ta, b.dataset.line);
+      ta.dispatchEvent(new Event('input'));
+    });
+  }
   $('#chk-aged').addEventListener('change', e => changeSetting('aged', e.target.checked));
   $('#btn-reseed').addEventListener('click', () => changeSetting('seed', Math.floor(Math.random() * 1e9)));
   $('#btn-reset-settings').addEventListener('click', () => {
