@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport-fit=cover: Inhalt darf bis in die Ecken, Safe Areas regeln wir per CSS.
+       Zoomen ist abgeschaltet, damit Zeichnen und Doppeltippen nichts vergrößern. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Meine Handschrift</title>
+  <meta name="description" content="Wandelt getippten Text in die eigene Handschrift um – offline, alles bleibt auf dem iPad.">
+
+  <!-- PWA / „Zum Home-Bildschirm“ -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#f4f3ef">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Handschrift">
+  <meta name="format-detection" content="telephone=no">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- ===== Kopfzeile mit den zwei Bereichen ===== -->
+  <header class="topbar">
+    <div class="brand">
+      <img src="icons/icon-192.png" alt="" class="brand-icon">
+      <span>Meine Handschrift</span>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button class="tab is-active" role="tab" data-view="capture" aria-selected="true">1 · Handschrift erfassen</button>
+      <button class="tab" role="tab" data-view="compose" aria-selected="false">2 · Text &amp; Export</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- ================= BEREICH 1: HANDSCHRIFT ERFASSEN ================= -->
+    <section id="view-capture" class="view capture is-active">
+      <div class="capture-main">
+        <div class="capture-head">
+          <div class="char-badge" id="cap-char" aria-live="polite">a</div>
+          <div class="char-info">
+            <div class="char-name" id="cap-name">Kleinbuchstabe a</div>
+            <div class="char-hint" id="cap-hint">Schreib das Zeichen zwischen die Hilfslinien.</div>
+          </div>
+          <div class="variants" id="cap-variants" role="radiogroup" aria-label="Variante">
+            <!-- wird per JS gefüllt -->
+          </div>
+        </div>
+
+        <div class="pad-wrap" id="pad-wrap">
+          <canvas id="pad" class="draw-surface" aria-label="Zeichenfeld"></canvas>
+          <div class="pad-status" id="pad-status"></div>
+        </div>
+
+        <div class="capture-tools">
+          <button class="btn" id="btn-undo">↶ Rückgängig</button>
+          <button class="btn btn-danger-soft" id="btn-clear">Löschen</button>
+          <label class="toggle" title="Ausschalten, wenn du mit dem Apple Pencil schreibst – dann stört der Handballen nicht.">
+            <input type="checkbox" id="chk-finger" checked>
+            <span>Finger zeichnet</span>
+          </label>
+          <span class="spacer"></span>
+          <button class="btn" id="btn-prev" aria-label="Vorheriges Zeichen">◀</button>
+          <button class="btn btn-primary" id="btn-next">Nächstes Zeichen ▶</button>
+        </div>
+      </div>
+
+      <aside class="capture-side">
+        <div class="progress-block">
+          <div class="progress-label"><span id="progress-text">0 von 80 Zeichen</span><span id="progress-variants" class="muted"></span></div>
+          <div class="progress"><div class="progress-bar" id="progress-bar"></div></div>
+        </div>
+        <div class="char-grid" id="char-grid" aria-label="Alle Zeichen"></div>
+        <div class="side-actions">
+          <p class="backup-note" id="backup-note">Tipp: Sichere deine Handschrift regelmäßig als Datei.</p>
+          <div class="btn-row">
+            <button class="btn" id="btn-export-json">Backup sichern</button>
+            <button class="btn" id="btn-import-json">Backup laden</button>
+          </div>
+          <button class="btn btn-ghost btn-small" id="btn-wipe">Alle Zeichen löschen …</button>
+          <input type="file" id="file-import" accept=".json,application/json" hidden>
+        </div>
+      </aside>
+    </section>
+
+    <!-- ================= BEREICH 2: TEXT, PAPIER, EXPORT ================= -->
+    <section id="view-compose" class="view compose">
+      <div class="settings" id="settings">
+        <!-- Text -->
+        <section class="card">
+          <h2>Text</h2>
+          <textarea id="text-input" rows="7" placeholder="Hier tippen oder Text einfügen …" spellcheck="true"></textarea>
+          <div class="missing" id="missing" hidden></div>
+        </section>
+
+        <!-- Stift & Schrift -->
+        <section class="card">
+          <h2>Stift &amp; Schrift</h2>
+          <div class="field">
+            <span class="field-label">Farbe</span>
+            <div class="seg" id="seg-color">
+              <button data-value="blue"><i class="swatch" style="background:#1b3a94"></i>Blau</button>
+              <button data-value="black"><i class="swatch" style="background:#1c1c1e"></i>Schwarz</button>
+              <button data-value="custom"><i class="swatch" id="swatch-custom"></i>Eigene</button>
+            </div>
+            <input type="color" id="color-custom" class="color-input" value="#7a1fa2" hidden>
+          </div>
+          <div class="field range" data-key="thickness" data-min="0.2" data-max="1.2" data-step="0.05" data-unit="mm" data-label="Strichdicke"></div>
+          <div class="field range" data-key="fontSize" data-min="2.5" data-max="10" data-step="0.25" data-unit="mm" data-label="Schriftgröße (Großbuchstaben)"></div>
+          <div class="field range" data-key="lineSpacing" data-min="5" data-max="20" data-step="0.5" data-unit="mm" data-label="Zeilenabstand"></div>
+          <p class="note" id="snap-note" hidden></p>
+          <div class="field range" data-key="letterSpacing" data-min="-0.1" data-max="0.5" data-step="0.01" data-unit="%" data-label="Buchstabenabstand"></div>
+          <div class="field range" data-key="wordSpacing" data-min="0.2" data-max="1.5" data-step="0.05" data-unit="%" data-label="Wortabstand"></div>
+        </section>
+
+        <!-- Realismus -->
+        <section class="card">
+          <h2>Natürlichkeit</h2>
+          <label class="toggle toggle-block">
+            <input type="checkbox" id="chk-variants">
+            <span>Zufällige Variante pro Buchstabe</span>
+          </label>
+          <div class="field range" data-key="jitterSize" data-min="0" data-max="1" data-step="0.05" data-unit="%" data-label="Schwankung Größe"></div>
+          <div class="field range" data-key="jitterRotate" data-min="0" data-max="1" data-step="0.05" data-unit="%" data-label="Schwankung Neigung"></div>
+          <div class="field range" data-key="jitterSpacing" data-min="0" data-max="1" data-step="0.05" data-unit="%" data-label="Schwankung Abstand"></div>
+          <div class="field range" data-key="wave" data-min="0" data-max="1" data-step="0.05" data-unit="%" data-label="Wellige Zeilen"></div>
+          <button class="btn btn-block" id="btn-reseed">🎲 Neu mischen</button>
+        </section>
+
+        <!-- Papier -->
+        <section class="card">
+          <h2>Papier</h2>
+          <div class="seg seg-wrap" id="seg-paper">
+            <button data-value="white">Weiß</button>
+            <button data-value="lined">Linien</button>
+            <button data-value="karo">Karo (Heft)</button>
+            <button data-value="grid5">Kariert 5 mm</button>
+          </div>
+          <label class="toggle toggle-block">
+            <input type="checkbox" id="chk-aged">
+            <span>Leicht vergilbtes Papier</span>
+          </label>
+        </section>
+
+        <!-- Export -->
+        <section class="card">
+          <h2>Export</h2>
+          <div class="btn-row">
+            <button class="btn btn-primary" id="btn-pdf">PDF erstellen</button>
+            <button class="btn" id="btn-png">PNG erstellen</button>
+          </div>
+          <p class="note">Danach kannst du die Datei über das Teilen-Menü in „Dateien“ sichern, drucken oder verschicken.</p>
+          <button class="btn btn-ghost btn-small" id="btn-reset-settings">Einstellungen zurücksetzen</button>
+        </section>
+      </div>
+
+      <div class="preview" id="preview">
+        <div class="preview-empty" id="preview-empty">
+          <p>Hier erscheint die Vorschau auf A4.</p>
+          <p class="muted">Erfasse zuerst ein paar Zeichen in „1 · Handschrift erfassen“ und tippe dann links einen Text.</p>
+        </div>
+        <div class="pages" id="pages"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ===== Dialog: Datei fertig → Teilen / Herunterladen ===== -->
+  <dialog id="file-dialog" class="dialog">
+    <form method="dialog">
+      <h3 id="file-dialog-title">Datei ist fertig</h3>
+      <p id="file-dialog-text" class="muted"></p>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-primary" id="file-dialog-share">Teilen / Sichern …</button>
+        <button type="button" class="btn" id="file-dialog-download">Herunterladen</button>
+        <button class="btn btn-ghost" value="close">Schließen</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- ===== Ladeanzeige und Kurzmeldungen ===== -->
+  <div class="busy" id="busy" hidden>
+    <div class="busy-box"><div class="spinner"></div><span id="busy-text">Bitte warten …</span></div>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <!-- jsPDF liegt lokal im Projekt, damit der PDF-Export auch offline klappt -->
+  <script src="vendor/jspdf.umd.min.js" defer></script>
+  <script src="app.js" defer></script>
+</body>
+</html>
