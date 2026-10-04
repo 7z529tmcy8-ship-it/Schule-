@@ -27,6 +27,7 @@ Die App setzt sie dann automatisch statt der Einzelbuchstaben ein, aber nicht je
 - Links Text eintippen oder einfügen, rechts siehst du die Live-Vorschau auf A4 (lange Texte → mehrere Seiten).
 - Fehlt ein Zeichen, erscheint ein Hinweis. Antippen bringt dich direkt zum Erfassen. Zeichen wie € oder @ kannst du dort als **eigene Zeichen** hinzufügen.
 - Einstellungen: Farbe, Strichdicke, Schriftgröße, Zeilen-, Buchstaben- und Wortabstand, Schwankungen (Größe, Neigung, Abstand), wellige Zeilen, Papier (Weiß, Linien, Karo, Kariert 5 mm, vergilbt).
+- **Größe automatisch angleichen** (unter „Stift & Schrift“): Hast du beim Erfassen manche Buchstaben zu klein oder zu groß geschrieben oder schweben sie über der Grundlinie, korrigiert die App das beim Schreiben. Maßstab ist deine eigene typische Größe (der Mittelwert aller ähnlichen Buchstaben), nicht eine Computerschrift. Deine gespeicherten Zeichen bleiben dabei unverändert; bei 0 % ist die Korrektur aus.
 - **Buchstabenpaare verwenden** lässt sich unter „Natürlichkeit“ abschalten.
 - **🎲 Neu mischen** würfelt die kleinen Unregelmäßigkeiten neu.
 - **PDF erstellen** / **PNG erstellen** → danach **Teilen / Sichern …** (iPad-Teilen-Menü: „In Dateien sichern“, „Drucken“, AirDrop …) oder **Herunterladen**.
@@ -82,7 +83,7 @@ Du brauchst dafür keinen Computer – alles geht auf dem iPad.
 > Wichtig: Die App auf dem Home-Bildschirm und die Seite in Safari haben **getrennte Speicher**. Erfasse deine Handschrift also in der installierten App (oder übertrage sie per Backup).
 
 ### Updates
-Wenn sich am Code etwas ändert: In `sw.js` die Zeile `CACHE_VERSION = 'handschrift-v2'` hochzählen (v3, v4 …) und neu hochladen.
+Wenn sich am Code etwas ändert: In `sw.js` die Zeile `CACHE_VERSION = 'handschrift-v3'` hochzählen (v4, v5 …) und neu hochladen.
 Die App holt sich die neue Version beim nächsten Start mit Internet (eventuell zweimal öffnen).
 
 ---

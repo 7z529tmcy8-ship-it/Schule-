@@ -90,6 +90,7 @@ const DEFAULT_SETTINGS = {
   paper: 'lined',        // white | lined | karo | grid5
   aged: false,
   ligatures: true,       // Buchstabenpaare verwenden
+  normalize: 1,          // Größe automatisch angleichen (0…1)
   accent: 'red',         // Zweitfarbe für **Text**
   highlight: 'yellow',   // Textmarker für ==Text==
   seed: 1,
@@ -921,6 +922,105 @@ function splitWords(chars) {
 
 const sameStyle = (a, b) => a.hl === b.hl && a.em === b.em && a.ul === b.ul;
 
+/* ---------- Größe automatisch angleichen ----------
+   Beim Erfassen gerät mal ein Buchstabe zu klein, mal zu groß, oder er schwebt
+   über der Grundlinie. Statt die gespeicherten Zeichen zu verändern, wird beim
+   Rendern ein Korrekturfaktor angewendet:
+     1. Jeder Buchstabe gehört zu einer Größenklasse (x-Höhe, Oberlänge, Großbuchstabe …).
+     2. Pro Klasse wird die typische Höhe als Median aller deiner Zeichen bestimmt –
+        so zählt deine eigene Handschrift, einzelne Ausreißer verschieben nichts.
+     3. Jedes Zeichen wird auf diese Höhe skaliert (um die Grundlinie herum) und
+        bei Bedarf auf die Grundlinie gerückt.
+     4. Zusätzlich wird alles so skaliert, dass Großbuchstaben genau die eingestellte
+        Schriftgröße haben. */
+
+const ASCENDERS = new Set([...'bdfhklß']);
+const MAY_DESCEND = new Set([...'gjpqyfß(),;']);   // dürfen unter die Grundlinie
+
+/** Größenklasse eines Zeichens (oder null = nur global skalieren). */
+function sizeClass(ch) {
+  if (isPair(ch)) {
+    const cs = [...ch];
+    if (cs.some(c => ASCENDERS.has(c))) return 'asc';
+    if (cs.includes('t')) return 't';
+    return 'x';
+  }
+  if (ASCENDERS.has(ch)) return 'asc';
+  if (ch === 't') return 't';
+  if (/[A-ZÄÖÜ0-9!?]/.test(ch)) return 'cap';
+  if (/[a-zäöü]/.test(ch)) return 'x';
+  return null;
+}
+
+/**
+ * Misst den „Körper“ eines Zeichens: oberste und unterste Stelle, ohne kleine
+ * Einzelstriche wie i-Punkte oder Umlaut-Punkte (die würden die Höhe verfälschen).
+ */
+function glyphBody(g) {
+  const strokes = g.strokes;
+  if (!strokes?.length) return { top: -g.bbox.y0, bottom: g.bbox.y1 };
+  const h = g.bbox.y1 - g.bbox.y0;
+  const big = strokes.filter(a => {
+    const b = strokesBBox([a]);
+    return Math.hypot(b.x1 - b.x0, b.y1 - b.y0) >= 0.2 * h;
+  });
+  const b = strokesBBox(big.length ? big : strokes);
+  return { top: -b.y0, bottom: b.y1 };
+}
+
+const median = arr => {
+  const a = [...arr].sort((p, q) => p - q);
+  const m = a.length >> 1;
+  return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
+};
+
+let normCache = { sig: '', norms: new Map() };
+
+/**
+ * Liefert für jedes Glyph { f, d }: f = Skalierung (um die Grundlinie),
+ * d = Verschiebung in U vor dem Skalieren (+ = nach unten).
+ * Ergebnis wird zwischengespeichert, bis sich die erfassten Zeichen ändern.
+ */
+function glyphNorms() {
+  let sig = 0, n = 0;
+  for (const arr of state.glyphs.values()) for (const g of arr) if (g) { n++; sig += g.updated % 1e7; }
+  const key = `${n}:${sig}`;
+  if (normCache.sig === key) return normCache.norms;
+
+  const info = new Map();
+  const byClass = { x: [], asc: [], t: [], cap: [] };
+  for (const arr of state.glyphs.values()) {
+    for (const g of arr) {
+      if (!g) continue;
+      const body = glyphBody(g);
+      const cls = sizeClass(g.char);
+      info.set(g, { body, cls });
+      // Typische Höhe nur aus Einzelzeichen bestimmen (Paare sind oft etwas anders)
+      if (cls && !isPair(g.char) && body.top > 0.05) byClass[cls].push(body.top);
+    }
+  }
+  const target = {};
+  for (const [cls, list] of Object.entries(byClass)) if (list.length) target[cls] = median(list);
+  // t ohne eigene Vorlage: zwischen x-Höhe und Oberlänge
+  if (!target.t && target.x && target.asc) target.t = (target.x + target.asc) / 2;
+  // Global: Großbuchstaben sollen genau 1 U (= eingestellte Schriftgröße) hoch sein
+  const G = byClass.cap.length >= 3 ? clamp(1 / target.cap, 0.7, 1.4) : 1;
+
+  const norms = new Map();
+  for (const [g, { body, cls }] of info) {
+    const chars = [...g.char];
+    // Auf die Grundlinie rücken – nur wenn das Zeichen dort enden soll und nur knapp daneben liegt
+    const canAlign = (cls || '.:'.includes(g.char)) && !chars.some(c => MAY_DESCEND.has(c));
+    const d = canAlign && Math.abs(body.bottom) < 0.3 ? -body.bottom : 0;
+    let f = G;
+    const top = body.top - d;   // Höhe über der Grundlinie nach dem Verschieben (d > 0 = nach unten)
+    if (cls && target[cls] && top > 0.05) f = clamp((target[cls] * G) / top, 0.6, 1.6);
+    norms.set(g, { f, d });
+  }
+  normCache = { sig: key, norms };
+  return norms;
+}
+
 /**
  * Wandelt den Text in eine Liste von Seiten um. Jede Seite enthält Einträge in mm:
  *   Zeichen:  { g, x, y, by, sc, rot, w, us, hl, em, ul, line }
@@ -938,6 +1038,8 @@ function computeLayout(rawText, s) {
   const firstBase = PAGE.mt + ls;
   const lastBase = PAGE.h - PAGE.mb;
   const seed = s.seed | 0;
+  const norms = glyphNorms();
+  const normK = s.normalize ?? 1;     // Stärke der Größenangleichung (0 = aus)
 
   const pages = [[]];
   const missing = new Set();
@@ -1023,8 +1125,12 @@ function computeLayout(rawText, s) {
       const sc = 1 + rnd2(seed, pi, wi, ci, 1) * 0.08 * s.jitterSize;
       const rot = rnd2(seed, pi, wi, ci, 2) * (5 * Math.PI / 180) * s.jitterRotate;
       const dy = rnd2(seed, pi, wi, ci, 3) * 0.04 * Uw * s.jitterSize;
-      const w = (g.bbox.x1 - g.bbox.x0) * Uw * sc;
-      items.push({ ...base, g, dx, w, sc, rot, dy });
+      // Größenangleichung: Faktor nf (um die Grundlinie) und Verschiebung auf die Grundlinie
+      const n = norms.get(g) || { f: 1, d: 0 };
+      const nf = 1 + (n.f - 1) * normK;
+      const ny = nf * n.d * normK * Uw;
+      const w = (g.bbox.x1 - g.bbox.x0) * Uw * sc * nf;
+      items.push({ ...base, g, dx, w, sc, rot, dy: dy + ny, nf });
       dx += w + gap;
     }
     const last = items[items.length - 1];
@@ -1037,7 +1143,7 @@ function computeLayout(rawText, s) {
       const by = y + waveAt(gx + it.w / 2);
       page.push({
         g: it.g, x: gx, y: by + (it.dy || 0), by, sc: it.sc || 1, rot: it.rot || 0, w: it.w,
-        us: it.us, hl: it.hl, em: it.em, ul: it.ul, line: lineNo,
+        us: it.us, nf: it.nf || 1, hl: it.hl, em: it.em, ul: it.ul, line: lineNo,
       });
     }
   }
@@ -1269,7 +1375,7 @@ function renderPage(ctx, items, pageIndex, k, s) {
     if (it.bullet) { drawBullet(ctx, it, k, s); continue; }
     if (!it.g) continue;
     // Überschriften werden in ihrer Größe neu gerendert (scharf), die Strichdicke bleibt gleich
-    const img = glyphImage(it.g, pxPerU * it.us, it.em ? accent : ink, lineW);
+    const img = glyphImage(it.g, pxPerU * it.us * it.nf, it.em ? accent : ink, lineW);
     if (!img) continue;
     const half = img.w / 2;
     ctx.save();

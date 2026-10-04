@@ -6,7 +6,7 @@
    WICHTIG nach Änderungen am Code: CACHE_VERSION hochzählen, sonst
    bekommt das iPad weiter die alte Version aus dem Zwischenspeicher.
    ===================================================================== */
-const CACHE_VERSION = 'handschrift-v2';
+const CACHE_VERSION = 'handschrift-v3';
 
 const ASSETS = [
   './',
