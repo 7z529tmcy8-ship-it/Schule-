@@ -45,6 +45,14 @@ Wählst du ein Verkehrsmittel, werden Stationen blass, an denen es nicht halten 
 
 Jede Woche werden drei Upgrades ausgelost: neue Linien, zusätzliche Fahrzeuge, Ausbau oder ein großer Bahnhof.
 
+## Liniennamen, Umsteigeknoten und Ereignisse
+- **Liniennamen:** Jede Linie bekommt automatisch einen Namen wie in Hannover – Busse 100, 121, 128 …, Trams 10, 17, 11, U-Bahn U1–U3, S-Bahn S1/S5, Züge RE2/RE3. Der Name steht am Stift und als Schild an der Linie. Im Linien-Menü kannst du ihn mit **„Name ändern“** umbenennen (max. 6 Zeichen).
+- **Umsteigeknoten** (Upgrade, Abzeichen ⇄): Ein- und Umsteigen geht dort deutlich schneller, und es passen 6 Fahrgäste mehr hin.
+- **Ereignisse** (ab Woche 2): 96-Spiel im Stadion, Messe, Maschseefest oder Zoo-Tag. Die Station nahe dem Ort bekommt ein rotes Fähnchen, viele Fahrgäste wollen dorthin. Am Ende reisen alle auf einmal ab.
+
+## Ladebildschirm
+Beim Öffnen erscheint kurz ein Zettel mit dem Logo, drumherum fahren Bus, U-Bahn, S-Bahn und Zug. Antippen überspringt ihn.
+
 ## Speichern
 Das Spiel **speichert sich automatisch**: alle 5 Sekunden, beim Pausieren, nach jedem Wochen-Upgrade und sobald du die App verlässt.
 Beim nächsten Öffnen tippst du auf **Weiterspielen**. Über den **Menü-Knopf** (☰ oben rechts) speicherst du sofort und kommst zum Startzettel.

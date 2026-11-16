@@ -62,10 +62,17 @@
   <div class="line-menu note" id="line-menu" hidden>
     <button class="pen-btn" id="lm-add">+ Zug</button>
     <button class="pen-btn" id="lm-remove">− Zug</button>
+    <button class="pen-btn" id="lm-rename">Name ändern</button>
     <button class="pen-btn danger" id="lm-delete">Linie löschen</button>
   </div>
 
   <p class="hint" id="hint" hidden></p>
+
+  <!-- Laufendes Ereignis (z. B. 96-Spiel) -->
+  <div class="event-chip note-chip" id="event-chip" hidden>
+    <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 21V4M6 4h11l-2.5 4L17 12H6"/></svg>
+    <span id="event-text"></span>
+  </div>
 
   <!-- Tutorial: Zettel mit Erklärung, die Stelle im Spiel leuchtet auf -->
   <div class="coach note" id="coach" hidden role="dialog" aria-live="polite">
@@ -119,6 +126,21 @@
       </div>
       <p class="record" id="over-record"></p>
       <button class="pen-btn primary" id="btn-again">Nochmal</button>
+    </div>
+  </div>
+
+  <!-- ===== Ladebildschirm: bei jedem Öffnen, Antippen überspringt ===== -->
+  <div class="splash" id="splash" role="status" aria-label="Heft-Metro lädt">
+    <canvas id="splash-canvas" aria-hidden="true"></canvas>
+    <div class="splash-note">
+      <svg class="splash-mark" viewBox="0 0 64 64" aria-hidden="true">
+        <path d="M32 7 L56 25 V56 H8 V25 Z"/>
+        <path d="M24 30 V48 M40 30 V48 M24 39 H40"/>
+      </svg>
+      <h1 class="splash-title">Heft-Metro</h1>
+      <p class="splash-sub">Hannover</p>
+      <div class="splash-bar" aria-hidden="true"><span></span></div>
+      <p class="splash-hint">Tippen zum Überspringen</p>
     </div>
   </div>
 

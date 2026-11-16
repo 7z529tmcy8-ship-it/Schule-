@@ -95,6 +95,26 @@ const MODES = {
 };
 const MODE_ORDER = ['bus', 'tram', 'metro', 'sbahn', 'rail'];
 
+/** Liniennamen je Verkehrsmittel (angelehnt an Hannover), werden der Reihe nach vergeben */
+const LINE_NAMES = {
+  bus: ['100', '121', '128', '134', '200'],
+  tram: ['10', '17', '11'],
+  metro: ['U1', 'U2', 'U3'],
+  sbahn: ['S1', 'S5'],
+  rail: ['RE2', 'RE3'],
+};
+
+/**
+ * Ereignisse in Hannover: Viele wollen zur Station nahe dem Ort (Anreise),
+ * am Ende reisen alle auf einmal ab. at: Kartenpunkt in U (siehe HANNOVER).
+ */
+const EVENTS = [
+  { key: '96', name: '96-Spiel', place: 'Stadion', text: 'Hannover 96 spielt – alle wollen ins Stadion!' },
+  { key: 'messe', name: 'Messe', place: 'Messe', text: 'Messe in Hannover – Besuch aus aller Welt!' },
+  { key: 'maschsee', name: 'Maschseefest', place: 'Maschsee', text: 'Maschseefest – die halbe Stadt will an den See!' },
+  { key: 'zoo', name: 'Zoo-Tag', place: 'Zoo', text: 'Sonnentag – viele Familien wollen in den Zoo.' },
+];
+
 /**
  * Stationsarten, aufsteigend. Ein Verkehrsmittel hält an seiner Art und allen höheren.
  * Der Hauptbahnhof ist immer 'rail' – dort hält alles.
@@ -196,6 +216,10 @@ const CFG = {
   hubR: 0.9,              // Radius des Hauptbahnhofs in U
   hubShare: 0.22,         // Anteil der Fahrgäste, die zum Hauptbahnhof wollen
   overcrowdTime: 40,      // Sekunden Überfüllung bis Game Over
+  nodeBonus: 6,           // Umsteigeknoten: zusätzliche Plätze
+  nodeBoarding: 0.4,      // Umsteigeknoten: Faktor für die Ein-/Aussteigezeit
+  eventDays: 1.5,         // Dauer eines Ereignisses in Spieltagen
+  eventShare: 0.35,       // Anteil neuer Fahrgäste, die zum Ereignis wollen
   recoverTime: 80,        // Sekunden, bis sich der Timer wieder ganz erholt
   minStationDist: 3.6,    // Mindestabstand neuer Stationen (größer = übersichtlicher)
   minLineDist: 1.3,       // Mindestabstand neuer Stationen zu bestehenden Linien
@@ -260,6 +284,8 @@ function newGame() {
   G = {
     state: 'start',        // start | playing | upgrade | placeBig | placeTier | over
     placeTier: null,       // beim Ausbau: Ziel-Stationsart ('tram' | 'metro' | 'rail')
+    event: null,           // laufendes Ereignis { key, stationId, end }
+    nextEventT: CFG.dayLength * 7 * 1.3,   // frühestens Woche 2
     speed: 1,              // 0 = Pause, 1 = normal, 2 = schnell
     t: 0,                  // Spielzeit in Sekunden
     week: 1,
@@ -293,7 +319,7 @@ const stationById = id => G.stations.find(s => s.id === id);
 const hub = () => G.stations.find(s => s.shape === 'hub');
 /** Radius einer Station in U (Hauptbahnhof ist größer) */
 const stationR = st => (st.shape === 'hub' ? CFG.hubR : TIER_INFO[st.tier || 'metro'].r);
-const capacityOf = st => (st.shape === 'hub' ? CFG.hubCapacity : st.big ? CFG.bigCapacity : CFG.capacity);
+const capacityOf = st => (st.shape === 'hub' ? CFG.hubCapacity : st.big ? CFG.bigCapacity : CFG.capacity) + (st.node ? CFG.nodeBonus : 0);
 const vehiclesOn = line => G.trains.filter(t => t.line === line).length;
 const linesOf = mode => G.lines.filter(l => l.mode === mode);
 
@@ -372,8 +398,14 @@ function freeColor() {
 /** Ist für dieses Verkehrsmittel noch ein Linien-Platz frei? */
 const canCreateLine = mode => linesOf(mode).length < G.inv[mode].lines && freeColor() >= 0;
 
+/** Nächster freier Liniennamen für ein Verkehrsmittel (z. B. „U2“) */
+function nextLineName(mode) {
+  const used = new Set(G.lines.map(l => l.label));
+  return LINE_NAMES[mode].find(n => !used.has(n)) || `${MODES[mode].name[0]}${G.nextId}`;
+}
+
 function createLine(stationIds, color, mode) {
-  const line = { id: G.nextId++, color, mode, stations: stationIds.slice() };
+  const line = { id: G.nextId++, color, mode, label: nextLineName(mode), stations: stationIds.slice() };
   G.lines.push(line);
   rebuildRoutes();
   if (G.inv[mode].free > 0) addTrain(line);
@@ -485,8 +517,51 @@ function spawnStation() {
   }
 }
 
+/* ---------- Ereignisse in Hannover ---------- */
+
+/** Kartenpunkt eines Ereignisortes (Orientierungspunkt oder Mitte des Sees) */
+function eventPlace(ev) {
+  const poi = HANNOVER.pois.find(p => p.name === ev.place);
+  if (poi) return poi.at;
+  const lake = HANNOVER.lakes.find(l => l.name === ev.place);
+  return lake ? lake.pts.reduce((c, p) => [c[0] + p[0] / lake.pts.length, c[1] + p[1] / lake.pts.length], [0, 0]) : null;
+}
+
+/** Ereignis starten, laufen lassen und beenden (Abreise: alle auf einmal) */
+function updateEvent() {
+  if (G.event) {
+    const st = stationById(G.event.stationId);
+    if (!st) { G.event = null; return; }
+    if (G.t >= G.event.end) {
+      for (let i = 0; i < 6; i++) { const dest = pickDestination(st.shape, true); if (dest) st.queue.push(dest); }
+      toast(`${EVENTS.find(e => e.key === G.event.key)?.name || 'Ereignis'} vorbei – alle wollen gleichzeitig nach Hause!`, 3200);
+      G.event = null;
+      G.nextEventT = G.t + CFG.dayLength * 7 * rand(1.1, 2);
+    }
+    return;
+  }
+  if (G.t < G.nextEventT) return;
+  // Ein Ereignis, dessen Ort eine Station in der Nähe hat
+  const options = EVENTS.map(ev => {
+    const at = eventPlace(ev);
+    if (!at) return null;
+    const st = G.stations.filter(s => s.shape !== 'hub')
+      .map(s => ({ s, d: dist(s.x, s.y, at[0], at[1]) }))
+      .sort((a, b) => a.d - b.d)[0];
+    return st && st.d < 8 ? { ev, st: st.s } : null;
+  }).filter(Boolean);
+  if (!options.length) { G.nextEventT = G.t + CFG.dayLength * 2; return; }
+  const { ev, st } = options[Math.floor(Math.random() * options.length)];
+  G.event = { key: ev.key, stationId: st.id, end: G.t + CFG.dayLength * CFG.eventDays };
+  toast(`${ev.text} Ziel: ${st.name || 'die Station mit dem Fähnchen'}.`, 4200);
+}
+
 /** Zielform für einen neuen Fahrgast (nicht die eigene, häufige Formen öfter, oft der Hauptbahnhof). */
-function pickDestination(own) {
+function pickDestination(own, ignoreEvent = false) {
+  if (!ignoreEvent && G.event && Math.random() < CFG.eventShare) {
+    const target = stationById(G.event.stationId);
+    if (target && target.shape !== own) return target.shape;
+  }
   if (own !== 'hub' && Math.random() < CFG.hubShare) return 'hub';
   const counts = {};
   for (const s of G.stations) if (s.shape !== own && s.shape !== 'hub') counts[s.shape] = (counts[s.shape] || 0) + 1;
@@ -517,6 +592,8 @@ function update(dt) {
     return;
   }
 
+  updateEvent();
+
   // Neue Stationen
   G.stationTimer -= dt;
   if (G.stationTimer <= 0) {
@@ -525,7 +602,7 @@ function update(dt) {
   }
 
   // Neue Fahrgäste und Überfüllung
-  const rate = Math.min(0.35, 0.05 + 0.015 * G.week + G.t * 0.0004);
+  const rate = Math.min(0.35, 0.05 + 0.015 * G.week + G.t * 0.0004) * (G.event ? 1.4 : 1);
   for (const st of G.stations) {
     const stRate = st.shape === 'hub' ? rate * 1.6 : rate;    // am Hauptbahnhof ist mehr los
     if (G.t - st.born > 3 && Math.random() < stRate * dt) {
@@ -588,7 +665,7 @@ function arrive(tr) {
       i++;
     }
   }
-  tr.dwell = mode.dwell + mode.perPax * moved;
+  tr.dwell = mode.dwell + mode.perPax * moved * (st.node ? CFG.nodeBoarding : 1);
 }
 
 /* =====================================================================
@@ -965,12 +1042,38 @@ function strokeSegment(mode, x1, y1, x2, y2, seed) {
   ctx.globalAlpha = 1;
 }
 
+/** Namensschild der Linie (z. B. „U1“) in der Mitte des ersten Abschnitts */
+function drawLineTag(line) {
+  const a = stationById(line.stations[0]), b = stationById(line.stations[1]);
+  const { ox, oy } = segmentOffset(line, a.id, b.id);
+  const len = dist(a.x, a.y, b.x, b.y) || 1;
+  const nx = -(b.y - a.y) / len, ny = (b.x - a.x) / len;
+  const [sx, sy] = toScreen((a.x + b.x) / 2 + ox + nx * 0.55, (a.y + b.y) / 2 + oy + ny * 0.55);
+  const fs = clamp(0.42 * cam.s, 11, 14);
+  ctx.save();
+  ctx.font = `700 ${fs}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
+  const w = ctx.measureText(line.label).width + fs * 0.8, h = fs * 1.45;
+  ctx.fillStyle = LINE_COLORS[line.color];
+  ctx.strokeStyle = 'rgba(0,0,0,.35)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(sx - w / 2, sy - h / 2, w, h, h * 0.3);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(line.label, sx, sy + 0.5);
+  ctx.restore();
+}
+
 /** Linien, Linienenden („Stiftkappen“) und die Griffe zum Verlängern */
 function drawLines() {
   G.handles = [];
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   for (const line of G.lines) {
+    if (!line.label) line.label = nextLineName(line.mode);   // Sicherheitsnetz: jede Linie hat einen Namen
     const color = LINE_COLORS[line.color];
     const s = line.stations;
     ctx.strokeStyle = color;
@@ -979,6 +1082,7 @@ function drawLines() {
       const { ox, oy } = segmentOffset(line, a.id, b.id);
       strokeSegment(line.mode, a.x + ox, a.y + oy, b.x + ox, b.y + oy, line.id * 1000 + a.id * 31 + b.id);
     }
+    if (s.length >= 2) drawLineTag(line);
 
     // Stiftkappen an beiden Enden
     if (s.length >= 2) {
@@ -1070,6 +1174,40 @@ function drawTierBadge(st, sx, sy, r) {
   ctx.restore();
 }
 
+/** Umsteigeknoten: kleines gelbes Abzeichen mit zwei Pfeilen (⇄) oben links */
+function drawNodeBadge(sx, sy, r) {
+  const size = Math.max(15, 0.46 * cam.s);
+  const bx = sx - r * 0.9, by = sy - r * 0.9, k = size / 24;
+  ctx.save();
+  ctx.beginPath(); ctx.arc(bx, by, size / 2, 0, Math.PI * 2);
+  ctx.fillStyle = '#ffe83d'; ctx.fill();
+  ctx.strokeStyle = COLORS.pencil; ctx.lineWidth = 1.3; ctx.stroke();
+  ctx.translate(bx - size / 2, by - size / 2);
+  ctx.lineWidth = 2.2 * k; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(6 * k, 9.5 * k); ctx.lineTo(17 * k, 9.5 * k); ctx.lineTo(14 * k, 6.5 * k);
+  ctx.moveTo(18 * k, 14.5 * k); ctx.lineTo(7 * k, 14.5 * k); ctx.lineTo(10 * k, 17.5 * k);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** Ereignis: rotes Fähnchen über der Station, leicht wehend */
+function drawEventFlag(sx, sy, r) {
+  const h = Math.max(26, 1.1 * cam.s), wave = Math.sin(performance.now() / 300) * 2;
+  const x = sx + r * 0.2, y = sy - r - 4;
+  ctx.save();
+  ctx.strokeStyle = COLORS.pencil; ctx.lineWidth = 2; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - h); ctx.stroke();
+  ctx.fillStyle = COLORS.danger;
+  ctx.beginPath();
+  ctx.moveTo(x, y - h);
+  ctx.quadraticCurveTo(x + h * 0.35, y - h + wave, x + h * 0.6, y - h * 0.78);
+  ctx.quadraticCurveTo(x + h * 0.3, y - h * 0.62 - wave, x, y - h * 0.55);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
 function drawStations() {
   const mode = activeMode();
   for (const st of G.stations) {
@@ -1113,6 +1251,8 @@ function drawStations() {
     ctx.stroke();
     ctx.globalAlpha = baseAlpha;
     drawTierBadge(st, sx, sy, r);
+    if (st.node) drawNodeBadge(sx, sy, r);
+    if (G.event?.stationId === st.id) drawEventFlag(sx, sy, r);
     if (st.big) {
       ctx.lineWidth = Math.max(1.2, 0.07 * cam.s);
       shapePath(st.shape, sx, sy, r + 0.22 * cam.s, st.id + 3, true);
@@ -1232,6 +1372,18 @@ function onDown(e) {
       st.big = true;
       G.state = 'playing';
       toast('Großer Bahnhof gebaut – hier passen jetzt 12 Fahrgäste hin.');
+    }
+    return;
+  }
+  if (G.state === 'placeNode') {
+    const st = stationAt(x, y);
+    if (st && !st.node) {
+      st.node = true;
+      st.flash = 0.35;
+      G.state = 'playing';
+      toast(`${st.name || 'Die Station'} ist jetzt ein Umsteigeknoten – hier geht das Umsteigen schneller.`);
+    } else if (st) {
+      toast('Das ist schon ein Umsteigeknoten – wähle eine andere Station.');
     }
     return;
   }
@@ -1395,7 +1547,7 @@ function updateHud() {
   if (hudCache.pie !== pie) { hudCache.pie = pie; $('#clock-pie').setAttribute('d', pie); }
 
   // Leiste unten (nur neu bauen, wenn sich etwas geändert hat)
-  const key = G.lines.map(l => `${l.mode}${l.color}:${vehiclesOn(l)}`).join(',') + '|' + JSON.stringify(G.inv) + '|' + G.selectedMode;
+  const key = G.lines.map(l => `${l.mode}${l.color}${l.label}:${vehiclesOn(l)}`).join(',') + '|' + JSON.stringify(G.inv) + '|' + G.selectedMode;
   if (hudCache.pens !== key) { hudCache.pens = key; renderPens(); }
 
   // Hinweis am Anfang
@@ -1406,6 +1558,15 @@ function updateHud() {
     hint.textContent = 'Wähle unten ein Verkehrsmittel und zieh von Station zu Station.';
   }
   for (const b of document.querySelectorAll('[data-speed]')) b.classList.toggle('is-active', +b.dataset.speed === G.speed);
+
+  // Laufendes Ereignis
+  const ev = G.event && EVENTS.find(e => e.key === G.event.key);
+  const evText = ev && G.state !== 'start' ? `${ev.name} · ${stationById(G.event.stationId)?.name || ''}` : '';
+  if (hudCache.event !== evText) {
+    hudCache.event = evText;
+    $('#event-chip').hidden = !evText;
+    $('#event-text').textContent = evText;
+  }
 }
 
 function hideHint() { $('#hint').hidden = true; }
@@ -1447,8 +1608,10 @@ function renderPens() {
       b.className = 'pen used';
       b.dataset.line = line.id;
       b.style.setProperty('--c', LINE_COLORS[line.color]);
-      b.setAttribute('aria-label', `${M.lineName} ${line.color + 1}`);
-      b.innerHTML = `<span class="pen-trains">${vehiclesOn(line)}</span>`;
+      b.setAttribute('aria-label', `${M.lineName} ${line.label}`);
+      b.innerHTML = `<span class="pen-label"></span><span class="pen-trains">${vehiclesOn(line)}</span>`;
+      b.firstChild.textContent = line.label;
+      if (line.label.length > 3) b.firstChild.classList.add('long');
       b.addEventListener('click', () => openLineMenu(line, b));
       group.appendChild(b);
     }
@@ -1497,6 +1660,16 @@ $('#lm-remove').addEventListener('click', () => {
   const tr = G.trains.filter(t => t.line === menuLine).pop();
   if (tr) removeTrain(tr);
   closeLineMenu();
+});
+$('#lm-rename').addEventListener('click', () => {
+  const line = menuLine;
+  closeLineMenu();
+  if (!line) return;
+  const name = window.prompt(`Neuer Name für ${MODES[line.mode].lineName} ${line.label} (max. 6 Zeichen):`, line.label);
+  if (name && name.trim()) {
+    line.label = name.trim().slice(0, 6);
+    saveGame();
+  }
 });
 $('#lm-delete').addEventListener('click', () => {
   if (menuLine) deleteLine(menuLine);
@@ -1552,6 +1725,12 @@ const UPGRADES = [
     },
   })),
   {
+    key: 'node', title: 'Umsteigeknoten', text: 'Schnelleres Ein- und Umsteigen, 6 Plätze mehr.',
+    icon: '<path d="M4 8h13l-3-3M20 16H7l3 3"/>',
+    ok: () => G.stations.some(s => !s.node),
+    apply: () => { G.state = 'placeNode'; toast('Tippe auf die Station, die Umsteigeknoten werden soll.', 4000); },
+  },
+  {
     key: 'big', title: 'Großer Bahnhof', text: 'Eine Station fasst 12 statt 6 Fahrgäste.',
     icon: '<circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="9"/>',
     ok: () => G.stations.some(s => !s.big && s.shape !== 'hub'),
@@ -1599,7 +1778,7 @@ function showUpgrade() {
 
 const SAVE_KEY = 'heftmetro.save';
 const SAVE_VERSION = 3;          // v3: Stationsarten + S-Bahn (v2 wird übernommen, v1 verworfen)
-const ACTIVE_STATES = ['playing', 'upgrade', 'placeBig', 'placeTier'];
+const ACTIVE_STATES = ['playing', 'upgrade', 'placeBig', 'placeTier', 'placeNode'];
 
 function serialize() {
   return {
@@ -1608,9 +1787,10 @@ function serialize() {
     state: G.state,
     t: G.t, week: G.week, score: G.score, nextId: G.nextId, placeTier: G.placeTier,
     inv: G.inv, selectedMode: G.selectedMode, stationTimer: G.stationTimer,
-    stations: G.stations.map(({ id, x, y, shape, name, tier, queue, over, big, born }) => ({ id, x, y, shape, name, tier, queue, over, big, born })),
+    stations: G.stations.map(({ id, x, y, shape, name, tier, node, queue, over, big, born }) => ({ id, x, y, shape, name, tier, node, queue, over, big, born })),
+    event: G.event, nextEventT: G.nextEventT,
     districtsLeft: G.districtsLeft,
-    lines: G.lines.map(({ id, color, mode, stations }) => ({ id, color, mode, stations })),
+    lines: G.lines.map(({ id, color, mode, label, stations }) => ({ id, color, mode, label, stations })),
     trains: G.trains.map(({ id, line, a, b, t, dwell, pax }) => ({ id, line: line.id, a, b, t, dwell, pax })),
   };
 }
@@ -1702,6 +1882,7 @@ function restoreGame(d) {
   G.stations = d.stations.map(st => ({
     ...st, name: typeof st.name === 'string' ? st.name.slice(0, 40) : '',
     tier: st.shape === 'hub' ? 'rail' : TIERS.includes(st.tier) ? st.tier : 'metro',
+    node: !!st.node,
     queue: [...st.queue], over: clamp(+st.over || 0, 0, 0.99), big: !!st.big, born: +st.born || 0, flash: 0,
   }));
   // Offene Stadtteile: aus dem Stand, sonst alle, die noch keine Station haben
@@ -1710,7 +1891,15 @@ function restoreGame(d) {
   G.districtsLeft = Array.isArray(d.districtsLeft)
     ? d.districtsLeft.filter(n => known.has(n) && !used.has(n))
     : HANNOVER.districts.map(x => x.name).filter(n => !used.has(n));
-  G.lines = d.lines.map(l => ({ id: l.id, color: l.color, mode: l.mode, stations: [...l.stations] }));
+  G.lines = [];
+  for (const l of d.lines) {
+    const label = typeof l.label === 'string' && l.label.trim() ? l.label.trim().slice(0, 6) : nextLineName(l.mode);
+    G.lines.push({ id: l.id, color: l.color, mode: l.mode, label, stations: [...l.stations] });
+  }
+  // Ereignis fortsetzen (nur wenn die Station noch existiert)
+  G.event = d.event && EVENTS.some(e => e.key === d.event.key) && G.stations.some(st => st.id === d.event.stationId)
+    ? { key: d.event.key, stationId: d.event.stationId, end: +d.event.end || G.t } : null;
+  G.nextEventT = Number.isFinite(d.nextEventT) ? d.nextEventT : G.t + CFG.dayLength * 7;
   const lineById = new Map(G.lines.map(l => [l.id, l]));
   G.trains = d.trains.map(tr => ({
     id: tr.id, line: lineById.get(tr.line), a: tr.a, b: tr.b,
@@ -1745,6 +1934,9 @@ function resumeGame() {
   } else if (state === 'placeBig') {
     G.state = 'placeBig';
     toast('Tippe auf die Station, die größer werden soll.', 4000);
+  } else if (state === 'placeNode') {
+    G.state = 'placeNode';
+    toast('Tippe auf die Station, die Umsteigeknoten werden soll.', 4000);
   } else if (state === 'placeTier' && TIERS.includes(G.placeTier)) {
     G.state = 'placeTier';
     toast('Tippe auf die Station, die ausgebaut werden soll.', 4000);
@@ -2033,6 +2225,115 @@ $('#btn-tutorial').addEventListener('click', () => {
 });
 
 /* =====================================================================
+   LADEBILDSCHIRM
+   Bei jedem Öffnen: Zettel mit Logo, drumherum fahren Bus, U-Bahn und
+   S-Bahn auf gezeichneten Strecken. Nach gut 2 Sekunden (oder beim
+   Antippen) blendet er aus und gibt den Startzettel frei.
+   ===================================================================== */
+
+function runSplash() {
+  const el = $('#splash');
+  const cv = $('#splash-canvas');
+  const c = cv.getContext('2d');
+  const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  let running = true;
+  let d = 1;
+
+  // Strecken als Bezier-Kurven in Bildschirm-Anteilen (0…1)
+  const ROUTES = [
+    { mode: 'metro', color: '#2456c9', pts: [[-0.1, 0.85], [0.3, 0.55], [0.65, 0.95], [1.1, 0.2]], speed: 0.085, vehicles: 2 },
+    { mode: 'sbahn', color: '#ef8a17', pts: [[-0.1, 0.25], [0.35, 0.05], [0.6, 0.55], [1.1, 0.4]], speed: 0.11, vehicles: 1 },
+    { mode: 'bus', color: '#d23b2f', pts: [[0.15, -0.1], [0.05, 0.5], [0.5, 0.75], [0.85, 1.1]], speed: 0.05, vehicles: 3 },
+    { mode: 'rail', color: '#2f9e4f', pts: [[1.1, 0.7], [0.75, 0.6], [0.55, 0.15], [0.2, -0.1]], speed: 0.13, vehicles: 1 },
+  ];
+  const bez = (p, t) => {
+    const u = 1 - t;
+    return [0, 1].map(k => u * u * u * p[0][k] + 3 * u * u * t * p[1][k] + 3 * u * t * t * p[2][k] + t * t * t * p[3][k]);
+  };
+
+  function resize() {
+    d = Math.min(window.devicePixelRatio || 1, 2);
+    cv.width = Math.round(innerWidth * d);
+    cv.height = Math.round(innerHeight * d);
+  }
+
+  function draw(time) {
+    const W = innerWidth, H = innerHeight, s = Math.min(W, H) / 22;
+    c.setTransform(d, 0, 0, d, 0, 0);
+    c.clearRect(0, 0, W, H);
+    c.lineCap = 'round';
+    c.lineJoin = 'round';
+    for (const r of ROUTES) {
+      const P = r.pts.map(([x, y]) => [x * W, y * H]);
+      // Strecke im Stil des Verkehrsmittels
+      c.beginPath();
+      c.moveTo(P[0][0], P[0][1]);
+      c.bezierCurveTo(P[1][0], P[1][1], P[2][0], P[2][1], P[3][0], P[3][1]);
+      c.strokeStyle = r.color;
+      c.globalAlpha = 0.85;
+      c.lineWidth = (r.mode === 'metro' ? 0.3 : r.mode === 'sbahn' ? 0.28 : 0.2) * s;
+      c.setLineDash(r.mode === 'bus' ? [0.55 * s, 0.32 * s] : []);
+      c.stroke();
+      if (r.mode === 'sbahn' || r.mode === 'rail') {
+        c.strokeStyle = '#fffdf3';
+        c.lineWidth = 0.08 * s;
+        c.setLineDash(r.mode === 'sbahn' ? [0.45 * s, 0.35 * s] : [0.08 * s, 0.37 * s]);
+        c.stroke();
+      }
+      c.setLineDash([]);
+      c.globalAlpha = 1;
+      // Haltestellen
+      for (const t of [0.22, 0.5, 0.78]) {
+        const [x, y] = bez(P, t);
+        c.beginPath(); c.arc(x, y, 0.45 * s, 0, Math.PI * 2);
+        c.fillStyle = '#fff'; c.fill();
+        c.strokeStyle = '#2b2b2b'; c.lineWidth = Math.max(2, 0.1 * s); c.stroke();
+      }
+      // Fahrzeuge
+      const len = r.mode === 'rail' ? 2.1 : r.mode === 'sbahn' ? 1.5 : r.mode === 'bus' ? 0.8 : 1.0;
+      const parts = r.mode === 'rail' ? 3 : r.mode === 'sbahn' ? 2 : 1;
+      for (let k = 0; k < r.vehicles; k++) {
+        const t = reduce ? 0.35 + k * 0.2 : ((time / 1000) * r.speed + k / r.vehicles) % 1;
+        const [x, y] = bez(P, t), [x2, y2] = bez(P, Math.min(1, t + 0.002));
+        c.save();
+        c.translate(x, y);
+        c.rotate(Math.atan2(y2 - y, x2 - x));
+        c.fillStyle = r.color;
+        c.strokeStyle = 'rgba(0,0,0,.35)';
+        c.lineWidth = 1.5;
+        const w = len * s, h = 0.46 * s, gap = 0.06 * s, pw = (w - gap * (parts - 1)) / parts;
+        for (let p = 0; p < parts; p++) {
+          c.beginPath();
+          c.roundRect(-w / 2 + p * (pw + gap), -h / 2, pw, h, h * 0.35);
+          c.fill(); c.stroke();
+        }
+        c.restore();
+      }
+    }
+  }
+
+  function loop(time) {
+    if (!running) return;
+    draw(time);
+    if (!reduce) requestAnimationFrame(loop);
+  }
+
+  function hide() {
+    if (!running) return;
+    running = false;
+    el.classList.add('hide');
+    removeEventListener('resize', resize);
+    setTimeout(() => { el.hidden = true; cv.width = cv.height = 0; }, 500);
+  }
+
+  resize();
+  addEventListener('resize', resize);
+  requestAnimationFrame(loop);
+  el.addEventListener('pointerdown', hide);
+  setTimeout(hide, reduce ? 900 : 2400);
+}
+
+/* =====================================================================
    10. START
    ===================================================================== */
 
@@ -2054,6 +2355,7 @@ function frame(now) {
 
 window.addEventListener('resize', resize);
 resize();
+runSplash();
 const saved = loadSave();
 if (saved) restoreGame(saved); else newGame();
 showStart(saved);
@@ -2073,6 +2375,7 @@ window.__metro = {
   loadSave,
   tut,
   startTutorial,
+  updateEvent,
   HANNOVER,
   addStation,
   tierOfDistrict,
