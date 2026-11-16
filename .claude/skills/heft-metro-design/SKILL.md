@@ -83,6 +83,7 @@ Symbole (SVG, 24er-Raster) stehen in `MODES[…].icon` in `game.js` und werden �
 - **Stift-Knopf** (`.pen-btn`): Text in Handschrift, Rahmen als gezeichneter Kringel (SVG oder `border-radius` 255px 15px 225px 15px/15px 225px 15px 255px), 2 px Bleistift. Primär: Textmarker-Hinterlegung.
 - **Leiste unten** (`.pens`): pro Verkehrsmittel eine Gruppe (`.mode-group`) aus Reiter (`.mode-tab`: Symbol, Name, Zahl freier Fahrzeuge) und Linien-Stiften (44 px). Benutzt = gefüllt in Linienfarbe; frei = gestrichelte Kontur. Die gewählte Gruppe ist ein Zettel mit Kringel-Rahmen, ihr Name ist mit Textmarker hinterlegt.
 - **Status** (oben): links Fahrgäste-Zähler, rechts Woche + Wochenuhr + Tempo (Pause / 1× / 2×).
+- **Tutorial-Zettel** (`.coach`): Zettel über der Leiste unten mit gelbem Rand links, „Anleitung x / 9“, Text in Handschrift 21 px, „Überspringen“ (leise) und „Weiter“ (Textmarker). Hervorhebung: auf dem Canvas gelber Textmarker-Kreis hinter dem Ziel und gestrichelter Bleistift-Pfeil mit wanderndem Stiftpunkt; in der Leiste pulsierender Textmarker-Rahmen (`.tut-focus`). Die Kamera hält die Stadt über dem Zettel.
 - **Toast**: kleiner Zettel unten mittig, verschwindet nach 2,5 s.
 - Icons: einfache SVG-Striche (`stroke: currentColor; stroke-width: 2.2; stroke-linecap: round`), nie Emoji in Bedienelementen.
 

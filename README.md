@@ -3,6 +3,10 @@
 Ein Verkehrs-Planungsspiel im Schulheft-Look – gemacht **nur für das iPad** (Safari / Home-Bildschirm, Apple Pencil und Finger).
 Inspiriert vom Spielprinzip von Mini Metro, aber mit eigener Grafik und eigenem Namen. Alles läuft im Browser und offline, nichts wird hochgeladen.
 
+## Anleitung (Tutorial)
+Beim allerersten Spiel startet automatisch eine **Anleitung in 9 Schritten**: Du baust deine erste Bus- und Zuglinie selbst, die richtige Stelle leuchtet jeweils gelb auf, und ein gestrichelter Pfeil zeigt, wohin du ziehen sollst. Währenddessen gibt es keinen Zeitdruck.
+Später kannst du sie jederzeit über **„Anleitung“** auf dem Startzettel wiederholen oder mit „Überspringen“ abbrechen.
+
 ## So spielst du
 - In der Mitte steht der **Hauptbahnhof** (Haus mit „H“). Viele Fahrgäste wollen dorthin, und dort steigen auch die meisten ein.
 - Wähle unten ein Verkehrsmittel und zieh mit Stift oder Finger von Station zu Station – so entsteht eine Linie.
@@ -62,7 +66,7 @@ Du brauchst dafür keinen Computer – alles geht auf dem iPad.
 
 
 ### Updates
-Nach Änderungen am Code in `sw.js` die Zeile `CACHE_VERSION = 'heftmetro-v3'` hochzählen (v4, v5 …).
+Nach Änderungen am Code in `sw.js` die Zahl in `CACHE_VERSION` (z. B. `heftmetro-v5` → `heftmetro-v6`) hochzählen.
 Das iPad holt sich die neue Version beim nächsten Start mit Internet (eventuell zweimal öffnen).
 
 ## Technik

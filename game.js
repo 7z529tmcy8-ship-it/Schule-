@@ -15,6 +15,7 @@
      7. Zeichnen
      8. Eingabe (Stift und Finger)
      9. HUD und Bildschirme
+        Tutorial
     10. Start
 
    Koordinaten: Die Spielwelt rechnet in „Kästchen“ (U). (0|0) ist die
@@ -168,6 +169,7 @@ function newGame() {
     handles: [],           // Linienenden zum Anfassen (pro Bild neu berechnet)
     lostStation: null,
     resumeState: null,     // Zustand, zu dem „Weiterspielen“ zurückkehrt
+    tutorial: false,       // läuft gerade die Anleitung?
   };
   // Hauptbahnhof in der Mitte, drei Stationen im Kreis darum
   addStation('hub', 0, 0);
@@ -176,6 +178,7 @@ function newGame() {
     const a = a0 + (i * Math.PI * 2) / 3 + rand(-0.3, 0.3), r = rand(4, 5.5);
     addStation(shape, Math.round(Math.cos(a) * r), Math.round(Math.sin(a) * r * 0.8));
   });
+  for (const st of G.stations) st.born = -10;   // Startstationen sind sofort da (kein Aufploppen)
   rebuildRoutes();
 }
 
@@ -367,6 +370,12 @@ function pickDestination(own) {
 }
 
 function update(dt) {
+  // Tutorial: nur die Fahrzeuge bewegen – keine Zeit, keine neuen Stationen, keine Überfüllung
+  if (G.tutorial) {
+    for (const st of G.stations) st.flash = Math.max(0, st.flash - dt);
+    updateVehicles(dt);
+    return;
+  }
   G.t += dt;
   updateBounds();
 
@@ -399,8 +408,11 @@ function update(dt) {
     st.flash = Math.max(0, st.flash - dt);
     if (st.over >= 1) { gameOver(st); return; }
   }
+  updateVehicles(dt);
+}
 
-  // Züge
+/** Alle Fahrzeuge ein Stück weiterbewegen */
+function updateVehicles(dt) {
   for (const tr of G.trains) {
     const line = tr.line;
     if (line.stations.length < 2) continue;          // Linie wird gerade umgebaut
@@ -458,11 +470,12 @@ function arrive(tr) {
 
 const cam = { s: 50, x: 0, y: 0, ready: false };
 let bottomInset = 96;     // Höhe der Leiste unten (kann im Hochformat zweizeilig sein)
+let coachInset = 0;       // zusätzlicher Platz für den Tutorial-Zettel
 
 /** Freier Bildschirmbereich (CSS-Pixel) */
 function view() {
   const w = window.innerWidth, h = window.innerHeight;
-  const top = 78, bottom = bottomInset, side = 24;
+  const top = 78, bottom = bottomInset + coachInset, side = 24;
   return { w: w - 2 * side, h: h - top - bottom, cx: w / 2, cy: top + (h - top - bottom) / 2 };
 }
 
@@ -825,7 +838,9 @@ function draw() {
   drawLines();
   drawDragPreview();
   drawTrains();
+  drawTutorialGlow();
   drawStations();
+  drawTutorialPath();
   drawLost();
 }
 
@@ -991,7 +1006,7 @@ function updateHud() {
 
   // Hinweis am Anfang
   const hint = $('#hint');
-  const showHint = G.state === 'playing' && G.lines.length === 0 && !drag;
+  const showHint = G.state === 'playing' && G.lines.length === 0 && !drag && !G.tutorial;
   if (hint.hidden === showHint) {
     hint.hidden = !showHint;
     hint.textContent = 'Wähle unten ein Verkehrsmittel und zieh von Station zu Station.';
@@ -1006,6 +1021,7 @@ const modeIcon = (mode, cls = 'ico') => `<svg class="${cls}" viewBox="0 0 24 24"
 /** Verkehrsmittel wählen, mit dem neue Linien gezogen werden */
 function selectMode(mode) {
   G.selectedMode = mode;
+  if (G.tutorial) { tut.tapped = mode; return; }   // im Tutorial erklärt der Zettel
   const M = MODES[mode];
   const extra = M.needsHub ? ' Züge starten immer am Hauptbahnhof.' : '';
   toast(canCreateLine(mode)
@@ -1036,6 +1052,7 @@ function renderPens() {
     for (const line of used) {
       const b = document.createElement('button');
       b.className = 'pen used';
+      b.dataset.line = line.id;
       b.style.setProperty('--c', LINE_COLORS[line.color]);
       b.setAttribute('aria-label', `${M.lineName} ${line.color + 1}`);
       b.innerHTML = `<span class="pen-trains">${vehiclesOn(line)}</span>`;
@@ -1058,6 +1075,7 @@ let menuLine = null;
 function openLineMenu(line, anchor) {
   if (menuLine === line) { closeLineMenu(); return; }
   menuLine = line;
+  tut.menuOpened = true;
   const m = $('#line-menu');
   const M = MODES[line.mode];
   const free = G.inv[line.mode].free;
@@ -1187,6 +1205,7 @@ function serialize() {
 
 /** Speichert die laufende Runde. Gibt true zurück, wenn es geklappt hat. */
 function saveGame() {
+  if (G.tutorial) return false;            // die Anleitung wird nicht gespeichert
   const state = G.state === 'start' ? G.resumeState : G.state;
   if (!ACTIVE_STATES.includes(state)) return false;
   try {
@@ -1309,15 +1328,15 @@ function gameOver(st) {
 }
 
 /** Startzettel. Mit Spielstand: „Weiterspielen“ und „Neues Spiel“. */
-function showStart(saved) {
+function showStart(saved, canResume = !!saved) {
   const rec = best.get();
   $('#start-record').textContent = rec ? `Dein Rekord: ${rec} Fahrgäste` : '';
   const info = $('#save-info');
   info.hidden = !saved;
-  $('#btn-continue').hidden = !saved;
+  $('#btn-continue').hidden = !canResume;
   const start = $('#btn-start');
-  start.textContent = saved ? 'Neues Spiel' : 'Losfahren';
-  start.classList.toggle('primary', !saved);
+  start.textContent = canResume ? 'Neues Spiel' : 'Losfahren';
+  start.classList.toggle('primary', !canResume);
   if (saved) {
     info.textContent = `Gespeichert ${timeAgo(saved.savedAt)}: Woche ${saved.week} · ${saved.score} Fahrgäste`;
   }
@@ -1328,8 +1347,9 @@ $('#btn-continue').addEventListener('click', resumeGame);
 
 $('#btn-start').addEventListener('click', () => {
   if (G.resumeState && !confirm('Neues Spiel starten? Dein gespeichertes Spiel wird dabei überschrieben.')) return;
-  clearSave();
   $('#screen-start').hidden = true;
+  if (!tutorialSeen()) { startTutorial(); return; }   // allererstes Spiel: mit Anleitung
+  clearSave();
   newGame();
   cam.ready = false;
   G.state = 'playing';
@@ -1344,8 +1364,8 @@ $('#btn-menu').addEventListener('click', () => {
   G.resumeState = G.state;
   G.state = 'start';
   const ok = saveGame();
-  showStart(ok ? serialize() : null);
-  if (!ok) toast('Speichern ist hier nicht möglich (privater Modus?).');
+  showStart(ok ? serialize() : null, true);
+  if (!ok) toast(G.tutorial ? 'Die Anleitung wird nicht gespeichert.' : 'Speichern ist hier nicht möglich (privater Modus?).');
 });
 $('#btn-again').addEventListener('click', () => {
   $('#screen-over').hidden = true;
@@ -1364,6 +1384,197 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('pagehide', () => saveGame());
 
 /* =====================================================================
+   TUTORIAL
+   Die erste Runde wird Schritt für Schritt erklärt. Jeder Schritt hat
+   einen Text, ein Ziel zum Hervorheben (Station, Weg zum Ziehen,
+   Linienende, Reiter oder Stift) und eine Bedingung, wann es weitergeht.
+   Während des Tutorials entstehen keine neuen Stationen, die Zeit steht
+   und niemand wird überfüllt – man kann in Ruhe ausprobieren.
+   ===================================================================== */
+
+const TUT_DONE_KEY = 'heftmetro.tutorialDone';
+const tutorialSeen = () => { try { return localStorage.getItem(TUT_DONE_KEY) === '1'; } catch { return false; } };
+const markTutorialSeen = () => { try { localStorage.setItem(TUT_DONE_KEY, '1'); } catch { /* egal */ } };
+
+const stationOf = shape => G.stations.find(s => s.shape === shape);
+/** Gibt es eine Linie dieses Verkehrsmittels, die beide Stationen verbindet? */
+const lineWith = (mode, a, b) => G.lines.find(l => l.mode === mode && l.stations.includes(a.id) && l.stations.includes(b.id));
+
+const TUTORIAL = [
+  {
+    text: 'Das ist dein Hauptbahnhof. Von hier aus baust du das Verkehrsnetz der Stadt.',
+    focus: () => ({ station: stationOf('hub') }),
+  },
+  {
+    text: 'Die kleinen Formen neben den Stationen sind Fahrgäste. Jeder will zu einer Station mit seiner Form – ein Häuschen heißt: zum Hauptbahnhof.',
+    enter: () => {
+      stationOf('hub').queue.push('circle', 'circle', 'triangle');
+      stationOf('circle').queue.push('hub', 'hub');
+      stationOf('triangle').queue.push('hub', 'circle');
+      stationOf('square').queue.push('hub');
+    },
+    focus: () => ({ station: stationOf('circle') }),
+  },
+  {
+    text: 'Unten wählst du das Verkehrsmittel. Tippe auf „Bus“.',
+    focus: () => ({ tab: 'bus' }),
+    done: t => t.tapped === 'bus',
+  },
+  {
+    text: 'Zieh jetzt mit Stift oder Finger vom Hauptbahnhof zum Kreis. So entsteht deine erste Buslinie.',
+    focus: () => ({ path: [stationOf('hub'), stationOf('circle')] }),
+    done: () => lineWith('bus', stationOf('hub'), stationOf('circle')),
+  },
+  {
+    text: 'Super! Der Bus holt die Fahrgäste ab und bringt sie ans Ziel. Schau kurz zu …',
+    focus: () => ({}),
+    done: t => G.score >= 2 || t.time > 18,
+  },
+  {
+    text: 'Züge sind schnell und haben viel Platz, starten aber immer am Hauptbahnhof. Tippe auf „Zug“ und zieh vom Hauptbahnhof zum Dreieck.',
+    focus: () => ({ tab: G.selectedMode === 'rail' ? null : 'rail', path: [stationOf('hub'), stationOf('triangle')] }),
+    done: () => lineWith('rail', stationOf('hub'), stationOf('triangle')),
+  },
+  {
+    text: 'Jede Linie endet mit einer Stiftkappe. Zieh die Kappe deiner Buslinie zum Quadrat – so verlängerst du die Linie.',
+    focus: () => {
+      const bus = lineWith('bus', stationOf('hub'), stationOf('circle'));
+      if (!bus) return {};
+      const circle = stationOf('circle');
+      const handle = G.handles.find(h => h.line === bus &&
+        (h.end === 'end' ? bus.stations[bus.stations.length - 1] : bus.stations[0]) === circle.id);
+      return { handle, path: handle ? [{ x: handle.x, y: handle.y }, stationOf('square')] : null };
+    },
+    done: () => G.lines.some(l => l.mode === 'bus' && l.stations.includes(stationOf('square').id)),
+  },
+  {
+    text: 'Tippe unten auf deine Buslinie. Dort setzt du weitere Fahrzeuge ein oder löschst die Linie wieder.',
+    focus: () => ({ pen: G.lines.find(l => l.mode === 'bus') }),
+    done: t => t.menuOpened,
+  },
+  {
+    text: 'Wird eine Station zu voll, erscheint ein roter Kreis – dann schnell helfen! Jede Woche bekommst du neue Linien oder Fahrzeuge. Viel Spaß!',
+    button: 'Los geht’s!',
+  },
+];
+
+const tut = { step: 0, time: 0, tapped: null, menuOpened: false, focus: {} };
+
+function startTutorial() {
+  clearSave();
+  newGame();
+  cam.ready = false;
+  G.tutorial = true;
+  G.state = 'playing';
+  G.speed = 1;
+  G.selectedMode = 'metro';     // damit „Bus“ wirklich angetippt werden muss
+  hudCache.pens = null;
+  goToStep(0);
+}
+
+function goToStep(i) {
+  if (i >= TUTORIAL.length) { endTutorial(); return; }
+  Object.assign(tut, { step: i, time: 0, tapped: null, menuOpened: false });
+  const step = TUTORIAL[i];
+  step.enter?.();
+  $('#coach-step').textContent = `Anleitung ${i + 1} / ${TUTORIAL.length}`;
+  $('#coach-text').textContent = step.text;
+  const next = $('#coach-next');
+  next.hidden = !!step.done;                    // Aktions-Schritte gehen von allein weiter
+  next.textContent = step.button || 'Weiter';
+}
+
+function endTutorial() {
+  G.tutorial = false;
+  markTutorialSeen();
+  $('#coach').hidden = true;
+  clearFocus();
+  toast('Jetzt spielst du richtig – die Stadt wächst!');
+}
+
+function clearFocus() {
+  for (const el of document.querySelectorAll('.tut-focus')) el.classList.remove('tut-focus');
+}
+
+/** Pro Bild: Bedingung prüfen, Zettel zeigen, Bedienelemente hervorheben */
+function tutorialTick(rdt) {
+  const coach = $('#coach');
+  if (!G.tutorial || G.state !== 'playing') { coach.hidden = true; coachInset = 0; clearFocus(); return; }
+  coach.hidden = false;
+  coachInset = coach.offsetHeight + 16;     // Kamera hält die Stadt über dem Zettel
+  coach.style.setProperty('--coach-bottom', `${bottomInset + 8}px`);
+  tut.time += rdt;
+  const step = TUTORIAL[tut.step];
+  if (step.done && step.done(tut)) { goToStep(tut.step + 1); return; }
+  tut.focus = step.focus ? step.focus() || {} : {};
+
+  clearFocus();
+  if (tut.focus.tab) {
+    document.querySelector(`.mode-group:nth-child(${MODE_ORDER.indexOf(tut.focus.tab) + 1}) .mode-tab`)?.classList.add('tut-focus');
+  }
+  if (tut.focus.pen) {
+    document.querySelector(`.pen[data-line="${tut.focus.pen.id}"]`)?.classList.add('tut-focus');
+  }
+}
+
+/** Textmarker-Leuchten hinter Station oder Linienende (vor den Stationen gezeichnet) */
+function drawTutorialGlow() {
+  if (!G.tutorial || G.state !== 'playing') return;
+  const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 260);
+  const glow = (x, y, r) => {
+    const [sx, sy] = toScreen(x, y);
+    ctx.fillStyle = `rgba(255, 232, 61, ${0.45 + 0.3 * pulse})`;
+    ctx.beginPath();
+    ctx.arc(sx, sy, (r + 0.35 + 0.2 * pulse) * cam.s, 0, Math.PI * 2);
+    ctx.fill();
+  };
+  const f = tut.focus;
+  if (f.station) glow(f.station.x, f.station.y, stationR(f.station));
+  if (f.handle) glow(f.handle.x, f.handle.y, 0.35);
+  if (f.path) for (const p of f.path) if (p.shape) glow(p.x, p.y, stationR(p) * 0.6);
+}
+
+/** Gestrichelter Bleistift-Pfeil „hier entlang ziehen“ mit wanderndem Stiftpunkt */
+function drawTutorialPath() {
+  const f = G.tutorial && G.state === 'playing' ? tut.focus : null;
+  if (!f?.path || drag) return;
+  const [a, b] = f.path;
+  const [ax, ay] = toScreen(a.x, a.y), [bx, by] = toScreen(b.x, b.y);
+  const t = (performance.now() / 1600) % 1;
+  ctx.save();
+  ctx.strokeStyle = COLORS.pencil;
+  ctx.globalAlpha = 0.55;
+  ctx.lineWidth = Math.max(2, 0.08 * cam.s);
+  ctx.lineCap = 'round';
+  ctx.setLineDash([0.3 * cam.s, 0.22 * cam.s]);
+  ctx.lineDashOffset = -t * 0.52 * cam.s * 3;
+  ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+  ctx.setLineDash([]);
+  // Pfeilspitze kurz vor dem Ziel
+  const ang = Math.atan2(by - ay, bx - ax), len = Math.hypot(bx - ax, by - ay);
+  const tipX = ax + Math.cos(ang) * (len - 0.95 * cam.s), tipY = ay + Math.sin(ang) * (len - 0.95 * cam.s);
+  ctx.beginPath();
+  ctx.moveTo(tipX - Math.cos(ang - 0.5) * 0.45 * cam.s, tipY - Math.sin(ang - 0.5) * 0.45 * cam.s);
+  ctx.lineTo(tipX, tipY);
+  ctx.lineTo(tipX - Math.cos(ang + 0.5) * 0.45 * cam.s, tipY - Math.sin(ang + 0.5) * 0.45 * cam.s);
+  ctx.stroke();
+  // Wandernder Stiftpunkt
+  const e = smooth(t);
+  ctx.globalAlpha = 0.85 * Math.sin(t * Math.PI);
+  ctx.fillStyle = COLORS.pencil;
+  ctx.beginPath(); ctx.arc(ax + (bx - ax) * e, ay + (by - ay) * e, 0.22 * cam.s, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+$('#coach-next').addEventListener('click', () => goToStep(tut.step + 1));
+$('#coach-skip').addEventListener('click', endTutorial);
+$('#btn-tutorial').addEventListener('click', () => {
+  if (G.resumeState && !confirm('Die Anleitung startet ein neues Spiel. Dein gespeichertes Spiel wird dabei überschrieben.')) return;
+  $('#screen-start').hidden = true;
+  startTutorial();
+});
+
+/* =====================================================================
    10. START
    ===================================================================== */
 
@@ -1379,6 +1590,7 @@ function frame(now) {
   updateCamera(rdt);
   draw();
   updateHud();
+  tutorialTick(rdt);
   requestAnimationFrame(frame);
 }
 
@@ -1401,4 +1613,6 @@ window.__metro = {
   newGame,
   saveGame,
   loadSave,
+  tut,
+  startTutorial,
 };
