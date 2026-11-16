@@ -92,9 +92,11 @@ const CFG = {
   hubShare: 0.22,         // Anteil der Fahrgäste, die zum Hauptbahnhof wollen
   overcrowdTime: 40,      // Sekunden Überfüllung bis Game Over
   recoverTime: 80,        // Sekunden, bis sich der Timer wieder ganz erholt
-  minStationDist: 2.6,    // Mindestabstand neuer Stationen
+  minStationDist: 3.6,    // Mindestabstand neuer Stationen (größer = übersichtlicher)
+  minLineDist: 1.3,       // Mindestabstand neuer Stationen zu bestehenden Linien
+  maxCity: 28,            // maximale halbe Stadtbreite in U
   lineWidth: 0.30,        // Filzstift-Breite in U
-  lineGap: 0.32,          // Abstand paralleler Linien
+  lineGap: 0.38,          // Abstand paralleler Linien
 };
 
 /* =====================================================================
@@ -163,7 +165,7 @@ function newGame() {
     // Pro Verkehrsmittel: freie Linien-Plätze und freie Fahrzeuge
     inv: Object.fromEntries(MODE_ORDER.map(m => [m, { lines: MODES[m].startLines, free: MODES[m].startVehicles }])),
     selectedMode: 'bus',   // womit neue Linien gezogen werden
-    bounds: { hw: 7, hh: 5 },   // halbe Breite/Höhe der Stadt in U
+    bounds: { hw: 9, hh: 6 },   // halbe Breite/Höhe der Stadt in U
     stationTimer: 10,
     dist: new Map(),       // Form → Map(Station-ID → Anzahl Haltestellen bis dorthin)
     handles: [],           // Linienenden zum Anfassen (pro Bild neu berechnet)
@@ -175,7 +177,7 @@ function newGame() {
   addStation('hub', 0, 0);
   const a0 = rand(0, Math.PI * 2);
   COMMON_SHAPES.forEach((shape, i) => {
-    const a = a0 + (i * Math.PI * 2) / 3 + rand(-0.3, 0.3), r = rand(4, 5.5);
+    const a = a0 + (i * Math.PI * 2) / 3 + rand(-0.3, 0.3), r = rand(6, 7.5);
     addStation(shape, Math.round(Math.cos(a) * r), Math.round(Math.sin(a) * r * 0.8));
   });
   for (const st of G.stations) st.born = -10;   // Startstationen sind sofort da (kein Aufploppen)
@@ -322,7 +324,7 @@ function syncTrains(line) {
 /** Die Stadt wächst mit der Zeit; ihr Seitenverhältnis folgt dem Bildschirm. */
 function updateBounds() {
   const v = view();
-  const hw = Math.min(24, 7 + G.t / 25);
+  const hw = Math.min(CFG.maxCity, 9 + G.t / 22);
   G.bounds.hw = hw;
   G.bounds.hh = hw * clamp(v.h / v.w, 0.55, 1.6);
 }
@@ -342,12 +344,12 @@ function spawnStation() {
   for (let tries = 0; tries < 80; tries++) {
     const x = Math.round(rand(-hw + 1, hw - 1));
     const y = Math.round(rand(-hh + 1, hh - 1));
-    if (G.stations.some(s => dist(s.x, s.y, x, y) < CFG.minStationDist + (s.shape === 'hub' ? 0.8 : 0))) continue;
+    if (G.stations.some(s => dist(s.x, s.y, x, y) < CFG.minStationDist + (s.shape === 'hub' ? 1.2 : 0))) continue;
     const onLine = G.lines.some(l => l.stations.some((id, i) => {
       const nId = l.stations[i + 1];
       if (!nId) return false;
       const a = stationById(id), b = stationById(nId);
-      return distToSegment(x, y, a.x, a.y, b.x, b.y) < 0.9;
+      return distToSegment(x, y, a.x, a.y, b.x, b.y) < CFG.minLineDist;
     }));
     if (onLine) continue;
     addStation(pickShape(), x, y);
@@ -392,7 +394,7 @@ function update(dt) {
   G.stationTimer -= dt;
   if (G.stationTimer <= 0) {
     spawnStation();
-    G.stationTimer = Math.max(7, 18 - G.week * 1.2) * rand(0.8, 1.2);
+    G.stationTimer = Math.max(11, 23 - G.week) * rand(0.85, 1.15);   // nicht zu viele Stationen
   }
 
   // Neue Fahrgäste und Überfüllung
@@ -479,14 +481,36 @@ function view() {
   return { w: w - 2 * side, h: h - top - bottom, cx: w / 2, cy: top + (h - top - bottom) / 2 };
 }
 
+/**
+ * Kamera auf die vorhandenen Stationen ausrichten (nicht auf den möglichen
+ * Stadtbereich) – so wird die Fläche in Quer- und Hochformat gut genutzt.
+ */
 function updateCamera(rdt) {
   const v = view();
-  let { hw, hh } = G.bounds;
-  for (const s of G.stations) { hw = Math.max(hw, Math.abs(s.x) + 1); hh = Math.max(hh, Math.abs(s.y) + 1); }
-  const ts = Math.min(v.w / (2 * hw + 2), v.h / (2 * hh + 2));
-  if (!cam.ready) { cam.s = ts; cam.ready = true; }
-  cam.s += (ts - cam.s) * Math.min(1, rdt * 2);
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (const s of G.stations) {
+    x0 = Math.min(x0, s.x); x1 = Math.max(x1, s.x);
+    y0 = Math.min(y0, s.y); y1 = Math.max(y1, s.y);
+  }
+  // Rand: links/oben/unten etwas Luft, rechts Platz für die wartenden Fahrgäste
+  x0 -= 1.8; x1 += 3.2; y0 -= 1.8; y1 += 1.8;
+  // Mindestgröße, damit am Anfang nicht riesig gezoomt wird
+  const minW = 16, minH = 11;
+  if (x1 - x0 < minW) { const c = (x0 + x1) / 2; x0 = c - minW / 2; x1 = c + minW / 2; }
+  if (y1 - y0 < minH) { const c = (y0 + y1) / 2; y0 = c - minH / 2; y1 = c + minH / 2; }
+  const ts = Math.min(v.w / (x1 - x0), v.h / (y1 - y0), 70);
+  const tx = (x0 + x1) / 2, ty = (y0 + y1) / 2;
+  if (!cam.ready) { Object.assign(cam, { s: ts, x: tx, y: ty, ready: true }); return; }
+  const k = Math.min(1, rdt * 2);
+  cam.s += (ts - cam.s) * k;
+  cam.x += (tx - cam.x) * k;
+  cam.y += (ty - cam.y) * k;
 }
+
+/** Maß in U → Pixel, aber nie kleiner als minPx (bleibt lesbar, wenn die Stadt groß wird) */
+const px = (u, minPx) => Math.max(u * cam.s, minPx);
+/** Maßstab für Fahrzeuge: wie die Karte, aber mindestens 22 px pro U */
+const vehicleScale = () => Math.max(cam.s, 22);
 
 const toScreen = (x, y) => {
   const v = view();
@@ -708,7 +732,8 @@ function drawTrains() {
     const [sx, sy] = toScreen(A.x + (B.x - A.x) * u + ox, A.y + (B.y - A.y) * u + oy);
     const ang = Math.atan2(B.y - A.y, B.x - A.x);
     const mode = MODES[tr.line.mode];
-    const w = mode.body.w * cam.s, h = mode.body.h * cam.s;
+    const vs = vehicleScale();
+    const w = mode.body.w * vs, h = mode.body.h * vs;
     ctx.save();
     ctx.translate(sx, sy);
     ctx.rotate(ang);
@@ -737,7 +762,7 @@ function drawTrains() {
 
 function drawStations() {
   for (const st of G.stations) {
-    const R = stationR(st) * cam.s;
+    const R = px(stationR(st), st.shape === 'hub' ? 18 : 12);
     const [sx, sy] = toScreen(st.x, st.y);
     const age = G.t - st.born;
     const pop = age < 0.35 ? (age < 0.2 ? smooth(age / 0.2) * 1.15 : 1.15 - 0.15 * smooth((age - 0.2) / 0.15)) : 1;
@@ -746,7 +771,7 @@ function drawStations() {
     // Überfüllung: roter Bogen wie mit dem Rotstift
     if (st.over > 0) {
       ctx.fillStyle = 'rgba(208, 52, 44, 0.12)';
-      const ring = R + 0.5 * cam.s;
+      const ring = R + px(0.5, 8);
       ctx.beginPath(); ctx.arc(sx, sy, ring, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = COLORS.danger;
       ctx.lineWidth = 0.12 * cam.s;
@@ -792,10 +817,10 @@ function drawStations() {
 
     // Wartende Fahrgäste rechts neben der Station
     ctx.fillStyle = COLORS.pencil;
-    const pr = 0.16 * cam.s, gap = 0.42 * cam.s;
+    const pr = px(0.16, 4.5), gap = px(0.42, 11);
     st.queue.forEach((p, i) => {
-      const col = i % 6, row = Math.floor(i / 6);
-      shapePath(p, sx + R + 0.45 * cam.s + col * gap, sy - 0.3 * cam.s + row * gap, pr);
+      const col = i % 4, row = Math.floor(i / 4);      // kompakter Block, ragt nicht in Nachbarstationen
+      shapePath(p, sx + R + gap + col * gap, sy - gap * 0.7 + row * gap, pr);
       ctx.fill();
     });
   }

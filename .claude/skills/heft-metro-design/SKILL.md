@@ -62,6 +62,8 @@ Einheit `U` = 1 Karokästchen in Weltkoordinaten. Alle Maße in U, damit sie bei
 
 Wackeln immer über `wobble(seed, i)` (deterministisch), nie `Math.random()` beim Zeichnen.
 
+**Übersichtlichkeit:** Stationen haben mindestens 3,6 U Abstand (zum Hauptbahnhof 4,8 U) und 1,3 U zu fremden Linien. Beim Rauszoomen gelten Mindestgrößen in Pixeln (`px(u, min)`): Station 12 px Radius (Hauptbahnhof 18 px), Fahrgast 4,5 px, Abstand 11 px, Fahrzeuge mindestens 22 px pro U. Wartende Fahrgäste stehen in Blöcken zu 4 rechts neben der Station.
+
 **Verkehrsmittel** – jedes hat einen eigenen Strich, damit man sie ohne Legende unterscheidet:
 
 | Verkehrsmittel | Strecke | Fahrzeug |
@@ -99,7 +101,7 @@ Symbole (SVG, 24er-Raster) stehen in `MODES[…].icon` in `game.js` und werden �
 
 ## 7. Bewegung
 
-- Kamera zoomt weich heraus, wenn die Stadt wächst (Interpolation ~1,5 s).
+- Kamera richtet sich auf die vorhandenen Stationen aus (nicht auf den möglichen Stadtbereich) und zoomt/verschiebt weich (~1,5 s).
 - Neue Station „ploppt“ auf (Skalierung 0 → 1,15 → 1 in 0,35 s).
 - Zettel fallen leicht gedreht ein (0,25 s). Keine Effekte über 0,4 s außer dem Zoom.
 
