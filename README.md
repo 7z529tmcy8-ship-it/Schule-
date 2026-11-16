@@ -7,6 +7,11 @@ Inspiriert vom Spielprinzip von Mini Metro, aber mit eigener Grafik und eigenem 
 Beim allerersten Spiel startet automatisch eine **Anleitung in 9 Schritten**: Du baust deine erste Bus- und Zuglinie selbst, die richtige Stelle leuchtet jeweils gelb auf, und ein gestrichelter Pfeil zeigt, wohin du ziehen sollst. Währenddessen gibt es keinen Zeitdruck.
 Später kannst du sie jederzeit über **„Anleitung“** auf dem Startzettel wiederholen oder mit „Überspringen“ abbrechen.
 
+## Hannover
+Gespielt wird auf einer **grob skizzierten Karte von Hannover**: Leine, Ihme, Maschsee, Mittellandkanal, Eilenriede, Herrenhäuser Gärten und ein paar Orientierungspunkte (Rathaus, Zoo, Stadion, Messe).
+Neue Stationen entstehen in echten **Stadtteilen** – von innen (Oststadt, Nordstadt, Linden) nach außen (Misburg, Wettbergen, Lahe). Noch nicht erschlossene Stadtteile stehen blass auf der Karte.
+Die Lage ist aus dem Gedächtnis eingetragen und **nicht kartengenau** (1 Kästchen ≈ 300 m). Korrigieren lässt sich alles in `HANNOVER` am Anfang von `game.js` (Angaben in km vom Hauptbahnhof aus, x nach Osten, y nach Süden).
+
 ## So spielst du
 - In der Mitte steht der **Hauptbahnhof** (Haus mit „H“). Viele Fahrgäste wollen dorthin, und dort steigen auch die meisten ein.
 - Wähle unten ein Verkehrsmittel und zieh mit Stift oder Finger von Station zu Station – so entsteht eine Linie.

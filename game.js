@@ -79,6 +79,68 @@ const MODES = {
   },
 };
 const MODE_ORDER = ['bus', 'tram', 'metro', 'rail'];
+
+/* ---------- Karte von Hannover ----------
+   Grobe Skizze aus dem Gedächtnis – nicht kartengenau! Angaben in km
+   relativ zum Hauptbahnhof (x nach Osten, y nach Süden). 1 Kästchen (U)
+   entspricht etwa 300 m; umgerechnet wird mit km().                    */
+const KM_PER_U = 0.3;
+const km = pts => pts.map(([x, y]) => [x / KM_PER_U, y / KM_PER_U]);
+
+const HANNOVER = {
+  water: [
+    { name: 'Leine', width: 0.6, label: 6, pts: km([[1.2, 7.5], [0.9, 6.0], [0.4, 4.6], [-0.2, 3.6], [-0.35, 2.6], [-0.3, 1.6], [-0.55, 0.9], [-0.75, 0.3], [-1.2, -0.1], [-1.7, -0.4], [-2.4, -0.8], [-3.4, -1.1], [-3.9, -1.9], [-4.4, -2.9], [-5.4, -3.6], [-7.0, -4.6]]) },
+    { name: 'Ihme', width: 0.42, label: 2, pts: km([[-3.0, 5.5], [-2.6, 4.4], [-2.0, 3.2], [-1.7, 2.2], [-1.35, 1.3], [-1.3, 0.6], [-1.45, 0.0], [-1.7, -0.4]]) },
+    { name: 'Mittellandkanal', width: 0.45, label: 6, pts: km([[-9.0, -0.8], [-7.0, -1.7], [-5.6, -2.5], [-4.6, -3.4], [-3.2, -3.4], [-1.5, -3.6], [0.5, -3.4], [2.5, -3.0], [4.5, -2.4], [6.5, -1.6], [8.0, -1.2], [9.5, -0.2]]) },
+  ],
+  lakes: [
+    { name: 'Maschsee', pts: km([[0.25, 1.35], [0.55, 1.4], [0.65, 2.2], [0.6, 3.1], [0.4, 3.45], [0.2, 3.3], [0.15, 2.4]]) },
+  ],
+  green: [
+    { name: 'Eilenriede', pts: km([[1.9, -1.6], [2.6, -1.9], [3.3, -1.2], [3.6, -0.2], [3.4, 0.9], [3.0, 1.9], [2.5, 2.4], [2.1, 1.6], [2.2, 0.6], [1.9, -0.4]]) },
+    { name: 'Herrenhäuser Gärten', pts: km([[-3.2, -1.8], [-2.6, -1.8], [-2.5, -1.2], [-3.1, -1.15]]) },
+  ],
+  pois: [
+    { name: 'Rathaus', at: km([[-0.15, 1.05]])[0] },
+    { name: 'Zoo', at: km([[2.25, -0.75]])[0] },
+    { name: 'Stadion', at: km([[-0.68, 1.84]])[0] },
+    { name: 'Messe', at: km([[6.6, 7.0]])[0] },
+  ],
+  // Die ersten drei sind die Startstationen
+  districts: [
+    ['List', 1.4, -2.1], ['Linden-Nord', -2.3, 0.1], ['Südstadt', 1.3, 2.0],
+    ['Oststadt', 1.1, -0.5], ['Nordstadt', -1.2, -1.3], ['Calenberger Neustadt', -1.0, 0.9], ['Bult', 1.4, 0.75],
+    ['Vahrenwald', -0.1, -2.6], ['Hainholz', -1.6, -2.9], ['Linden-Mitte', -3.0, 0.9], ['Linden-Süd', -2.3, 1.9],
+    ['Herrenhausen', -3.0, -2.4], ['Kleefeld', 4.0, 0.6], ['Limmer', -4.3, -0.4], ['Waldhausen', 0.9, 3.8],
+    ['Döhren', 1.6, 5.0], ['Ricklingen', -3.1, 3.9], ['Oberricklingen', -3.6, 2.6], ['Groß-Buchholz', 5.0, -1.6],
+    ['Bothfeld', 3.8, -4.2], ['Vahrenheide', 0.4, -4.6], ['Kirchrode', 5.8, 2.4], ['Heideviertel', 5.3, 0.4],
+    ['Seelhorst', 3.6, 3.8], ['Badenstedt', -5.6, 1.6], ['Stöcken', -4.6, -4.3], ['Burg', -2.6, -4.3],
+    ['Sahlkamp', 2.2, -5.0], ['Wülfel', 1.8, 6.4], ['Mittelfeld', 3.4, 6.2], ['Bemerode', 5.4, 4.6],
+    ['Mühlenberg', -4.3, 4.6], ['Misburg', 8.2, -0.4], ['Davenstedt', -7.0, 0.8], ['Wettbergen', -5.8, 5.6],
+    ['Ahlem', -7.0, -1.2], ['Marienwerder', -6.3, -3.3], ['Ledeburg', -4.6, -5.6], ['Lahe', 6.5, -4.0],
+    ['Anderten', 9.0, 2.0], ['Kronsberg', 6.8, 5.6], ['Isernhagen-Süd', 5.0, -6.0],
+  ].map(([name, x, y]) => ({ name, x: Math.round(x / KM_PER_U), y: Math.round(y / KM_PER_U) })),
+};
+
+/** Punkt in Polygon (für See, Wald – Zufalls-Stationen landen nicht im Wasser) */
+function inPolygon(x, y, pts) {
+  let inside = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const [xi, yi] = pts[i], [xj, yj] = pts[j];
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+/** Liegt der Punkt im oder zu nah am Wasser / im Wald? */
+function onMapFeature(x, y) {
+  for (const w of HANNOVER.water) {
+    for (let i = 0; i < w.pts.length - 1; i++) {
+      if (distToSegment(x, y, w.pts[i][0], w.pts[i][1], w.pts[i + 1][0], w.pts[i + 1][1]) < 1.2) return true;
+    }
+  }
+  return [...HANNOVER.lakes, ...HANNOVER.green].some(a => inPolygon(x, y, a.pts));
+}
+
 const DAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 
 /** Spiel-Balance – hier lässt sich alles feinjustieren */
@@ -172,14 +234,13 @@ function newGame() {
     lostStation: null,
     resumeState: null,     // Zustand, zu dem „Weiterspielen“ zurückkehrt
     tutorial: false,       // läuft gerade die Anleitung?
+    districtsLeft: HANNOVER.districts.map(d => d.name),   // noch nicht erschlossene Stadtteile
   };
-  // Hauptbahnhof in der Mitte, drei Stationen im Kreis darum
-  addStation('hub', 0, 0);
-  const a0 = rand(0, Math.PI * 2);
-  COMMON_SHAPES.forEach((shape, i) => {
-    const a = a0 + (i * Math.PI * 2) / 3 + rand(-0.3, 0.3), r = rand(6, 7.5);
-    addStation(shape, Math.round(Math.cos(a) * r), Math.round(Math.sin(a) * r * 0.8));
-  });
+  // Hauptbahnhof in der Mitte, drei Stadtteile darum (List, Linden-Nord, Südstadt) – Formen gemischt
+  addStation('hub', 0, 0, 'Hauptbahnhof');
+  const shapes = [...COMMON_SHAPES].sort(() => Math.random() - 0.5);
+  HANNOVER.districts.slice(0, 3).forEach((d, i) => addStation(shapes[i], d.x, d.y, d.name));
+  G.districtsLeft = G.districtsLeft.slice(3);
   for (const st of G.stations) st.born = -10;   // Startstationen sind sofort da (kein Aufploppen)
   rebuildRoutes();
 }
@@ -192,8 +253,8 @@ const capacityOf = st => (st.shape === 'hub' ? CFG.hubCapacity : st.big ? CFG.bi
 const vehiclesOn = line => G.trains.filter(t => t.line === line).length;
 const linesOf = mode => G.lines.filter(l => l.mode === mode);
 
-function addStation(shape, x, y) {
-  const st = { id: G.nextId++, x, y, shape, queue: [], over: 0, big: false, born: G.t, flash: 0 };
+function addStation(shape, x, y, name = '') {
+  const st = { id: G.nextId++, x, y, shape, name, queue: [], over: 0, big: false, born: G.t, flash: 0 };
   G.stations.push(st);
   return st;
 }
@@ -338,13 +399,33 @@ function pickShape() {
   return r < 0.5 ? 'circle' : r < 0.8 ? 'triangle' : 'square';
 }
 
-/** Neue Station an einem freien Kreuzungspunkt des Karos. */
+/**
+ * Neue Station: bevorzugt im nächsten noch freien Stadtteil von Hannover
+ * (zufällig unter den vier, die dem Hauptbahnhof am nächsten sind – so
+ * wächst die Stadt von innen nach außen). Sind alle Stadtteile erschlossen,
+ * entsteht die Station an einem freien Punkt abseits von Wasser und Wald.
+ */
 function spawnStation() {
+  while (G.districtsLeft.length) {
+    const near = G.districtsLeft
+      .map(name => HANNOVER.districts.find(d => d.name === name))
+      .filter(Boolean)
+      .sort((a, b) => Math.hypot(a.x, a.y) - Math.hypot(b.x, b.y))
+      .slice(0, 4);
+    if (!near.length) { G.districtsLeft = []; break; }
+    const d = near[Math.floor(Math.random() * near.length)];
+    G.districtsLeft = G.districtsLeft.filter(n => n !== d.name);
+    if (G.stations.some(s => dist(s.x, s.y, d.x, d.y) < 2.5)) continue;   // zu nah an einer anderen Station
+    addStation(pickShape(), d.x, d.y, d.name);
+    rebuildRoutes();
+    return;
+  }
   const { hw, hh } = G.bounds;
   for (let tries = 0; tries < 80; tries++) {
     const x = Math.round(rand(-hw + 1, hw - 1));
     const y = Math.round(rand(-hh + 1, hh - 1));
     if (G.stations.some(s => dist(s.x, s.y, x, y) < CFG.minStationDist + (s.shape === 'hub' ? 1.2 : 0))) continue;
+    if (onMapFeature(x, y)) continue;
     const onLine = G.lines.some(l => l.stations.some((id, i) => {
       const nId = l.stations[i + 1];
       if (!nId) return false;
@@ -555,6 +636,150 @@ function drawPaper() {
     ctx.moveTo(0, sy); ctx.lineTo(w, sy);
   }
   ctx.stroke();
+}
+
+/* ---------- Karte von Hannover zeichnen (Buntstift-Skizze unter dem Netz) ---------- */
+
+const MAP_COLORS = {
+  water: 'rgba(90, 150, 215, 0.30)',
+  waterEdge: 'rgba(55, 115, 185, 0.55)',
+  waterText: 'rgba(45, 100, 170, 0.8)',
+  green: 'rgba(80, 160, 90, 0.10)',
+  hatch: 'rgba(60, 140, 80, 0.30)',
+  greenText: 'rgba(45, 120, 60, 0.8)',
+  district: 'rgba(43, 43, 43, 0.30)',
+  name: 'rgba(43, 43, 43, 0.85)',
+};
+const HAND_FONT = '"Noteworthy", "Bradley Hand", "Marker Felt", "Comic Sans MS", cursive';
+/** Schriftgröße für Kartenbeschriftungen in px (wächst mit dem Zoom, bleibt lesbar) */
+const labelSize = () => clamp(0.5 * cam.s, 11, 15);
+
+/** Weicher Pfad durch Weltpunkte (quadratische Kurven durch die Mittelpunkte) */
+function smoothPath(pts, close = false) {
+  const p = pts.map(([x, y]) => toScreen(x, y));
+  ctx.beginPath();
+  if (close) {
+    const m = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    const start = m(p[p.length - 1], p[0]);
+    ctx.moveTo(start[0], start[1]);
+    for (let i = 0; i < p.length; i++) {
+      const n = m(p[i], p[(i + 1) % p.length]);
+      ctx.quadraticCurveTo(p[i][0], p[i][1], n[0], n[1]);
+    }
+    ctx.closePath();
+    return;
+  }
+  ctx.moveTo(p[0][0], p[0][1]);
+  for (let i = 1; i < p.length - 1; i++) {
+    ctx.quadraticCurveTo(p[i][0], p[i][1], (p[i][0] + p[i + 1][0]) / 2, (p[i][1] + p[i + 1][1]) / 2);
+  }
+  ctx.lineTo(p[p.length - 1][0], p[p.length - 1][1]);
+}
+
+/** Linie parallel versetzt um d (in U) – für die Ufer der Flüsse */
+function offsetLine(pts, d) {
+  return pts.map(([x, y], i) => {
+    const [ax, ay] = pts[Math.max(0, i - 1)], [bx, by] = pts[Math.min(pts.length - 1, i + 1)];
+    const len = Math.hypot(bx - ax, by - ay) || 1;
+    return [x - ((by - ay) / len) * d, y + ((bx - ax) / len) * d];
+  });
+}
+
+/** Beschriftung in Handschrift mit Papier-„Halo“, damit sie auf Linien lesbar bleibt */
+function mapText(text, sx, sy, color, size, angle = 0, weight = '') {
+  ctx.save();
+  ctx.translate(sx, sy);
+  if (angle) ctx.rotate(angle);
+  ctx.font = `${weight} ${size}px ${HAND_FONT}`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = 'rgba(251, 250, 246, 0.9)';
+  ctx.lineWidth = 4;
+  ctx.strokeText(text, 0, 0);
+  ctx.fillStyle = color;
+  ctx.fillText(text, 0, 0);
+  ctx.restore();
+}
+
+function drawMap() {
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  const fs = labelSize();
+
+  // Grünflächen: blass gefüllt und schräg schraffiert
+  for (const g of HANNOVER.green) {
+    smoothPath(g.pts, true);
+    ctx.fillStyle = MAP_COLORS.green;
+    ctx.fill();
+    ctx.save();
+    ctx.clip();
+    const xs = g.pts.map(p => toScreen(p[0], p[1]));
+    const minX = Math.min(...xs.map(p => p[0])), maxX = Math.max(...xs.map(p => p[0]));
+    const minY = Math.min(...xs.map(p => p[1])), maxY = Math.max(...xs.map(p => p[1]));
+    const step = Math.max(7, 0.45 * cam.s);
+    ctx.strokeStyle = MAP_COLORS.hatch;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    for (let x = minX - (maxY - minY); x < maxX; x += step) {
+      ctx.moveTo(x, maxY); ctx.lineTo(x + (maxY - minY), minY);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Seen
+  for (const l of HANNOVER.lakes) {
+    smoothPath(l.pts, true);
+    ctx.fillStyle = MAP_COLORS.water;
+    ctx.fill();
+    ctx.strokeStyle = MAP_COLORS.waterEdge;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  // Flüsse und Kanal: blasses Band + zwei Ufer-Striche
+  for (const w of HANNOVER.water) {
+    ctx.strokeStyle = MAP_COLORS.water;
+    ctx.lineWidth = w.width * cam.s;
+    smoothPath(w.pts);
+    ctx.stroke();
+    ctx.strokeStyle = MAP_COLORS.waterEdge;
+    ctx.lineWidth = 1.2;
+    for (const k of [-1, 1]) { smoothPath(offsetLine(w.pts, (k * w.width) / 2)); ctx.stroke(); }
+  }
+
+  // Beschriftungen: Gewässer entlang des Flusses, Flächen in der Mitte
+  for (const w of HANNOVER.water) {
+    const [a, b] = [w.pts[w.label], w.pts[w.label + 1]];
+    let ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
+    if (ang > Math.PI / 2) ang -= Math.PI;
+    if (ang < -Math.PI / 2) ang += Math.PI;
+    const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
+    const off = w.width / 2 + 0.7;
+    const [sx, sy] = toScreen(mx + Math.sin(ang) * -off, my + Math.cos(ang) * off);
+    mapText(w.name, sx, sy, MAP_COLORS.waterText, fs, ang, 'italic');
+  }
+  const centroid = pts => pts.reduce((c, p) => [c[0] + p[0] / pts.length, c[1] + p[1] / pts.length], [0, 0]);
+  for (const l of HANNOVER.lakes) { const [x, y] = centroid(l.pts); mapText(l.name, ...toScreen(x, y), MAP_COLORS.waterText, fs, -Math.PI / 2, 'italic'); }
+  for (const g of HANNOVER.green) { const [x, y] = centroid(g.pts); mapText(g.name, ...toScreen(x, y), MAP_COLORS.greenText, fs, 0, 'italic'); }
+
+  // Orientierungspunkte: kleiner Bleistift-Punkt + Name
+  for (const p of HANNOVER.pois) {
+    const [sx, sy] = toScreen(p.at[0], p.at[1]);
+    ctx.fillStyle = MAP_COLORS.district;
+    ctx.beginPath(); ctx.arc(sx, sy, 3, 0, Math.PI * 2); ctx.fill();
+    mapText(p.name, sx, sy + fs * 0.95, MAP_COLORS.district, fs * 0.9);
+  }
+
+  // Noch nicht erschlossene Stadtteile ganz blass
+  for (const name of G.districtsLeft) {
+    const d = HANNOVER.districts.find(x => x.name === name);
+    if (!d || G.stations.some(s => dist(s.x, s.y, d.x, d.y) < 2)) continue;
+    mapText(d.name, ...toScreen(d.x, d.y), MAP_COLORS.district, fs);
+  }
+  ctx.restore();
 }
 
 /**
@@ -815,6 +1040,12 @@ function drawStations() {
       ctx.stroke();
     }
 
+    // Name des Stadtteils unter der Station
+    if (st.name) {
+      const fs = labelSize() * (st.shape === 'hub' ? 1.1 : 1);
+      mapText(st.name, sx, sy + R + fs * 0.9, MAP_COLORS.name, fs, 0, st.shape === 'hub' ? 'bold' : '');
+    }
+
     // Wartende Fahrgäste rechts neben der Station
     ctx.fillStyle = COLORS.pencil;
     const pr = px(0.16, 4.5), gap = px(0.42, 11);
@@ -860,6 +1091,7 @@ function drawLost() {
 function draw() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   drawPaper();
+  drawMap();
   drawLines();
   drawDragPreview();
   drawTrains();
@@ -1222,7 +1454,8 @@ function serialize() {
     state: G.state,
     t: G.t, week: G.week, score: G.score, nextId: G.nextId,
     inv: G.inv, selectedMode: G.selectedMode, stationTimer: G.stationTimer,
-    stations: G.stations.map(({ id, x, y, shape, queue, over, big, born }) => ({ id, x, y, shape, queue, over, big, born })),
+    stations: G.stations.map(({ id, x, y, shape, name, queue, over, big, born }) => ({ id, x, y, shape, name, queue, over, big, born })),
+    districtsLeft: G.districtsLeft,
     lines: G.lines.map(({ id, color, mode, stations }) => ({ id, color, mode, stations })),
     trains: G.trains.map(({ id, line, a, b, t, dwell, pax }) => ({ id, line: line.id, a, b, t, dwell, pax })),
   };
@@ -1290,7 +1523,16 @@ function restoreGame(d) {
       free: Math.max(0, Math.round(d.inv[m].free)),
     }])),
   });
-  G.stations = d.stations.map(st => ({ ...st, queue: [...st.queue], over: clamp(+st.over || 0, 0, 0.99), big: !!st.big, born: +st.born || 0, flash: 0 }));
+  G.stations = d.stations.map(st => ({
+    ...st, name: typeof st.name === 'string' ? st.name.slice(0, 40) : '',
+    queue: [...st.queue], over: clamp(+st.over || 0, 0, 0.99), big: !!st.big, born: +st.born || 0, flash: 0,
+  }));
+  // Offene Stadtteile: aus dem Stand, sonst alle, die noch keine Station haben
+  const used = new Set(G.stations.map(st => st.name));
+  const known = new Set(HANNOVER.districts.map(x => x.name));
+  G.districtsLeft = Array.isArray(d.districtsLeft)
+    ? d.districtsLeft.filter(n => known.has(n) && !used.has(n))
+    : HANNOVER.districts.map(x => x.name).filter(n => !used.has(n));
   G.lines = d.lines.map(l => ({ id: l.id, color: l.color, mode: l.mode, stations: [...l.stations] }));
   const lineById = new Map(G.lines.map(l => [l.id, l]));
   G.trains = d.trains.map(tr => ({
@@ -1344,7 +1586,9 @@ function gameOver(st) {
   if (isNew) best.set(G.score);
   $('#over-reason').textContent = st.shape === 'hub'
     ? 'Der Hauptbahnhof war zu lange überfüllt.'
-    : `Die ${SHAPE_NAME[st.shape]}-Station war zu lange überfüllt.`;
+    : st.name
+      ? `Die Station ${st.name} war zu lange überfüllt.`
+      : `Die ${SHAPE_NAME[st.shape]}-Station war zu lange überfüllt.`;
   $('#over-score').textContent = G.score;
   $('#over-weeks').textContent = G.week;
   $('#over-record').textContent = isNew ? 'Neuer Rekord!' : rec ? `Rekord: ${rec} Fahrgäste` : '';

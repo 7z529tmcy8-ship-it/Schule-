@@ -77,6 +77,20 @@ Symbole (SVG, 24er-Raster) stehen in `MODES[…].icon` in `game.js` und werden �
 
 **Hauptbahnhof:** Hausform (Radius 0,9 U) mit Bleistift-„H“; Fahrgäste mit Ziel Hauptbahnhof sind kleine gefüllte Häuser.
 
+**Karte von Hannover** (unter dem Netz, über dem Karo) – Buntstift-Skizze, bewusst grob:
+
+| Element | Stil |
+|---|---|
+| Leine, Ihme, Mittellandkanal | blasses Blau-Band (`rgba(90,150,215,.30)`, 0,42–0,6 U) + zwei dünne Ufer-Striche (`rgba(55,115,185,.55)`, 1,2 px) |
+| Maschsee | blaue Fläche mit Uferlinie |
+| Eilenriede, Herrenhäuser Gärten | blasses Grün + schräge Schraffur (`rgba(60,140,80,.30)`) |
+| Gewässer-/Grün-Namen | kursive Handschrift in Blau bzw. Grün, Flüsse entlang des Laufs gedreht |
+| Orientierungspunkte (Rathaus, Zoo, Stadion, Messe) | kleiner Bleistift-Punkt + blasser Name |
+| Stadtteile ohne Station | blasser Bleistift-Name (`rgba(43,43,43,.30)`) |
+| Stationsname | Bleistift 85 % unter der Station, Hauptbahnhof fett; alle Beschriftungen mit Papier-Halo (4 px) |
+
+Schriftgröße der Beschriftungen: 0,5 U, begrenzt auf 11–15 px. Kartendaten stehen in `HANNOVER` in `game.js` (km relativ zum Hauptbahnhof, 1 U ≈ 300 m).
+
 **Stationsformen:** Kreis ●, Dreieck ▲, Quadrat ■ (häufig) – Stern ★, Raute ◆, Kreuz ✚ (selten, je max. eine Station).
 
 ## 5. UI-Komponenten (HTML über dem Canvas)
