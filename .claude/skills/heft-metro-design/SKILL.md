@@ -5,7 +5,7 @@ description: UI- und Design-System für „Heft-Metro“ (das Spiel in diesem Re
 
 # Heft-Metro – UI & Design
 
-Das Spiel sieht aus, als hätte jemand ein U-Bahn-Netz **mit Stiften in ein kariertes Schulheft** gezeichnet.
+Das Spiel sieht aus, als hätte jemand ein Verkehrsnetz (Bus, Tram, U-Bahn, Zug rund um einen Hauptbahnhof) **mit Stiften in ein kariertes Schulheft** gezeichnet.
 Alles wirkt handgemacht, aber aufgeräumt: wenige Farben, klare Formen, viel Papier.
 Gerät: **nur iPad** (Safari / Home-Bildschirm-App), Bedienung mit Apple Pencil und Finger.
 
@@ -35,7 +35,7 @@ Als CSS-Variablen in `style.css` (`:root`) und als `COLORS` in `game.js`. Werte 
 | `--tape` | `rgba(240,225,170,.75)` | Klebestreifen auf Zetteln |
 
 **Linienfarben (Filzstifte)**, feste Reihenfolge:
-Rot `#d23b2f` · Blau `#2456c9` · Grün `#2f9e4f` · Orange `#ef8a17` · Lila `#8a3fb8` · Türkis `#1199a8` · Braun `#8b5a2b`
+Rot `#d23b2f` · Blau `#2456c9` · Grün `#2f9e4f` · Orange `#ef8a17` · Lila `#8a3fb8` · Türkis `#1199a8` · Braun `#8b5a2b` · Pink `#d81b7a` · Oliv `#6d7f12` · Dunkelblau `#1f3a7a`
 
 Dark Mode gibt es bewusst nicht: Ein Heft ist hell.
 
@@ -62,13 +62,26 @@ Einheit `U` = 1 Karokästchen in Weltkoordinaten. Alle Maße in U, damit sie bei
 
 Wackeln immer über `wobble(seed, i)` (deterministisch), nie `Math.random()` beim Zeichnen.
 
+**Verkehrsmittel** – jedes hat einen eigenen Strich, damit man sie ohne Legende unterscheidet:
+
+| Verkehrsmittel | Strecke | Fahrzeug |
+|---|---|---|
+| Bus | gestrichelter Marker, 0,20 U, Strich 0,55 / Lücke 0,32 U | ein kurzer Wagen 0,8 × 0,46 U, eckiger |
+| Tram | helles Band (Alpha 0,22, 0,34 U) + zwei dünne Schienen ±0,11 U | zwei Glieder, 1,35 × 0,36 U |
+| U-Bahn | dicker Filzstift 0,30 U | ein Wagen 1,0 × 0,5 U |
+| Zug | Gleis: Schwellen alle 0,45 U (0,44 U breit) + zwei Schienen ±0,12 U | zwei Wagen, 1,75 × 0,46 U |
+
+Symbole (SVG, 24er-Raster) stehen in `MODES[…].icon` in `game.js` und werden überall wiederverwendet.
+
+**Hauptbahnhof:** Hausform (Radius 0,9 U) mit Bleistift-„H“; Fahrgäste mit Ziel Hauptbahnhof sind kleine gefüllte Häuser.
+
 **Stationsformen:** Kreis ●, Dreieck ▲, Quadrat ■ (häufig) – Stern ★, Raute ◆, Kreuz ✚ (selten, je max. eine Station).
 
 ## 5. UI-Komponenten (HTML über dem Canvas)
 
 - **Zettel** (`.note`): `--note`-Fläche, Radius 6 px, leichte Drehung (−1,5° … 1,5°), weicher Schatten `0 6px 18px rgba(0,0,0,.12)`, oben ein Klebestreifen (`.note::before`). Für Dialoge, Start, Upgrade, Game Over.
 - **Stift-Knopf** (`.pen-btn`): Text in Handschrift, Rahmen als gezeichneter Kringel (SVG oder `border-radius` 255px 15px 225px 15px/15px 225px 15px 255px), 2 px Bleistift. Primär: Textmarker-Hinterlegung.
-- **Linien-Stifte** (`.pens`, unten mittig): je Linie ein runder Stift-Deckel 52 px. Benutzt = gefüllt in Linienfarbe; frei = gestrichelte Kontur; gesperrt = nicht sichtbar.
+- **Leiste unten** (`.pens`): pro Verkehrsmittel eine Gruppe (`.mode-group`) aus Reiter (`.mode-tab`: Symbol, Name, Zahl freier Fahrzeuge) und Linien-Stiften (44 px). Benutzt = gefüllt in Linienfarbe; frei = gestrichelte Kontur. Die gewählte Gruppe ist ein Zettel mit Kringel-Rahmen, ihr Name ist mit Textmarker hinterlegt.
 - **Status** (oben): links Fahrgäste-Zähler, rechts Woche + Wochenuhr + Tempo (Pause / 1× / 2×).
 - **Toast**: kleiner Zettel unten mittig, verschwindet nach 2,5 s.
 - Icons: einfache SVG-Striche (`stroke: currentColor; stroke-width: 2.2; stroke-linecap: round`), nie Emoji in Bedienelementen.

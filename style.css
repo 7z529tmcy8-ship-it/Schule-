@@ -90,7 +90,6 @@ button { font: inherit; color: inherit; }
 }
 .score { transform: rotate(-1.2deg); }
 .week { transform: rotate(.8deg); font-size: 20px; }
-.trains { position: absolute; right: calc(16px + var(--sar)); font-size: 22px; transform: rotate(-1deg); }
 
 .ico {
   width: 24px; height: 24px;
@@ -117,10 +116,42 @@ button { font: inherit; color: inherit; }
 .icon-btn.is-active { background: linear-gradient(transparent 12%, var(--marker) 12%, var(--marker) 88%, transparent 88%); }
 .icon-btn:active { transform: scale(.94); }
 
-/* Linien-Stifte (Stift-Deckel) */
-.pens { display: flex; gap: 12px; }
+/* Leiste unten: pro Verkehrsmittel ein Reiter + seine Linien-Stifte */
+.pens { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; max-width: 100%; }
+.mode-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px 4px 4px;
+  border-radius: 14px;
+  border: 2px solid transparent;
+}
+.mode-group.selected {
+  background: var(--note);
+  border-color: var(--pencil);
+  border-radius: var(--scribble);
+  box-shadow: var(--note-shadow);
+}
+.mode-tab {
+  position: relative;
+  min-width: var(--tap);
+  height: 50px;
+  padding: 0 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.mode-tab .ico { width: 26px; height: 26px; }
+.mode-name { font: 14px/1 var(--hand); }
+.mode-group.selected .mode-name { background: linear-gradient(transparent 40%, var(--marker) 40%); }
+.mode-tab .pen-trains { right: -4px; bottom: auto; top: -4px; }
 .pen {
-  width: 52px; height: 52px;
+  width: 44px; height: 44px;
   border-radius: 50%;
   border: 3px dashed var(--pencil-soft);
   background: var(--note);
@@ -132,7 +163,7 @@ button { font: inherit; color: inherit; }
 }
 .pen.used { border: 3px solid rgba(0, 0, 0, .25); background: var(--c); }
 .pen.selected { transform: translateY(-6px) scale(1.06); }
-.pen .pen-trains {
+.pen-trains {
   position: absolute;
   bottom: -6px; right: -6px;
   min-width: 22px; height: 22px;

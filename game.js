@@ -1,7 +1,8 @@
 /* =====================================================================
    Heft-Metro – game.js
    ---------------------------------------------------------------------
-   Ein U-Bahn-Planungsspiel im Schulheft-Look, gemacht für das iPad.
+   Ein Verkehrs-Planungsspiel im Schulheft-Look, gemacht für das iPad:
+   Vom Hauptbahnhof aus baust du Bus-, Tram-, U-Bahn- und Zugstrecken.
    Design-Regeln: .claude/skills/heft-metro-design/SKILL.md
 
    Aufbau:
@@ -33,14 +34,50 @@ const COLORS = {
   danger: '#d0342c',
 };
 /** Filzstift-Farben der Linien, feste Reihenfolge */
-const LINE_COLORS = ['#d23b2f', '#2456c9', '#2f9e4f', '#ef8a17', '#8a3fb8', '#1199a8', '#8b5a2b'];
+const LINE_COLORS = ['#d23b2f', '#2456c9', '#2f9e4f', '#ef8a17', '#8a3fb8', '#1199a8', '#8b5a2b', '#d81b7a', '#6d7f12', '#1f3a7a'];
 
 const COMMON_SHAPES = ['circle', 'triangle', 'square'];
 const RARE_SHAPES = ['star', 'diamond', 'cross'];
+const ALL_SHAPES = ['hub', ...COMMON_SHAPES, ...RARE_SHAPES];
 const SHAPE_NAME = {
   circle: 'Kreis', triangle: 'Dreieck', square: 'Quadrat',
-  star: 'Stern', diamond: 'Rauten', cross: 'Kreuz',
+  star: 'Stern', diamond: 'Rauten', cross: 'Kreuz', hub: 'Hauptbahnhof',
 };
+
+/**
+ * Die vier Verkehrsmittel. Jedes fährt anders:
+ *   speed  Tempo in U pro Sekunde     cap      Plätze
+ *   dwell  Grund-Haltezeit (s)        perPax   Sekunden pro ein-/aussteigendem Fahrgast
+ *   maxStops  Haltestellen pro Linie  maxLines Linien höchstens (durch Upgrades)
+ *   needsHub  Linie muss am Hauptbahnhof beginnen
+ */
+const MODES = {
+  bus: {
+    name: 'Bus', vehicle: 'Bus', lineName: 'Buslinie', none: 'Kein Bus frei',
+    speed: 1.6, cap: 4, dwell: 0.25, perPax: 0.15, maxStops: 6, maxLines: 3, startLines: 2, startVehicles: 3,
+    body: { w: 0.8, h: 0.46, parts: 1 },
+    icon: '<rect x="4.5" y="4" width="15" height="13" rx="3"/><path d="M4.5 11h15M8 20.5v-3.5M16 20.5v-3.5"/>',
+  },
+  tram: {
+    name: 'Tram', vehicle: 'Tram', lineName: 'Tramlinie', none: 'Keine Tram frei',
+    speed: 2.2, cap: 6, dwell: 0.2, perPax: 0.07, maxStops: 8, maxLines: 3, startLines: 1, startVehicles: 1,
+    body: { w: 1.35, h: 0.36, parts: 2 },
+    icon: '<rect x="5" y="7.5" width="14" height="10.5" rx="3"/><path d="M9 3h6M12 3v4.5M5 13h14M8 21l1.5-3M16 21l-1.5-3"/>',
+  },
+  metro: {
+    name: 'U-Bahn', vehicle: 'U-Bahn', lineName: 'U-Bahn-Linie', none: 'Keine U-Bahn frei',
+    speed: 2.8, cap: 6, dwell: 0.3, perPax: 0.12, maxStops: 99, maxLines: 3, startLines: 1, startVehicles: 1,
+    body: { w: 1.0, h: 0.5, parts: 1 },
+    icon: '<circle cx="12" cy="12" r="8.5"/><path d="M8.7 7.8v4.7a3.3 3.3 0 0 0 6.6 0V7.8"/>',
+  },
+  rail: {
+    name: 'Zug', vehicle: 'Zug', lineName: 'Zugstrecke', none: 'Kein Zug frei',
+    speed: 3.8, cap: 10, dwell: 0.9, perPax: 0.08, maxStops: 5, maxLines: 2, startLines: 1, startVehicles: 1, needsHub: true,
+    body: { w: 1.75, h: 0.46, parts: 2 },
+    icon: '<path d="M6.5 18V8.5a4.5 4.5 0 0 1 4.5-4.5h2a4.5 4.5 0 0 1 4.5 4.5V18z"/><path d="M6.5 12.5h11M8 21.5l1.5-3.5M16 21.5l-1.5-3.5"/>',
+  },
+};
+const MODE_ORDER = ['bus', 'tram', 'metro', 'rail'];
 const DAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 
 /** Spiel-Balance – hier lässt sich alles feinjustieren */
@@ -49,13 +86,11 @@ const CFG = {
   stationR: 0.55,         // Radius einer Station in U
   capacity: 6,            // Fahrgäste, ab denen eine Station überfüllt ist
   bigCapacity: 12,        // … beim großen Bahnhof
+  hubCapacity: 18,        // … am Hauptbahnhof
+  hubR: 0.9,              // Radius des Hauptbahnhofs in U
+  hubShare: 0.22,         // Anteil der Fahrgäste, die zum Hauptbahnhof wollen
   overcrowdTime: 40,      // Sekunden Überfüllung bis Game Over
   recoverTime: 80,        // Sekunden, bis sich der Timer wieder ganz erholt
-  trainCap: 6,
-  trainSpeed: 2.4,        // U pro Sekunde
-  startLines: 3,
-  startTrains: 3,
-  maxLines: 7,
   minStationDist: 2.6,    // Mindestabstand neuer Stationen
   lineWidth: 0.30,        // Filzstift-Breite in U
   lineGap: 0.32,          // Abstand paralleler Linien
@@ -124,8 +159,9 @@ function newGame() {
     stations: [],
     lines: [],
     trains: [],
-    maxLines: CFG.startLines,
-    trainsFree: CFG.startTrains,
+    // Pro Verkehrsmittel: freie Linien-Plätze und freie Fahrzeuge
+    inv: Object.fromEntries(MODE_ORDER.map(m => [m, { lines: MODES[m].startLines, free: MODES[m].startVehicles }])),
+    selectedMode: 'bus',   // womit neue Linien gezogen werden
     bounds: { hw: 7, hh: 5 },   // halbe Breite/Höhe der Stadt in U
     stationTimer: 10,
     dist: new Map(),       // Form → Map(Station-ID → Anzahl Haltestellen bis dorthin)
@@ -133,14 +169,23 @@ function newGame() {
     lostStation: null,
     resumeState: null,     // Zustand, zu dem „Weiterspielen“ zurückkehrt
   };
-  // Drei Startstationen, eine pro Grundform
-  addStation('circle', -3 + Math.round(rand(-1, 1)), -1 + Math.round(rand(-1, 1)));
-  addStation('triangle', 3 + Math.round(rand(-1, 1)), -2 + Math.round(rand(-1, 1)));
-  addStation('square', Math.round(rand(-1, 1)), 2 + Math.round(rand(0, 1)));
+  // Hauptbahnhof in der Mitte, drei Stationen im Kreis darum
+  addStation('hub', 0, 0);
+  const a0 = rand(0, Math.PI * 2);
+  COMMON_SHAPES.forEach((shape, i) => {
+    const a = a0 + (i * Math.PI * 2) / 3 + rand(-0.3, 0.3), r = rand(4, 5.5);
+    addStation(shape, Math.round(Math.cos(a) * r), Math.round(Math.sin(a) * r * 0.8));
+  });
   rebuildRoutes();
 }
 
 const stationById = id => G.stations.find(s => s.id === id);
+const hub = () => G.stations.find(s => s.shape === 'hub');
+/** Radius einer Station in U (Hauptbahnhof ist größer) */
+const stationR = st => (st.shape === 'hub' ? CFG.hubR : CFG.stationR);
+const capacityOf = st => (st.shape === 'hub' ? CFG.hubCapacity : st.big ? CFG.bigCapacity : CFG.capacity);
+const vehiclesOn = line => G.trains.filter(t => t.line === line).length;
+const linesOf = mode => G.lines.filter(l => l.mode === mode);
 
 function addStation(shape, x, y) {
   const st = { id: G.nextId++, x, y, shape, queue: [], over: 0, big: false, born: G.t, flash: 0 };
@@ -210,16 +255,19 @@ function segmentOffset(line, a, b) {
 /* ---------- Linien bearbeiten ---------- */
 
 function freeColor() {
-  for (let c = 0; c < G.maxLines; c++) if (!G.lines.some(l => l.color === c)) return c;
+  for (let c = 0; c < LINE_COLORS.length; c++) if (!G.lines.some(l => l.color === c)) return c;
   return -1;
 }
 
-function createLine(stationIds, color) {
-  const line = { id: G.nextId++, color, stations: stationIds.slice() };
+/** Ist für dieses Verkehrsmittel noch ein Linien-Platz frei? */
+const canCreateLine = mode => linesOf(mode).length < G.inv[mode].lines && freeColor() >= 0;
+
+function createLine(stationIds, color, mode) {
+  const line = { id: G.nextId++, color, mode, stations: stationIds.slice() };
   G.lines.push(line);
   rebuildRoutes();
-  if (G.trainsFree > 0) addTrain(line);
-  else toast('Kein Zug frei – die Linie wartet auf den nächsten.');
+  if (G.inv[mode].free > 0) addTrain(line);
+  else toast(`${MODES[mode].none} – die Linie wartet auf das nächste Fahrzeug.`);
   hideHint();
   return line;
 }
@@ -231,8 +279,9 @@ function deleteLine(line) {
 }
 
 function addTrain(line) {
-  if (G.trainsFree <= 0 || line.stations.length < 2) return false;
-  G.trainsFree--;
+  const inv = G.inv[line.mode];
+  if (inv.free <= 0 || line.stations.length < 2) return false;
+  inv.free--;
   G.trains.push({ id: G.nextId++, line, a: line.stations[0], b: line.stations[1], t: 0, dwell: 0.4, pax: [] });
   return true;
 }
@@ -245,7 +294,7 @@ function removeTrain(tr) {
     else st?.queue.push(p);
   }
   G.trains = G.trains.filter(t => t !== tr);
-  G.trainsFree++;
+  G.inv[tr.line.mode].free++;
 }
 
 /** Nach einer Änderung an der Linie: Züge auf gültige Abschnitte setzen. */
@@ -290,7 +339,7 @@ function spawnStation() {
   for (let tries = 0; tries < 80; tries++) {
     const x = Math.round(rand(-hw + 1, hw - 1));
     const y = Math.round(rand(-hh + 1, hh - 1));
-    if (G.stations.some(s => dist(s.x, s.y, x, y) < CFG.minStationDist)) continue;
+    if (G.stations.some(s => dist(s.x, s.y, x, y) < CFG.minStationDist + (s.shape === 'hub' ? 0.8 : 0))) continue;
     const onLine = G.lines.some(l => l.stations.some((id, i) => {
       const nId = l.stations[i + 1];
       if (!nId) return false;
@@ -304,10 +353,11 @@ function spawnStation() {
   }
 }
 
-/** Zielform für einen neuen Fahrgast (nicht die eigene, häufige Formen öfter). */
+/** Zielform für einen neuen Fahrgast (nicht die eigene, häufige Formen öfter, oft der Hauptbahnhof). */
 function pickDestination(own) {
+  if (own !== 'hub' && Math.random() < CFG.hubShare) return 'hub';
   const counts = {};
-  for (const s of G.stations) if (s.shape !== own) counts[s.shape] = (counts[s.shape] || 0) + 1;
+  for (const s of G.stations) if (s.shape !== own && s.shape !== 'hub') counts[s.shape] = (counts[s.shape] || 0) + 1;
   const entries = Object.entries(counts);
   if (!entries.length) return null;
   const total = entries.reduce((a, [, n]) => a + Math.sqrt(n), 0);
@@ -324,7 +374,7 @@ function update(dt) {
   const week = Math.floor(G.t / (CFG.dayLength * 7)) + 1;
   if (week > G.week) {
     G.week = week;
-    G.trainsFree++;
+    G.inv.bus.free++;                 // jede Woche ein Bus geschenkt
     showUpgrade();
     return;
   }
@@ -339,12 +389,12 @@ function update(dt) {
   // Neue Fahrgäste und Überfüllung
   const rate = Math.min(0.35, 0.05 + 0.015 * G.week + G.t * 0.0004);
   for (const st of G.stations) {
-    if (G.t - st.born > 3 && Math.random() < rate * dt) {
+    const stRate = st.shape === 'hub' ? rate * 1.6 : rate;    // am Hauptbahnhof ist mehr los
+    if (G.t - st.born > 3 && Math.random() < stRate * dt) {
       const dest = pickDestination(st.shape);
       if (dest) st.queue.push(dest);
     }
-    const cap = st.big ? CFG.bigCapacity : CFG.capacity;
-    if (st.queue.length > cap) st.over += dt / CFG.overcrowdTime;
+    if (st.queue.length > capacityOf(st)) st.over += dt / CFG.overcrowdTime;
     else st.over = Math.max(0, st.over - dt / CFG.recoverTime);
     st.flash = Math.max(0, st.flash - dt);
     if (st.over >= 1) { gameOver(st); return; }
@@ -366,14 +416,15 @@ function update(dt) {
     }
     const A = stationById(tr.a), B = stationById(tr.b);
     const len = Math.max(0.1, dist(A.x, A.y, B.x, B.y));
-    tr.t += (CFG.trainSpeed * dt) / len;
+    tr.t += (MODES[line.mode].speed * dt) / len;
     if (tr.t >= 1) { tr.t = 1; arrive(tr); }
   }
 }
 
-/** Zug hält an Station b: aussteigen, umsteigen, einsteigen. */
+/** Fahrzeug hält an Station b: aussteigen, umsteigen, einsteigen. */
 function arrive(tr) {
   const st = stationById(tr.b);
+  const mode = MODES[tr.line.mode];
   const next = nextStop(tr.line, tr.a, tr.b);
   let moved = 0;
 
@@ -386,7 +437,7 @@ function arrive(tr) {
     return false;
   });
 
-  for (let i = 0; i < st.queue.length && tr.pax.length < CFG.trainCap;) {
+  for (let i = 0; i < st.queue.length && tr.pax.length < mode.cap;) {
     const p = st.queue[i];
     if (hops(p, next) < hops(p, st.id)) {
       tr.pax.push(p);
@@ -396,7 +447,7 @@ function arrive(tr) {
       i++;
     }
   }
-  tr.dwell = 0.3 + 0.12 * moved;
+  tr.dwell = mode.dwell + mode.perPax * moved;
 }
 
 /* =====================================================================
@@ -406,11 +457,12 @@ function arrive(tr) {
    ===================================================================== */
 
 const cam = { s: 50, x: 0, y: 0, ready: false };
+let bottomInset = 96;     // Höhe der Leiste unten (kann im Hochformat zweizeilig sein)
 
 /** Freier Bildschirmbereich (CSS-Pixel) */
 function view() {
   const w = window.innerWidth, h = window.innerHeight;
-  const top = 78, bottom = 96, side = 24;
+  const top = 78, bottom = bottomInset, side = 24;
   return { w: w - 2 * side, h: h - top - bottom, cx: w / 2, cy: top + (h - top - bottom) / 2 };
 }
 
@@ -444,6 +496,7 @@ function resize() {
   dpr = Math.min(window.devicePixelRatio || 1, 2);
   canvas.width = Math.round(window.innerWidth * dpr);
   canvas.height = Math.round(window.innerHeight * dpr);
+  if (typeof hudCache !== 'undefined') hudCache.pens = null;   // Leiste neu messen (Drehen)
 }
 
 /** Karopapier: Linien im Weltraster, damit das Papier beim Zoomen mitwächst. */
@@ -498,6 +551,7 @@ function shapePoints(shape) {
     case 'triangle': return [[0, -1.15], [1.05, 0.75], [-1.05, 0.75]];
     case 'square': return [[-0.85, -0.85], [0.85, -0.85], [0.85, 0.85], [-0.85, 0.85]];
     case 'diamond': return [[0, -1.2], [0.95, 0], [0, 1.2], [-0.95, 0]];
+    case 'hub': return [[0, -1.15], [1, -0.35], [1, 0.95], [-1, 0.95], [-1, -0.35]];   // Bahnhofsgebäude
     case 'star': {
       const p = [];
       for (let i = 0; i < 10; i++) {
@@ -546,6 +600,53 @@ function shapePath(shape, sx, sy, r, seed = 0, overshoot = false) {
   ctx.closePath();
 }
 
+/** Strichbreite eines Verkehrsmittels in U (für Kappen und Vorschau) */
+const modeWidth = mode => (mode === 'metro' ? CFG.lineWidth : 0.2);
+
+/**
+ * Ein Streckenabschnitt im Stil des Verkehrsmittels:
+ *   Bus    gestrichelter Marker
+ *   Tram   zwei dünne Schienen auf hellem Band
+ *   U-Bahn dicker Filzstift
+ *   Zug    Gleis mit Schwellen
+ */
+function strokeSegment(mode, x1, y1, x2, y2, seed) {
+  const s = cam.s;
+  const len = dist(x1, y1, x2, y2) || 1;
+  const nx = -(y2 - y1) / len, ny = (x2 - x1) / len;
+  ctx.globalAlpha = 0.92;
+  if (mode === 'bus') {
+    ctx.lineWidth = 0.2 * s;
+    ctx.setLineDash([0.55 * s, 0.32 * s]);
+    wobblyStroke(x1, y1, x2, y2, seed);
+    ctx.setLineDash([]);
+  } else if (mode === 'tram') {
+    ctx.globalAlpha = 0.22;
+    ctx.lineWidth = 0.34 * s;
+    wobblyStroke(x1, y1, x2, y2, seed);
+    ctx.globalAlpha = 0.95;
+    ctx.lineWidth = Math.max(1.2, 0.07 * s);
+    for (const k of [-1, 1]) wobblyStroke(x1 + nx * 0.11 * k, y1 + ny * 0.11 * k, x2 + nx * 0.11 * k, y2 + ny * 0.11 * k, seed);
+  } else if (mode === 'rail') {
+    // Schwellen quer zur Strecke, dann zwei Schienen
+    ctx.lineWidth = Math.max(1, 0.07 * s);
+    ctx.beginPath();
+    const n = Math.floor(len / 0.45);
+    for (let i = 1; i < n; i++) {
+      const u = i / n, cx = x1 + (x2 - x1) * u, cy = y1 + (y2 - y1) * u;
+      const [p, q] = [toScreen(cx - nx * 0.22, cy - ny * 0.22), toScreen(cx + nx * 0.22, cy + ny * 0.22)];
+      ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]);
+    }
+    ctx.stroke();
+    ctx.lineWidth = Math.max(1.2, 0.08 * s);
+    for (const k of [-1, 1]) wobblyStroke(x1 + nx * 0.12 * k, y1 + ny * 0.12 * k, x2 + nx * 0.12 * k, y2 + ny * 0.12 * k, seed, 0.02);
+  } else {
+    ctx.lineWidth = CFG.lineWidth * s;
+    wobblyStroke(x1, y1, x2, y2, seed);
+  }
+  ctx.globalAlpha = 1;
+}
+
 /** Linien, Linienenden („Stiftkappen“) und die Griffe zum Verlängern */
 function drawLines() {
   G.handles = [];
@@ -555,14 +656,11 @@ function drawLines() {
     const color = LINE_COLORS[line.color];
     const s = line.stations;
     ctx.strokeStyle = color;
-    ctx.globalAlpha = 0.92;
-    ctx.lineWidth = CFG.lineWidth * cam.s;
     for (let i = 0; i < s.length - 1; i++) {
       const a = stationById(s[i]), b = stationById(s[i + 1]);
       const { ox, oy } = segmentOffset(line, a.id, b.id);
-      wobblyStroke(a.x + ox, a.y + oy, b.x + ox, b.y + oy, line.id * 1000 + a.id * 31 + b.id);
+      strokeSegment(line.mode, a.x + ox, a.y + oy, b.x + ox, b.y + oy, line.id * 1000 + a.id * 31 + b.id);
     }
-    ctx.globalAlpha = 1;
 
     // Stiftkappen an beiden Enden
     if (s.length >= 2) {
@@ -572,10 +670,11 @@ function drawLines() {
         const len = dist(prev.x, prev.y, st.x, st.y) || 1;
         const dx = (st.x - prev.x) / len, dy = (st.y - prev.y) / len;
         const { ox, oy } = segmentOffset(line, prev.id, st.id);
-        const bx = st.x + ox + dx * CFG.stationR, by = st.y + oy + dy * CFG.stationR;
-        const hx = st.x + ox + dx * (CFG.stationR + 0.9), hy = st.y + oy + dy * (CFG.stationR + 0.9);
+        const R = stationR(st);
+        const bx = st.x + ox + dx * R, by = st.y + oy + dy * R;
+        const hx = st.x + ox + dx * (R + 0.9), hy = st.y + oy + dy * (R + 0.9);
         ctx.strokeStyle = color;
-        ctx.lineWidth = CFG.lineWidth * cam.s;
+        ctx.lineWidth = Math.max(modeWidth(line.mode), 0.24) * cam.s;
         const [p, q] = [toScreen(bx, by), toScreen(hx, hy)];
         ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke();
         const [c1, c2] = [toScreen(hx - dy * 0.32, hy + dx * 0.32), toScreen(hx + dy * 0.32, hy - dx * 0.32)];
@@ -595,22 +694,28 @@ function drawTrains() {
     const u = smooth(clamp(tr.t, 0, 1));            // sanft anfahren und bremsen
     const [sx, sy] = toScreen(A.x + (B.x - A.x) * u + ox, A.y + (B.y - A.y) * u + oy);
     const ang = Math.atan2(B.y - A.y, B.x - A.x);
-    const w = 1.0 * cam.s, h = 0.5 * cam.s;
+    const mode = MODES[tr.line.mode];
+    const w = mode.body.w * cam.s, h = mode.body.h * cam.s;
     ctx.save();
     ctx.translate(sx, sy);
     ctx.rotate(ang);
     ctx.fillStyle = LINE_COLORS[tr.line.color];
     ctx.strokeStyle = 'rgba(0,0,0,.35)';
     ctx.lineWidth = Math.max(1, 0.05 * cam.s);
-    ctx.beginPath();
-    ctx.roundRect(-w / 2, -h / 2, w, h, h * 0.35);
-    ctx.fill();
-    ctx.stroke();
-    // Fahrgäste als weiße Mini-Formen, 3 × 2
+    // Ein Wagen (Bus, U-Bahn) oder zwei gekoppelte (Tram, Zug)
+    const parts = mode.body.parts, gap = 0.06 * cam.s, pw = (w - gap * (parts - 1)) / parts;
+    for (let k = 0; k < parts; k++) {
+      ctx.beginPath();
+      ctx.roundRect(-w / 2 + k * (pw + gap), -h / 2, pw, h, h * (tr.line.mode === 'bus' ? 0.25 : 0.35));
+      ctx.fill();
+      ctx.stroke();
+    }
+    // Fahrgäste als weiße Mini-Formen in zwei Reihen
     ctx.fillStyle = '#fff';
+    const cols = Math.ceil(mode.cap / 2);
     tr.pax.forEach((p, i) => {
-      const cx = -w / 2 + w * (0.2 + 0.3 * (i % 3)), cy = (i < 3 ? -1 : 1) * h * 0.22;
-      shapePath(p, cx, cy, 0.09 * cam.s);
+      const cx = -w / 2 + w * ((i % cols) + 0.5) / cols, cy = (i < cols ? -1 : 1) * h * 0.22;
+      shapePath(p, cx, cy, Math.min(0.09 * cam.s, h * 0.2));
       ctx.fill();
     });
     ctx.restore();
@@ -618,8 +723,8 @@ function drawTrains() {
 }
 
 function drawStations() {
-  const R = CFG.stationR * cam.s;
   for (const st of G.stations) {
+    const R = stationR(st) * cam.s;
     const [sx, sy] = toScreen(st.x, st.y);
     const age = G.t - st.born;
     const pop = age < 0.35 ? (age < 0.2 ? smooth(age / 0.2) * 1.15 : 1.15 - 0.15 * smooth((age - 0.2) / 0.15)) : 1;
@@ -628,11 +733,12 @@ function drawStations() {
     // Überfüllung: roter Bogen wie mit dem Rotstift
     if (st.over > 0) {
       ctx.fillStyle = 'rgba(208, 52, 44, 0.12)';
-      ctx.beginPath(); ctx.arc(sx, sy, 1.05 * cam.s, 0, Math.PI * 2); ctx.fill();
+      const ring = R + 0.5 * cam.s;
+      ctx.beginPath(); ctx.arc(sx, sy, ring, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = COLORS.danger;
       ctx.lineWidth = 0.12 * cam.s;
       ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.arc(sx, sy, 1.05 * cam.s, -Math.PI / 2, -Math.PI / 2 + st.over * Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(sx, sy, ring, -Math.PI / 2, -Math.PI / 2 + st.over * Math.PI * 2); ctx.stroke();
     }
     if (st.flash > 0) {
       ctx.strokeStyle = `rgba(43,43,43,${st.flash * 1.5})`;
@@ -659,6 +765,17 @@ function drawStations() {
       shapePath(st.shape, sx, sy, r + 0.22 * cam.s, st.id + 3, true);
       ctx.stroke();
     }
+    if (st.shape === 'hub') {
+      // Großes „H“ wie mit Bleistift ins Bahnhofsgebäude geschrieben
+      ctx.lineWidth = Math.max(1.5, 0.1 * cam.s);
+      ctx.lineCap = 'round';
+      const hw = r * 0.38, ht = r * 0.42, cy = sy + r * 0.25;
+      ctx.beginPath();
+      ctx.moveTo(sx - hw, cy - ht); ctx.lineTo(sx - hw, cy + ht);
+      ctx.moveTo(sx + hw, cy - ht); ctx.lineTo(sx + hw, cy + ht);
+      ctx.moveTo(sx - hw, cy); ctx.lineTo(sx + hw, cy);
+      ctx.stroke();
+    }
 
     // Wartende Fahrgäste rechts neben der Station
     ctx.fillStyle = COLORS.pencil;
@@ -676,12 +793,12 @@ function drawDragPreview() {
   if (!drag || drag.mode !== 'new') return;
   const color = LINE_COLORS[drag.color];
   ctx.strokeStyle = color;
-  ctx.lineWidth = CFG.lineWidth * cam.s;
   ctx.lineCap = 'round';
   for (let i = 0; i < drag.stations.length - 1; i++) {
     const a = stationById(drag.stations[i]), b = stationById(drag.stations[i + 1]);
-    wobblyStroke(a.x, a.y, b.x, b.y, 7000 + a.id * 31 + b.id);
+    strokeSegment(drag.lineMode, a.x, a.y, b.x, b.y, 7000 + a.id * 31 + b.id);
   }
+  ctx.lineWidth = modeWidth(drag.lineMode) * cam.s;
   const last = stationById(drag.stations[drag.stations.length - 1]);
   const [p, q] = [toScreen(last.x, last.y), toScreen(drag.x, drag.y)];
   ctx.setLineDash([0.35 * cam.s, 0.25 * cam.s]);
@@ -748,7 +865,7 @@ function onDown(e) {
 
   if (G.state === 'placeBig') {
     const st = stationAt(x, y);
-    if (st && !st.big) {
+    if (st && !st.big && st.shape !== 'hub') {
       st.big = true;
       G.state = 'playing';
       toast('Großer Bahnhof gebaut – hier passen jetzt 12 Fahrgäste hin.');
@@ -763,12 +880,17 @@ function onDown(e) {
   } else {
     const st = stationAt(x, y);
     if (!st) return;
-    const color = freeColor();
-    if (color < 0) {
-      toast('Alle Linien sind vergeben. Verlängere eine am Ende oder lösche eine.');
+    const lineMode = G.selectedMode;
+    const M = MODES[lineMode];
+    if (!canCreateLine(lineMode)) {
+      toast(`Alle ${M.lineName}n sind vergeben. Wähle unten ein anderes Verkehrsmittel oder verlängere eine Linie.`, 3400);
       return;
     }
-    drag = { mode: 'new', stations: [st.id], color, x, y, id: e.pointerId };
+    if (M.needsHub && st.shape !== 'hub') {
+      toast('Züge fahren immer ab dem Hauptbahnhof – starte dort.');
+      return;
+    }
+    drag = { mode: 'new', lineMode, stations: [st.id], color: freeColor(), x, y, id: e.pointerId };
   }
   if (e.pointerType === 'pen') penActive = true;
   try { canvas.setPointerCapture(e.pointerId); } catch { /* nicht kritisch */ }
@@ -785,7 +907,7 @@ function onMove(e) {
   if (drag.mode === 'new') {
     const s = drag.stations;
     if (s[s.length - 2] === st.id) s.pop();                 // zurückgezogen
-    else if (!s.includes(st.id)) s.push(st.id);
+    else if (!s.includes(st.id) && !tooManyStops(drag.lineMode, s.length)) s.push(st.id);
     return;
   }
 
@@ -797,8 +919,10 @@ function onMove(e) {
   const prevId = atEnd ? s[s.length - 2] : s[1];
   if (st.id === endId) return;
   if (st.id === prevId) {
+    // Züge dürfen den Hauptbahnhof nicht verlieren
+    if (MODES[line.mode].needsHub && stationById(endId).shape === 'hub') return;
     if (atEnd) s.pop(); else s.shift();
-  } else if (!s.includes(st.id)) {
+  } else if (!s.includes(st.id) && !tooManyStops(line.mode, s.length)) {
     if (atEnd) s.push(st.id); else s.unshift(st.id);
   } else {
     return;
@@ -807,10 +931,20 @@ function onMove(e) {
   syncTrains(line);
 }
 
+/** Höchstzahl an Haltestellen erreicht? (mit Hinweis, einmal pro Ziehen) */
+function tooManyStops(mode, count) {
+  if (count < MODES[mode].maxStops) return false;
+  if (drag && !drag.warned) {
+    drag.warned = true;
+    toast(`Eine ${MODES[mode].lineName} hat höchstens ${MODES[mode].maxStops} Haltestellen.`);
+  }
+  return true;
+}
+
 function onUp(e) {
   if (!drag || e.pointerId !== drag.id) return;
   if (drag.mode === 'new' && drag.stations.length >= 2) {
-    createLine(drag.stations, drag.color);
+    createLine(drag.stations, drag.color, drag.lineMode);
   } else if (drag.mode === 'extend' && drag.line.stations.length < 2) {
     deleteLine(drag.line);
     toast('Linie gelöscht.');
@@ -844,7 +978,6 @@ function updateHud() {
   const weekT = (G.t % (CFG.dayLength * 7)) / (CFG.dayLength * 7);
   const day = Math.min(6, Math.floor(weekT * 7));
   setText('#week-label', `Woche ${G.week} · ${DAYS[day]}`);
-  setText('#trains-free', String(G.trainsFree));
 
   // Wochenuhr als Tortenstück
   const a = weekT * Math.PI * 2 - Math.PI / 2;
@@ -852,8 +985,8 @@ function updateHud() {
   const pie = weekT < 0.001 ? '' : `M20 20 L20 5 A15 15 0 ${weekT > 0.5 ? 1 : 0} 1 ${x.toFixed(2)} ${y.toFixed(2)} Z`;
   if (hudCache.pie !== pie) { hudCache.pie = pie; $('#clock-pie').setAttribute('d', pie); }
 
-  // Linien-Stifte
-  const key = G.lines.map(l => `${l.color}:${G.trains.filter(t => t.line === l).length}`).join(',') + '|' + G.maxLines;
+  // Leiste unten (nur neu bauen, wenn sich etwas geändert hat)
+  const key = G.lines.map(l => `${l.mode}${l.color}:${vehiclesOn(l)}`).join(',') + '|' + JSON.stringify(G.inv) + '|' + G.selectedMode;
   if (hudCache.pens !== key) { hudCache.pens = key; renderPens(); }
 
   // Hinweis am Anfang
@@ -861,31 +994,64 @@ function updateHud() {
   const showHint = G.state === 'playing' && G.lines.length === 0 && !drag;
   if (hint.hidden === showHint) {
     hint.hidden = !showHint;
-    hint.textContent = 'Zieh mit dem Stift von einer Station zur nächsten.';
+    hint.textContent = 'Wähle unten ein Verkehrsmittel und zieh von Station zu Station.';
   }
   for (const b of document.querySelectorAll('[data-speed]')) b.classList.toggle('is-active', +b.dataset.speed === G.speed);
 }
 
 function hideHint() { $('#hint').hidden = true; }
 
+const modeIcon = (mode, cls = 'ico') => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${MODES[mode].icon}</svg>`;
+
+/** Verkehrsmittel wählen, mit dem neue Linien gezogen werden */
+function selectMode(mode) {
+  G.selectedMode = mode;
+  const M = MODES[mode];
+  const extra = M.needsHub ? ' Züge starten immer am Hauptbahnhof.' : '';
+  toast(canCreateLine(mode)
+    ? `${M.name} gewählt – zieh von Station zu Station.${extra}`
+    : `${M.name} gewählt – aber alle ${M.lineName}n sind vergeben.`);
+}
+
+/**
+ * Leiste unten: pro Verkehrsmittel ein Reiter (Symbol + freie Fahrzeuge)
+ * und dahinter seine Linien-Stifte (benutzt = farbig, frei = gestrichelt).
+ */
 function renderPens() {
   const box = $('#pens');
   box.innerHTML = '';
-  for (let c = 0; c < G.maxLines; c++) {
-    const line = G.lines.find(l => l.color === c);
-    const b = document.createElement('button');
-    b.className = 'pen' + (line ? ' used' : '');
-    b.style.setProperty('--c', LINE_COLORS[c]);
-    b.setAttribute('aria-label', line ? `Linie ${c + 1}` : `Freie Linie ${c + 1}`);
-    if (line) {
-      const n = G.trains.filter(t => t.line === line).length;
-      b.innerHTML = `<span class="pen-trains">${n}</span>`;
+  for (const mode of MODE_ORDER) {
+    const M = MODES[mode];
+    const group = document.createElement('div');
+    group.className = 'mode-group' + (G.selectedMode === mode ? ' selected' : '');
+
+    const tab = document.createElement('button');
+    tab.className = 'mode-tab';
+    tab.setAttribute('aria-label', `${M.name}: ${G.inv[mode].free} frei`);
+    tab.innerHTML = `${modeIcon(mode)}<span class="mode-name">${M.name}</span><span class="pen-trains">${G.inv[mode].free}</span>`;
+    tab.addEventListener('click', () => selectMode(mode));
+    group.appendChild(tab);
+
+    const used = linesOf(mode);
+    for (const line of used) {
+      const b = document.createElement('button');
+      b.className = 'pen used';
+      b.style.setProperty('--c', LINE_COLORS[line.color]);
+      b.setAttribute('aria-label', `${M.lineName} ${line.color + 1}`);
+      b.innerHTML = `<span class="pen-trains">${vehiclesOn(line)}</span>`;
       b.addEventListener('click', () => openLineMenu(line, b));
-    } else {
-      b.addEventListener('click', () => toast('Freier Stift: Zieh auf dem Plan von Station zu Station.'));
+      group.appendChild(b);
     }
-    box.appendChild(b);
+    for (let k = used.length; k < G.inv[mode].lines; k++) {
+      const b = document.createElement('button');
+      b.className = 'pen';
+      b.setAttribute('aria-label', `Freie ${M.lineName}`);
+      b.addEventListener('click', () => selectMode(mode));
+      group.appendChild(b);
+    }
+    box.appendChild(group);
   }
+  bottomInset = ($('.hud-bottom').offsetHeight || 80) + 10;
 }
 
 let menuLine = null;
@@ -893,9 +1059,12 @@ function openLineMenu(line, anchor) {
   if (menuLine === line) { closeLineMenu(); return; }
   menuLine = line;
   const m = $('#line-menu');
-  const n = G.trains.filter(t => t.line === line).length;
-  $('#lm-add').disabled = G.trainsFree <= 0;
-  $('#lm-remove').disabled = n === 0;
+  const M = MODES[line.mode];
+  const free = G.inv[line.mode].free;
+  $('#lm-add').textContent = `+ ${M.vehicle} (${free} frei)`;
+  $('#lm-remove').textContent = `− ${M.vehicle}`;
+  $('#lm-add').disabled = free <= 0;
+  $('#lm-remove').disabled = vehiclesOn(line) === 0;
   m.hidden = false;
   const r = anchor.getBoundingClientRect();
   const mw = m.offsetWidth;
@@ -910,7 +1079,7 @@ function closeLineMenu() {
 }
 
 $('#lm-add').addEventListener('click', () => {
-  if (menuLine && addTrain(menuLine)) toast('Zug eingesetzt.');
+  if (menuLine && addTrain(menuLine)) toast(`${MODES[menuLine.mode].vehicle} eingesetzt.`);
   closeLineMenu();
 });
 $('#lm-remove').addEventListener('click', () => {
@@ -932,26 +1101,44 @@ for (const b of document.querySelectorAll('[data-speed]')) {
 
 /* ---------- Upgrade am Wochenende ---------- */
 
+const totalLineSlots = () => MODE_ORDER.reduce((a, m) => a + G.inv[m].lines, 0);
+const MODE_TEXT = {
+  bus: 'langsam, 4 Plätze, max. 6 Halte',
+  tram: 'schnelles Einsteigen, max. 8 Halte',
+  metro: 'schnell, beliebig lang',
+  rail: 'sehr schnell, 10 Plätze, ab Hauptbahnhof',
+};
+
+/** Alle möglichen Upgrades; pro Woche werden drei passende ausgelost. */
 const UPGRADES = [
-  {
-    key: 'line', title: 'Neue Linie', text: 'Ein weiterer Stift für eine neue Linie.',
-    icon: '<path d="M8 46 C 20 30, 34 30, 46 8"/><circle cx="8" cy="46" r="4"/><circle cx="46" cy="8" r="4"/>',
-    ok: () => G.maxLines < CFG.maxLines,
-    apply: () => { G.maxLines++; },
-  },
-  {
-    key: 'train', title: 'Extra-Zug', text: 'Noch ein Zug zum Einsetzen.',
-    icon: '<rect x="9" y="12" width="36" height="24" rx="6"/><path d="M9 25h36M18 42l-3 5M36 42l3 5"/>',
+  ...MODE_ORDER.map(mode => ({
+    key: 'line-' + mode, title: `Neue ${MODES[mode].lineName}`, text: MODE_TEXT[mode], icon: MODES[mode].icon,
+    ok: () => G.inv[mode].lines < MODES[mode].maxLines && totalLineSlots() < LINE_COLORS.length,
+    apply: () => { G.inv[mode].lines++; G.selectedMode = mode; },
+  })),
+  ...MODE_ORDER.map(mode => ({
+    key: 'veh-' + mode, title: mode === 'bus' ? '2 Busse' : `Extra-${MODES[mode].vehicle}`,
+    text: `Mehr Fahrzeuge für deine ${MODES[mode].lineName}n.`, icon: MODES[mode].icon,
     ok: () => true,
-    apply: () => { G.trainsFree++; },
-  },
+    apply: () => { G.inv[mode].free += mode === 'bus' ? 2 : 1; },
+  })),
   {
     key: 'big', title: 'Großer Bahnhof', text: 'Eine Station fasst 12 statt 6 Fahrgäste.',
-    icon: '<circle cx="27" cy="27" r="11"/><circle cx="27" cy="27" r="19"/>',
-    ok: () => G.stations.some(s => !s.big),
+    icon: '<circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="9"/>',
+    ok: () => G.stations.some(s => !s.big && s.shape !== 'hub'),
     apply: () => { G.state = 'placeBig'; toast('Tippe auf die Station, die größer werden soll.', 4000); },
   },
 ];
+
+/** Drei verschiedene Upgrades auslosen (fest pro Woche, damit Neuladen nichts ändert) */
+function weeklyUpgrades() {
+  const pool = UPGRADES.filter(u => u.ok());
+  return pool
+    .map((u, i) => ({ u, r: hash(G.week, i, G.stations.length) }))
+    .sort((a, b) => a.r - b.r)
+    .slice(0, 3)
+    .map(x => x.u);
+}
 
 function showUpgrade() {
   G.state = 'upgrade';
@@ -960,10 +1147,10 @@ function showUpgrade() {
   $('#up-title').textContent = `Woche ${G.week - 1} geschafft!`;
   const box = $('#up-cards');
   box.innerHTML = '';
-  for (const up of UPGRADES.filter(u => u.ok())) {
+  for (const up of weeklyUpgrades()) {
     const b = document.createElement('button');
     b.className = 'card';
-    b.innerHTML = `<svg class="ico" viewBox="0 0 54 54">${up.icon}</svg><b>${up.title}</b><small>${up.text}</small>`;
+    b.innerHTML = `<svg class="ico" viewBox="0 0 24 24">${up.icon}</svg><b>${up.title}</b><small>${up.text}</small>`;
     b.addEventListener('click', () => {
       $('#screen-upgrade').hidden = true;
       G.state = 'playing';
@@ -982,7 +1169,7 @@ function showUpgrade() {
    alles andere (Wegfindung, Griffe) wird beim Laden neu berechnet. */
 
 const SAVE_KEY = 'heftmetro.save';
-const SAVE_VERSION = 1;
+const SAVE_VERSION = 2;          // v2: Verkehrsmittel und Hauptbahnhof (v1-Stände werden verworfen)
 const ACTIVE_STATES = ['playing', 'upgrade', 'placeBig'];
 
 function serialize() {
@@ -991,9 +1178,9 @@ function serialize() {
     savedAt: Date.now(),
     state: G.state,
     t: G.t, week: G.week, score: G.score, nextId: G.nextId,
-    maxLines: G.maxLines, trainsFree: G.trainsFree, stationTimer: G.stationTimer,
+    inv: G.inv, selectedMode: G.selectedMode, stationTimer: G.stationTimer,
     stations: G.stations.map(({ id, x, y, shape, queue, over, big, born }) => ({ id, x, y, shape, queue, over, big, born })),
-    lines: G.lines.map(({ id, color, stations }) => ({ id, color, stations })),
+    lines: G.lines.map(({ id, color, mode, stations }) => ({ id, color, mode, stations })),
     trains: G.trains.map(({ id, line, a, b, t, dwell, pax }) => ({ id, line: line.id, a, b, t, dwell, pax })),
   };
 }
@@ -1019,9 +1206,11 @@ function clearSave() {
 /** Prüft einen Spielstand gründlich, damit ein kaputter Stand das Spiel nicht lahmlegt. */
 function isValidSave(d) {
   const num = v => Number.isFinite(v);
-  const shapes = [...COMMON_SHAPES, ...RARE_SHAPES];
+  const shapes = ALL_SHAPES;
   if (!d || d.v !== SAVE_VERSION || !Array.isArray(d.stations) || !Array.isArray(d.lines) || !Array.isArray(d.trains)) return false;
-  if (![d.t, d.week, d.score, d.nextId, d.maxLines, d.trainsFree, d.stationTimer].every(num)) return false;
+  if (![d.t, d.week, d.score, d.nextId, d.stationTimer].every(num)) return false;
+  if (!d.inv || !MODE_ORDER.every(m => num(d.inv[m]?.lines) && num(d.inv[m]?.free))) return false;
+  if (!d.stations.some(st => st.shape === 'hub')) return false;
   const ids = new Set();
   for (const st of d.stations) {
     if (!num(st.id) || !num(st.x) || !num(st.y) || !shapes.includes(st.shape) || !Array.isArray(st.queue)) return false;
@@ -1030,7 +1219,7 @@ function isValidSave(d) {
   }
   const lineIds = new Set();
   for (const l of d.lines) {
-    if (!num(l.id) || !(l.color >= 0 && l.color < LINE_COLORS.length) || !Array.isArray(l.stations) || l.stations.length < 2) return false;
+    if (!num(l.id) || !(l.color >= 0 && l.color < LINE_COLORS.length) || !MODES[l.mode] || !Array.isArray(l.stations) || l.stations.length < 2) return false;
     if (!l.stations.every(id => ids.has(id))) return false;
     lineIds.add(l.id);
   }
@@ -1050,11 +1239,15 @@ function loadSave() {
 function restoreGame(d) {
   newGame();
   Object.assign(G, {
-    t: d.t, week: d.week, score: d.score, nextId: d.nextId,
-    maxLines: clamp(d.maxLines, 1, CFG.maxLines), trainsFree: Math.max(0, d.trainsFree), stationTimer: d.stationTimer,
+    t: d.t, week: d.week, score: d.score, nextId: d.nextId, stationTimer: d.stationTimer,
+    selectedMode: MODES[d.selectedMode] ? d.selectedMode : 'bus',
+    inv: Object.fromEntries(MODE_ORDER.map(m => [m, {
+      lines: clamp(Math.round(d.inv[m].lines), 0, MODES[m].maxLines),
+      free: Math.max(0, Math.round(d.inv[m].free)),
+    }])),
   });
   G.stations = d.stations.map(st => ({ ...st, queue: [...st.queue], over: clamp(+st.over || 0, 0, 0.99), big: !!st.big, born: +st.born || 0, flash: 0 }));
-  G.lines = d.lines.map(l => ({ id: l.id, color: l.color, stations: [...l.stations] }));
+  G.lines = d.lines.map(l => ({ id: l.id, color: l.color, mode: l.mode, stations: [...l.stations] }));
   const lineById = new Map(G.lines.map(l => [l.id, l]));
   G.trains = d.trains.map(tr => ({
     id: tr.id, line: lineById.get(tr.line), a: tr.a, b: tr.b,
@@ -1105,7 +1298,9 @@ function gameOver(st) {
   const rec = best.get();
   const isNew = G.score > rec;
   if (isNew) best.set(G.score);
-  $('#over-reason').textContent = `Die ${SHAPE_NAME[st.shape]}-Station war zu lange überfüllt.`;
+  $('#over-reason').textContent = st.shape === 'hub'
+    ? 'Der Hauptbahnhof war zu lange überfüllt.'
+    : `Die ${SHAPE_NAME[st.shape]}-Station war zu lange überfüllt.`;
   $('#over-score').textContent = G.score;
   $('#over-weeks').textContent = G.week;
   $('#over-record').textContent = isNew ? 'Neuer Rekord!' : rec ? `Rekord: ${rec} Fahrgäste` : '';

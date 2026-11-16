@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>Heft-Metro</title>
-  <meta name="description" content="Plane ein U-Bahn-Netz im Schulheft – ein Spiel für das iPad.">
+  <meta name="description" content="Plane Bus, Tram, U-Bahn und Zug im Schulheft – ein Spiel für das iPad.">
 
   <!-- PWA / „Zum Home-Bildschirm“ -->
   <link rel="manifest" href="manifest.json">
@@ -55,11 +55,7 @@
 
   <!-- ===== Linien-Stifte unten ===== -->
   <footer class="hud hud-bottom">
-    <div class="pens" id="pens" aria-label="Linien"></div>
-    <div class="trains note-chip" title="Freie Züge">
-      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="11" rx="3"/><path d="M4 11h16M8 19l-1.5 2M16 19l1.5 2"/><circle cx="8.5" cy="14" r=".6"/><circle cx="15.5" cy="14" r=".6"/></svg>
-      <span id="trains-free">0</span>
-    </div>
+    <div class="pens" id="pens" aria-label="Verkehrsmittel und Linien"></div>
   </footer>
 
   <!-- Menü für eine Linie (über dem Stift) -->
@@ -76,11 +72,11 @@
   <div class="overlay" id="screen-start">
     <div class="note note-big">
       <h1>Heft-Metro</h1>
-      <p class="lead">Die Stadt wächst. Verbinde die Stationen, bevor sie überfüllt sind.</p>
+      <p class="lead">Die Stadt wächst rund um den Hauptbahnhof. Verbinde die Stationen, bevor sie überfüllt sind.</p>
       <ol class="howto">
-        <li><span class="mini-shape">●</span> Zieh mit Stift oder Finger von Station zu Station – so entsteht eine Linie.</li>
-        <li><span class="mini-shape">▲</span> Fahrgäste wollen zu einer Station mit ihrer Form.</li>
-        <li><span class="mini-shape">■</span> Am Linienende ziehst du weiter. Tipp unten auf einen Stift für Züge oder zum Löschen.</li>
+        <li><span class="mini-shape">●</span> Wähle unten Bus, Tram, U-Bahn oder Zug und zieh mit Stift oder Finger von Station zu Station.</li>
+        <li><span class="mini-shape">▲</span> Fahrgäste wollen zu einer Station mit ihrer Form – viele zum Hauptbahnhof.</li>
+        <li><span class="mini-shape">■</span> Jedes Verkehrsmittel fährt anders: Busse sind langsam und klein, Züge schnell und starten am Hauptbahnhof.</li>
       </ol>
       <p class="record" id="start-record"></p>
       <div class="save-info" id="save-info" hidden></div>
@@ -96,7 +92,7 @@
   <div class="overlay" id="screen-upgrade" hidden>
     <div class="note note-big">
       <h2 id="up-title">Woche 1 geschafft!</h2>
-      <p class="lead">Du bekommst einen neuen Zug. Wähle dazu:</p>
+      <p class="lead">Du bekommst einen Bus geschenkt. Wähle dazu:</p>
       <div class="cards" id="up-cards"></div>
     </div>
   </div>

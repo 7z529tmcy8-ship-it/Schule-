@@ -1,16 +1,29 @@
 # Heft-Metro 🚇
 
-Ein U-Bahn-Planungsspiel im Schulheft-Look – gemacht **nur für das iPad** (Safari / Home-Bildschirm, Apple Pencil und Finger).
+Ein Verkehrs-Planungsspiel im Schulheft-Look – gemacht **nur für das iPad** (Safari / Home-Bildschirm, Apple Pencil und Finger).
 Inspiriert vom Spielprinzip von Mini Metro, aber mit eigener Grafik und eigenem Namen. Alles läuft im Browser und offline, nichts wird hochgeladen.
 
 ## So spielst du
-- Zieh mit Stift oder Finger von Station zu Station – so entsteht eine Linie.
-- Fahrgäste (kleine Formen) wollen zu einer Station mit ihrer Form. Umstiege passieren automatisch.
+- In der Mitte steht der **Hauptbahnhof** (Haus mit „H“). Viele Fahrgäste wollen dorthin, und dort steigen auch die meisten ein.
+- Wähle unten ein Verkehrsmittel und zieh mit Stift oder Finger von Station zu Station – so entsteht eine Linie.
+- Fahrgäste (kleine Formen) wollen zu einer Station mit ihrer Form. Umstiege – auch zwischen Bus, Tram, U-Bahn und Zug – passieren automatisch.
 - Am Linienende („Stiftkappe“) ziehst du die Linie weiter oder zurück.
 - Unten auf einen bunten Stift tippen → Zug hinzufügen/abziehen oder Linie löschen.
 - Jede Woche gibt es einen Zug und eine Wahl: neue Linie, Extra-Zug oder großer Bahnhof.
 - Ist eine Station zu lange überfüllt (roter Kreis), ist Endstation. Dein Rekord wird gespeichert.
 - Oben rechts: Pause, normal, schnell. Verlässt du die App, pausiert das Spiel automatisch.
+
+## Die Verkehrsmittel
+
+| | Bus | Tram | U-Bahn | Zug |
+|---|---|---|---|---|
+| Tempo | langsam | mittel | schnell | sehr schnell |
+| Plätze | 4 | 6 | 6 | 10 |
+| Halte pro Linie | max. 6 | max. 8 | beliebig | max. 5 |
+| Besonderheit | viele Fahrzeuge, jede Woche ein Bus geschenkt | schnelles Ein- und Aussteigen | – | startet immer am Hauptbahnhof, längere Halte |
+| Am Anfang | 2 Linien, 3 Busse | 1 Linie, 1 Tram | 1 Linie, 1 U-Bahn | 1 Strecke, 1 Zug |
+
+Jede Woche werden drei Upgrades ausgelost: neue Linien, zusätzliche Fahrzeuge oder ein großer Bahnhof.
 
 ## Speichern
 Das Spiel **speichert sich automatisch**: alle 5 Sekunden, beim Pausieren, nach jedem Wochen-Upgrade und sobald du die App verlässt.
