@@ -90,6 +90,27 @@
 
   <p class="hint" id="hint" hidden></p>
 
+  <!-- Sandbox-Werkzeuge (nur im Sandbox-Modus) -->
+  <div class="sandbox note" id="sandbox" hidden>
+    <span class="sb-title">Sandbox</span>
+    <div class="sb-tools" id="sb-tools" role="radiogroup" aria-label="Werkzeug">
+      <button class="sb-tool" data-tool="lines"><svg class="ico" viewBox="0 0 24 24"><path d="M4 18L10 9l5 6 5-9"/><circle cx="4" cy="18" r="1.6"/><circle cx="20" cy="6" r="1.6"/></svg>Linien</button>
+      <button class="sb-tool" data-tool="build"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>Bauen</button>
+      <button class="sb-tool" data-tool="tier"><svg class="ico" viewBox="0 0 24 24"><path d="M12 20V5M6 11l6-6 6 6"/></svg>Ausbau</button>
+      <button class="sb-tool" data-tool="shape"><svg class="ico" viewBox="0 0 24 24"><path d="M12 4l7 12H5z"/><circle cx="12" cy="18" r="2"/></svg>Form</button>
+      <button class="sb-tool" data-tool="move"><svg class="ico" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></svg>Schieben</button>
+      <button class="sb-tool" data-tool="remove"><svg class="ico" viewBox="0 0 24 24"><path d="M5 7h14M9 7V4.5h6V7M7 7l1 13h8l1-13"/></svg>Abreißen</button>
+    </div>
+    <div class="sb-build" id="sb-build" hidden>
+      <span class="sb-label">Form</span>
+      <div class="sb-row" id="sb-shapes"></div>
+      <span class="sb-label">Stationsart</span>
+      <div class="sb-row" id="sb-tiers"></div>
+    </div>
+    <span class="sb-label">Fahrgäste</span>
+    <div class="sb-row" id="sb-demand"></div>
+  </div>
+
   <!-- Laufendes Ereignis (z. B. 96-Spiel) -->
   <div class="event-chip note-chip" id="event-chip" hidden>
     <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 21V4M6 4h11l-2.5 4L17 12H6"/></svg>
@@ -126,6 +147,7 @@
       <div class="start-actions">
         <button class="pen-btn primary" id="btn-continue" hidden>Weiterspielen</button>
         <button class="pen-btn primary" id="btn-start">Losfahren</button>
+        <button class="pen-btn" id="btn-sandbox">Sandbox</button>
         <button class="pen-btn" id="btn-tutorial">Anleitung</button>
       </div>
       <p class="fineprint">Gemacht für das iPad.</p>

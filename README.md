@@ -171,3 +171,17 @@ Beim ersten Öffnen erscheint eine Paywall: „5,99 € einmalig“ oder Freisch
 - Der Code steht nur als Prüfsumme in `game.js` (`CODE_HASH`). Neuen Code setzen: Prüfsumme mit `codeHash('NEUERCODE')` in der Browser-Konsole berechnen und eintragen.
 - Achtung: Eine reine Browser-Sperre ist nicht wirklich sicher – wer sich auskennt, kann sie umgehen. Für echtes Bezahlen braucht es einen Zahlungsanbieter mit Server.
 
+## Sandbox
+Auf dem Startzettel „Sandbox“ tippen (geht in Hannover und Europa). Dann gilt:
+- Es entstehen **keine Stationen von allein**, es gibt **kein Game Over**, keine Upgrade-Zettel und in Europa kein Geld.
+- Am Anfang steht nur der Hauptbahnhof (bzw. Frankfurt). Alle Linien-Plätze sind frei, dazu 30 Fahrzeuge pro Verkehrsmittel.
+- Werkzeuge links:
+  - **Linien**: ganz normal zeichnen, verlängern, einfügen, Ringe schließen.
+  - **Bauen**: auf die Karte tippen. Form (●▲■★◆✚) und Stationsart (Auto/Bus/T/U/S) wählst du vorher. In der Nähe eines Stadtteils rastet die Station dort ein und bekommt seinen Namen.
+  - **Ausbau**: Station antippen → Bus → Tram → U-Bahn → Bahnhof → Bus (nie kleiner, als die Linien dort brauchen).
+  - **Form**: Station antippen → nächste Form.
+  - **Schieben**: Station anfassen und verschieben.
+  - **Abreißen**: Station antippen; zu kurze Linien verschwinden mit.
+  - **Fahrgäste**: Aus / Wenig / Normal / Viel.
+- Die Sandbox wird wie ein normales Spiel gespeichert.
+

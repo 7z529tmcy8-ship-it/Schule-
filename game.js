@@ -345,6 +345,9 @@ function newGame(world = SC?.key || 'hannover', focus = 'balanced') {
     world: SC.key,         // Spielwelt: 'hannover' | 'europa'
     districtsLeft: HANNOVER.districts.map(d => d.name),   // noch nicht erschlossene Stadtteile
     buildChoice: null,     // Vorschläge für die nächste Station: { opts: [...], until }
+    sandbox: false,        // Sandbox: frei bauen, kein Game Over
+    tool: 'lines',         // Sandbox-Werkzeug: lines | build | tier | shape | move | remove
+    sbShape: 'circle', sbTier: 'auto', sbDemand: 1,
   };
   // Hauptbahnhof in der Mitte, drei Stadtteile darum (List, Linden-Nord, Südstadt) – Formen gemischt
   addStation('hub', 0, 0, SC.hubName, 'rail');
@@ -745,6 +748,7 @@ function update(dt) {
   const week = Math.floor(G.t / (dayLen() * 7)) + 1;
   if (week > G.week) {
     G.week = week;
+    if (G.sandbox) return;                 // Sandbox: keine Upgrade-Zettel, keine Bilanz
     // Jede Woche mindestens ein Fahrzeug – dort, wo es am meisten fehlt
     if (SC.business) { closeWeekBalance(); showBalance(); return; }
     giveWeeklyVehicle();
@@ -752,11 +756,11 @@ function update(dt) {
     return;
   }
 
-  updateEvent();
+  if (!G.sandbox) updateEvent();
 
-  // Neue Stationen
+  // Neue Stationen (in der Sandbox baust du selbst)
   G.stationTimer -= dt;
-  if (G.stationTimer <= 0) {
+  if (G.stationTimer <= 0 && !G.sandbox) {
     if (G.buildChoice) resolveBuildChoice(null);
     G.stationTimer = (SC.spawnInterval ? SC.spawnInterval(G.week) : Math.max(11, 23 - G.week)) * rand(0.85, 1.15);
     if (!offerBuildChoice(G.stationTimer * 0.7)) spawnStation();
@@ -765,19 +769,26 @@ function update(dt) {
 
   // Neue Fahrgäste und Überfüllung
   // Sanfter Einstieg, dann steigt der Andrang Woche für Woche
-  const rate = Math.min(0.35, 0.035 + 0.016 * G.week + G.t * 0.0003) * (G.event ? 1.4 : 1) * demandFactor();
+  const rate = G.sandbox
+    ? 0.08 * G.sbDemand
+    : Math.min(0.35, 0.035 + 0.016 * G.week + G.t * 0.0003) * (G.event ? 1.4 : 1) * demandFactor();
   for (const st of G.stations) {
     const stRate = st.shape === 'hub' ? rate * 1.6 : rate;    // am Hauptbahnhof ist mehr los
     if (G.t - st.born > 3 && Math.random() < stRate * dt) {
       const dest = pickDestination(st.shape);
       if (dest) st.queue.push(dest);
     }
+    if (G.sandbox) {                      // Sandbox: Überzählige gehen zu Fuß, kein Game Over
+      if (st.queue.length > capacityOf(st)) st.queue.length = capacityOf(st);
+      st.flash = Math.max(0, st.flash - dt);
+      continue;
+    }
     if (st.queue.length > capacityOf(st)) st.over += dt / CFG.overcrowdTime;
     else st.over = Math.max(0, st.over - dt / CFG.recoverTime);
     st.flash = Math.max(0, st.flash - dt);
     if (st.over >= 1) { gameOver(st); return; }
   }
-  if (SC.business && payRunningCosts(dt)) return;
+  if (SC.business && !G.sandbox && payRunningCosts(dt)) return;
   updateVehicles(dt);
   for (const f of G.floaters) f.t += dt;
   G.floaters = G.floaters.filter(f => f.t < 1.4);
@@ -866,7 +877,7 @@ function arrive(tr) {
   tr.pax = tr.pax.filter(p => {
     if (p === st.shape) {                                                         // angekommen
       G.score++; moved++; st.flash = 0.35;
-      if (SC.business) earnFare(st, tr.line.mode);
+      if (SC.business && !G.sandbox) earnFare(st, tr.line.mode);
       return false;
     }
     const here = hops(p, st.id), there = hops(p, next);
@@ -1907,6 +1918,7 @@ function onDown(e) {
     return true;
   }
   if (G.state !== 'playing') return false;
+  if (G.sandbox && G.tool !== 'lines') return sandboxTap(e, x, y);
 
   const opt = choiceAt(x, y);
   if (opt) {
@@ -1956,6 +1968,7 @@ function onMove(e) {
   if (!drag || e.pointerId !== drag.id) return;
   const [x, y] = toWorld(e.clientX, e.clientY);
   drag.x = x; drag.y = y;
+  if (drag.mode === 'move') { drag.st.x = x; drag.st.y = y; return; }
   if (drag.closed) return;
   const st = stationAt(x, y);
   if (drag.mode === 'insert') { drag.target = st && canInsert(drag.line, drag.i, st) ? st.id : null; return; }
@@ -2083,6 +2096,8 @@ function onUp(e) {
   } else if (drag.mode === 'extend' && drag.line.stations.length < 2) {
     deleteLine(drag.line);
     toast('Linie gelöscht.');
+  } else if (drag.mode === 'move') {
+    rebuildRoutes();
   } else if (drag.mode === 'insert' && drag.target != null) {
     insertStation(drag.line, drag.i, drag.target);
     const st = stationById(drag.target);
@@ -2193,7 +2208,7 @@ function setText(id, text) {
 
 function updateHud() {
   setText('#score', String(G.score));
-  const biz = !!SC.business;
+  const biz = !!SC.business && !G.sandbox;
   if (hudCache.biz !== biz) { hudCache.biz = biz; $('#money-chip').hidden = !biz; $('#btn-shop').hidden = !biz; }
   if (biz) {
     setText('#money', fmtMoney(G.money));
@@ -2218,10 +2233,14 @@ function updateHud() {
   // Hinweis am Anfang
   const hint = $('#hint');
   const showHint = G.state === 'playing' && G.lines.length === 0 && !drag && !G.tutorial;
-  if (hint.hidden === showHint) {
+  const hintText = G.sandbox
+    ? (G.stations.length < 2 ? (G.tool === 'build' ? 'Sandbox: Tippe auf die Karte, um Stationen zu bauen.' : 'Sandbox: Links „Bauen“ wählen und Stationen auf die Karte tippen.') : 'Jetzt „Linien“ wählen und von Station zu Station ziehen.')
+    : SC.hint;
+  if (hint.hidden === showHint || (showHint && hint.textContent !== hintText)) {
     hint.hidden = !showHint;
-    hint.textContent = SC.hint;
+    hint.textContent = hintText;
   }
+  syncSandboxUi();
   for (const b of document.querySelectorAll('[data-speed]')) b.classList.toggle('is-active', +b.dataset.speed === G.speed);
   $('#zoom-fit').classList.toggle('is-active', !cam.manual);
 
@@ -2481,6 +2500,7 @@ function serialize() {
     money: G.money, price: G.price, marketingUntil: G.marketingUntil,
     weekRev: G.weekRev, weekCost: G.weekCost, history: G.history, lastWeek: G.lastWeek,
     districtsLeft: G.districtsLeft,
+    sandbox: G.sandbox, sbDemand: G.sbDemand,
     lines: G.lines.map(({ id, color, mode, label, stations, loop }) => ({ id, color, mode, label, stations, loop: !!loop })),
     trains: G.trains.map(({ id, line, a, b, t, dwell, pax }) => ({ id, line: line.id, a, b, t, dwell, pax })),
   };
@@ -2583,6 +2603,8 @@ function restoreGame(d) {
   G.districtsLeft = Array.isArray(d.districtsLeft)
     ? d.districtsLeft.filter(n => known.has(n) && !used.has(n))
     : HANNOVER.districts.map(x => x.name).filter(n => !used.has(n));
+  G.sandbox = !!d.sandbox;
+  G.sbDemand = [0, 0.5, 1, 2].includes(d.sbDemand) ? d.sbDemand : 1;
   G.lines = [];
   for (const l of d.lines) {
     const label = typeof l.label === 'string' && l.label.trim() ? l.label.trim().slice(0, 6) : nextLineName(l.mode);
@@ -2817,7 +2839,7 @@ function gameOver(st, reason = 'crowded') {
   drag = null;
   closeLineMenu();
   const rec = best.get();
-  const isNew = G.score > rec;
+  const isNew = !G.sandbox && G.score > rec;
   if (isNew) best.set(G.score);
   $('#over-reason').textContent = reason === 'bankrupt'
     ? `Deine Airline ist pleite – der Kreditrahmen von ${fmtMoney(SC.business.credit)} ist aufgebraucht.`
@@ -2862,7 +2884,7 @@ function showStart(saved, canResume = !!saved) {
   start.textContent = canResume ? 'Neues Spiel' : 'Losfahren';
   start.classList.toggle('primary', !canResume);
   if (saved) {
-    info.textContent = `Gespeichert ${timeAgo(saved.savedAt)}: ${SCENARIOS[saved.world]?.title || 'Hannover'} · Woche ${saved.week} · ${saved.score} Fahrgäste`;
+    info.textContent = `Gespeichert ${timeAgo(saved.savedAt)}: ${SCENARIOS[saved.world]?.title || 'Hannover'}${saved.sandbox ? ' (Sandbox)' : ''} · Woche ${saved.week} · ${saved.score} Fahrgäste`;
   }
   $('#screen-start').hidden = false;
 }
@@ -3522,6 +3544,169 @@ function frame(now) {
 
 window.addEventListener('resize', resize);
 resize();
+/* ---------- Sandbox ----------
+   Freies Bauen: keine Stationen von allein, kein Game Over, keine Upgrades.
+   Werkzeuge links: Linien ziehen, Station bauen (Form + Art wählbar),
+   ausbauen, Form ändern, verschieben, abreißen; Fahrgast-Menge regelbar. */
+
+const SB_SHAPES = ['circle', 'triangle', 'square', 'star', 'diamond', 'cross'];
+const SB_SHAPE_SIGN = { circle: '●', triangle: '▲', square: '■', star: '★', diamond: '◆', cross: '✚' };
+const SB_DEMAND = [[0, 'Aus'], [0.5, 'Wenig'], [1, 'Normal'], [2, 'Viel']];
+const TOOL_HELP = {
+  lines: 'Linien: unten Verkehrsmittel wählen und von Station zu Station ziehen.',
+  build: 'Bauen: tippe auf die Karte. In der Nähe eines Stadtteils bekommt die Station seinen Namen.',
+  tier: 'Ausbau: tippe auf eine Station – Bus → Tram → U-Bahn → Bahnhof → Bus.',
+  shape: 'Form: tippe auf eine Station, um ihre Form zu wechseln.',
+  move: 'Schieben: Station anfassen und an eine neue Stelle ziehen.',
+  remove: 'Abreißen: tippe auf eine Station. Der Hauptbahnhof bleibt stehen.',
+};
+
+function startSandbox(world) {
+  clearSave();
+  newGame(world);
+  G.sandbox = true;
+  G.tool = 'build';
+  // Nur der Hauptbahnhof – alles andere baust du selbst
+  G.stations = G.stations.filter(s => s.shape === 'hub');
+  G.districtsLeft = HANNOVER.districts.map(d => d.name);
+  for (const m of MODE_ORDER) G.inv[m] = { lines: MODES[m].maxLines, free: 30 };
+  rebuildRoutes();
+  cam.ready = false;
+  G.state = 'playing';
+  G.speed = 1;
+  hudCache.pens = null;
+  toast('Sandbox: Baue Stationen, wo du willst, und zieh Linien – ohne Zeitdruck und ohne Game Over.', 4200);
+}
+
+function setTool(tool) {
+  G.tool = tool;
+  drag = null;
+  closeLineMenu();
+  toast(TOOL_HELP[tool], 2600);
+}
+
+/** Werkzeugleiste an den Spielzustand anpassen (wird aus updateHud aufgerufen) */
+function syncSandboxUi() {
+  const on = G.sandbox && G.state !== 'start' && G.state !== 'over';
+  const key = on ? `${G.tool}|${G.sbShape}|${G.sbTier}|${G.sbDemand}|${SC.key}` : 'off';
+  if (hudCache.sb === key) return;
+  hudCache.sb = key;
+  $('#sandbox').hidden = !on;
+  if (!on) return;
+  for (const b of document.querySelectorAll('.sb-tool')) b.classList.toggle('is-active', b.dataset.tool === G.tool);
+  $('#sb-build').hidden = G.tool !== 'build';
+  const chips = (box, items, isOn, onTap, cls = () => '') => {
+    box.innerHTML = '';
+    for (const [val, label, title] of items) {
+      const b = document.createElement('button');
+      b.className = 'sb-chip ' + cls(val) + (isOn(val) ? ' is-active' : '');
+      b.textContent = label;
+      if (title) b.setAttribute('aria-label', title);
+      b.addEventListener('click', () => { onTap(val); hudCache.sb = null; });
+      box.appendChild(b);
+    }
+  };
+  chips($('#sb-shapes'), SB_SHAPES.map(s => [s, SB_SHAPE_SIGN[s], s]), v => v === G.sbShape, v => { G.sbShape = v; });
+  chips($('#sb-tiers'), [['auto', 'Auto', 'Wie der Stadtteil'], ...TIERS.map(t => [t, TIER_INFO[t].badge || 'Bus', TIER_INFO[t].name])],
+    v => v === G.sbTier, v => { G.sbTier = v; }, v => 't-' + v + (v === 'auto' || v === 'bus' ? ' wide' : ''));
+  chips($('#sb-demand'), SB_DEMAND.map(([v, l]) => [v, l]), v => v === G.sbDemand, v => { G.sbDemand = v; }, () => 'wide');
+}
+
+for (const b of document.querySelectorAll('.sb-tool')) b.addEventListener('click', () => setTool(b.dataset.tool));
+
+/** Höchste Stationsart, die die Linien an dieser Station brauchen */
+function neededTier(st) {
+  let r = 0;
+  for (const l of G.lines) if (l.stations.includes(st.id)) r = Math.max(r, tierRank(MODES[l.mode].tier));
+  return r;
+}
+
+/** Tippen/Ziehen mit einem Sandbox-Werkzeug. true = Berührung verbraucht. */
+function sandboxTap(e, x, y) {
+  const st = stationAt(x, y);
+  const grab = () => {
+    if (e.pointerType === 'pen') penActive = true;
+    try { canvas.setPointerCapture(e.pointerId); } catch { /* nicht kritisch */ }
+    e.preventDefault();
+    return true;
+  };
+  switch (G.tool) {
+    case 'build': {
+      if (st) { toast('Hier steht schon eine Station.'); return true; }
+      // In der Nähe eines freien Stadtteils: dort einrasten und seinen Namen übernehmen
+      let d = null, dBest = 1.8;
+      for (const n of G.districtsLeft) {
+        const c = HANNOVER.districts.find(q => q.name === n);
+        const dd = c ? dist(c.x, c.y, x, y) : Infinity;
+        if (dd < dBest && !G.stations.some(s => dist(s.x, s.y, c.x, c.y) < 1.4)) { dBest = dd; d = c; }
+      }
+      const px0 = d ? d.x : x, py0 = d ? d.y : y;
+      if (G.stations.some(s => dist(s.x, s.y, px0, py0) < 1.4)) { toast('Zu nah an einer anderen Station.'); return true; }
+      const tier = G.sbTier === 'auto' ? (d ? tierOfDistrict(d.name) : 'bus') : G.sbTier;
+      const nst = addStation(G.sbShape, px0, py0, d ? d.name : '', tier);
+      if (d) G.districtsLeft = G.districtsLeft.filter(n => n !== d.name);
+      nst.flash = 0.35;
+      rebuildRoutes();
+      return true;
+    }
+    case 'tier': {
+      if (!st) return false;
+      if (st.shape === 'hub') { toast(`${SC.hubName} ist schon die größte Station.`); return true; }
+      const need = neededTier(st);
+      let k = tierRank(st.tier);
+      do { k = (k + 1) % TIERS.length; } while (k < need);
+      st.tier = TIERS[k];
+      st.flash = 0.35;
+      rebuildRoutes();
+      toast(`${st.name || 'Station'}: jetzt ${TIER_INFO[st.tier].a} ${TIER_INFO[st.tier].name}.`);
+      return true;
+    }
+    case 'shape': {
+      if (!st) return false;
+      if (st.shape === 'hub') { toast(`${SC.hubName} behält seine Form.`); return true; }
+      st.shape = SB_SHAPES[(SB_SHAPES.indexOf(st.shape) + 1) % SB_SHAPES.length];
+      st.queue = st.queue.filter(p => p !== st.shape);     // wer hierher wollte, ist schon da
+      st.flash = 0.35;
+      rebuildRoutes();
+      return true;
+    }
+    case 'move': {
+      if (!st) return false;
+      drag = { mode: 'move', st, x, y, id: e.pointerId };
+      return grab();
+    }
+    case 'remove': {
+      if (!st) return false;
+      if (st.shape === 'hub') { toast(`${SC.hubName} kann nicht abgerissen werden.`); return true; }
+      removeStation(st);
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Station abreißen: aus allen Linien nehmen, zu kurze Linien löschen */
+function removeStation(st) {
+  for (const line of [...G.lines]) {
+    if (!line.stations.includes(st.id)) continue;
+    line.stations = line.stations.filter(id => id !== st.id);
+    if (line.loop && line.stations.length < 3) line.loop = false;
+    if (line.stations.length < 2) deleteLine(line);
+  }
+  G.stations = G.stations.filter(s => s !== st);
+  for (const line of G.lines) syncTrains(line);
+  if (st.name && HANNOVER.districts.some(d => d.name === st.name)) G.districtsLeft.push(st.name);
+  if (G.event?.stationId === st.id) G.event = null;
+  rebuildRoutes();
+  autoAssignVehicles();
+}
+
+$('#btn-sandbox').addEventListener('click', () => {
+  if (G.resumeState && !confirm('Sandbox starten? Dein gespeichertes Spiel wird dabei überschrieben.')) return;
+  $('#screen-start').hidden = true;
+  startSandbox(worldPref.get());
+});
+
 /* ---------- Paywall ----------
    Noch ohne echtes Bezahlen: Der Kauf-Knopf zeigt nur einen Hinweis,
    freigeschaltet wird mit Code. Gespeichert wird die Freischaltung auf dem Gerät.
