@@ -1,59 +1,18 @@
-# Meine Handschrift ✍️
+# Heft-Metro 🚇
 
-Eine Web-App für das iPad, die getippten Text in **deine eigene Handschrift** umwandelt – für Briefe, Karten, Notizen und Lernzettel.
-Alles läuft im Browser. Nichts wird hochgeladen: Deine Zeichen bleiben im Speicher von Safari auf deinem iPad.
+Ein U-Bahn-Planungsspiel im Schulheft-Look – gemacht **nur für das iPad** (Safari / Home-Bildschirm, Apple Pencil und Finger).
+Inspiriert vom Spielprinzip von Mini Metro, aber mit eigener Grafik und eigenem Namen. Alles läuft im Browser und offline, nichts wird hochgeladen.
 
----
+## So spielst du
+- Zieh mit Stift oder Finger von Station zu Station – so entsteht eine Linie.
+- Fahrgäste (kleine Formen) wollen zu einer Station mit ihrer Form. Umstiege passieren automatisch.
+- Am Linienende („Stiftkappe“) ziehst du die Linie weiter oder zurück.
+- Unten auf einen bunten Stift tippen → Zug hinzufügen/abziehen oder Linie löschen.
+- Jede Woche gibt es einen Zug und eine Wahl: neue Linie, Extra-Zug oder großer Bahnhof.
+- Ist eine Station zu lange überfüllt (roter Kreis), ist Endstation. Dein Rekord wird gespeichert.
+- Oben rechts: Pause, normal, schnell. Verlässt du die App, pausiert das Spiel automatisch.
 
-## So funktioniert die App
-
-### 1 · Handschrift erfassen
-1. Schreib jedes Zeichen mit dem Apple Pencil (oder Finger) in das große Feld.
-   Die Hilfslinien helfen, dass alles gleich groß wird:
-   - **Oberlinie** – Höhe der Großbuchstaben und Oberlängen (b, d, h, k, l)
-   - **Mittellinie** (gestrichelt) – Höhe von a, c, e, m, n …
-   - **Grundlinie** – darauf „steht“ die Schrift
-   - **Unterlinie** – bis hierher gehen Unterlängen (g, j, p, q, y)
-2. Oben rechts gibt es **V1, V2, V3**: Pro Zeichen kannst du bis zu 3 Varianten schreiben. Mehr Varianten = natürlicherer Text.
-3. **Nächstes Zeichen ▶** geht weiter. Rechts siehst du alle Zeichen und den Fortschritt; tippe ein Zeichen an, um direkt dorthin zu springen.
-4. Gespeichert wird automatisch nach jedem Strich. Du kannst jederzeit aufhören und später weitermachen.
-
-**Buchstabenpaare (optional):** Ganz unten im Raster stehen Paare wie *sch, ch, ck, st, ie, en, er, ll, tt*. Schreib sie verbunden in einem Zug, so wie mitten im Wort.
-Die App setzt sie dann automatisch statt der Einzelbuchstaben ein, aber nicht jedes Mal, damit es natürlich bleibt. Fehlende Paare sind kein Problem: Dann nimmt die App die Einzelbuchstaben.
-
-**Apple Pencil:** Sobald die App den Stift erkennt, schaltet sie „Finger zeichnet“ aus, damit dein Handballen keine Striche macht. Mit dem Schalter kannst du das ändern.
-
-### 2 · Text & Export
-- Links Text eintippen oder einfügen, rechts siehst du die Live-Vorschau auf A4 (lange Texte → mehrere Seiten).
-- Fehlt ein Zeichen, erscheint ein Hinweis. Antippen bringt dich direkt zum Erfassen. Zeichen wie € oder @ kannst du dort als **eigene Zeichen** hinzufügen.
-- Einstellungen: Farbe, Strichdicke, Schriftgröße, Zeilen-, Buchstaben- und Wortabstand, Schwankungen (Größe, Neigung, Abstand), wellige Zeilen, Papier (Weiß, Linien, Karo, Kariert 5 mm, vergilbt).
-- **Größe automatisch angleichen** (unter „Stift & Schrift“): Hast du beim Erfassen manche Buchstaben zu klein oder zu groß geschrieben oder schweben sie über der Grundlinie, korrigiert die App das beim Schreiben. Maßstab ist deine eigene typische Größe (der Mittelwert aller ähnlichen Buchstaben), nicht eine Computerschrift. Deine gespeicherten Zeichen bleiben dabei unverändert; bei 0 % ist die Korrektur aus.
-- **Buchstabenpaare verwenden** lässt sich unter „Natürlichkeit“ abschalten.
-- **🎲 Neu mischen** würfelt die kleinen Unregelmäßigkeiten neu.
-- **PDF erstellen** / **PNG erstellen** → danach **Teilen / Sichern …** (iPad-Teilen-Menü: „In Dateien sichern“, „Drucken“, AirDrop …) oder **Herunterladen**.
-
-### Formatierung (z. B. für Lernzettel)
-Text im Textfeld markieren und oben einen Knopf antippen – oder die Zeichen direkt tippen:
-
-| Eingabe | Ergebnis |
-|---|---|
-| `# Titel` (am Zeilenanfang) | große, unterstrichene Überschrift |
-| `## Titel` | kleinere Überschrift |
-| `- Punkt` (auch `* ` oder `• `) | Aufzählungspunkt, Folgezeilen eingerückt |
-| `==wichtig==` | Textmarker (Gelb, Grün, Pink oder Blau) |
-| `**Merke**` | Zweitfarbe (Rot, Grün oder Orange) |
-| `__Text__` | unterstrichen |
-
-Die Farben stellst du in der Karte „Formatierung“ ein. Ein Marker ohne Gegenstück (z. B. nur ein `**`) bleibt als normaler Text stehen.
-
-### ⚠️ Backup nicht vergessen!
-Safari kann Website-Daten löschen (z. B. wenn der Speicher knapp ist oder du die App lange nicht öffnest).
-Tippe deshalb ab und zu auf **Backup sichern** und wähle **In Dateien sichern** (am besten iCloud Drive).
-Mit **Backup laden** holst du deine Handschrift aus der Dateien-App zurück – auch auf einem neuen iPad.
-
----
-
-## Die App aufs iPad bringen (kostenlos)
+## Das Spiel aufs iPad bringen (kostenlos)
 
 Die App muss einmal im Internet liegen (über **https**), damit Safari sie installieren kann. Danach funktioniert sie auch **offline**.
 Du brauchst dafür keinen Computer – alles geht auf dem iPad.
@@ -65,7 +24,7 @@ Du brauchst dafür keinen Computer – alles geht auf dem iPad.
 4. Bei **Source** wähle **Deploy from a branch**, darunter den Branch, in dem die App liegt (z. B. `main` oder `master`) und den Ordner **/ (root)** → **Save**.
 5. Nach 1–2 Minuten erscheint oben die Adresse, z. B.
    `https://DEIN-NAME.github.io/Schule-/`
-   Hinweis: Bei einem **privaten** Repository geht GitHub Pages nur mit einem bezahlten Konto. Dann das Repository auf „Public“ stellen (deine Handschrift ist dort nicht enthalten – die liegt nur auf deinem iPad) oder Weg B nehmen.
+   Hinweis: Bei einem **privaten** Repository geht GitHub Pages nur mit einem bezahlten Konto. Dann das Repository auf „Public“ stellen oder Weg B nehmen.
 
 ### Weg B: Netlify Drop (ohne GitHub)
 1. Lade das Projekt als ZIP herunter (auf GitHub: **Code → Download ZIP**). Die Datei landet in der Dateien-App unter „Downloads“.
@@ -80,51 +39,28 @@ Du brauchst dafür keinen Computer – alles geht auf dem iPad.
 3. Wähle **Zum Home-Bildschirm** → **Hinzufügen**.
 4. Starte die App ab jetzt immer über das neue Symbol auf dem Home-Bildschirm. Sie läuft dann im Vollbild wie eine echte App und funktioniert offline.
 
-> Wichtig: Die App auf dem Home-Bildschirm und die Seite in Safari haben **getrennte Speicher**. Erfasse deine Handschrift also in der installierten App (oder übertrage sie per Backup).
+> Hinweis: Die App auf dem Home-Bildschirm und die Seite in Safari haben getrennte Speicher – dein Rekord wird also pro Variante gemerkt.
+
 
 ### Updates
-Wenn sich am Code etwas ändert: In `sw.js` die Zeile `CACHE_VERSION = 'handschrift-v3'` hochzählen (v4, v5 …) und neu hochladen.
-Die App holt sich die neue Version beim nächsten Start mit Internet (eventuell zweimal öffnen).
+Nach Änderungen am Code in `sw.js` die Zeile `CACHE_VERSION = 'heftmetro-v2'` hochzählen (v3, v4 …).
+Das iPad holt sich die neue Version beim nächsten Start mit Internet (eventuell zweimal öffnen).
 
----
-
-## Technik (für Neugierige)
+## Technik
 
 | Datei | Inhalt |
 |---|---|
-| `index.html` | Aufbau der Oberfläche |
-| `style.css` | Design, Quer-/Hochformat, Safe Areas |
-| `app.js` | Zeichnen, Speichern (IndexedDB), Layout, Vorschau, PDF/PNG-Export, Backup |
+| `index.html` | Aufbau: Spielfeld, Status, Linien-Stifte, Zettel (Start, Upgrade, Game Over) |
+| `style.css` | Schulheft-Design, Safe Areas, Quer- und Hochformat |
+| `game.js` | Spiellogik, Wegfindung, Zeichnen (Canvas), Pencil-/Finger-Eingabe |
 | `sw.js` | Service Worker für Offline-Nutzung |
 | `manifest.json`, `icons/` | PWA-Daten für den Home-Bildschirm |
-| `vendor/jspdf.umd.min.js` | jsPDF 4.2.1 (MIT-Lizenz, siehe `vendor/jspdf-LICENSE.txt`), lokal für Offline-PDF |
+| `.claude/skills/heft-metro-design/SKILL.md` | Design-System (Farben, Schrift, Zeichenstil, iPad-Regeln) |
 
-- Jedes Zeichen wird **als Striche** (Punkte mit Druckstärke) **und** als zugeschnittenes, transparentes **PNG** gespeichert, mit der Lage der Grundlinie. Die Striche erlauben es, Farbe und Strichdicke nachträglich zu ändern und in jeder Größe scharf zu drucken.
-- Die Vorschau rendert nur sichtbare Seiten, der Export arbeitet Seite für Seite mit 200 dpi – das schont den iPad-Speicher.
-- Typografische Zeichen aus Word (`„ “ ’ – …`) werden automatisch auf deine erfassten `" ' - .` abgebildet.
+Spiel-Balance (Tageslänge, Kapazität, Zuggeschwindigkeit …) steht gesammelt in `CFG` oben in `game.js`.
 
 ### Lokal testen (mit Computer, optional)
 ```bash
 npx http-server -p 8080 .
 # dann http://localhost:8080 öffnen
 ```
-
----
-
-# Heft-Metro 🚇 (Spiel, Ordner `spiel/`)
-
-Ein U-Bahn-Planungsspiel im Schulheft-Look, nur für das iPad. Inspiriert vom Spielprinzip von Mini Metro, aber mit eigener Grafik und eigenem Namen.
-
-**Adresse:** dieselbe wie die Handschrift-App plus `spiel/`, z. B. `https://DEIN-NAME.github.io/Schule-/spiel/`.
-Installieren wie oben: in Safari öffnen → Teilen → „Zum Home-Bildschirm“. Es läuft dann offline als eigene App.
-
-**So spielst du**
-- Zieh mit Stift oder Finger von Station zu Station – so entsteht eine Linie.
-- Fahrgäste (kleine Formen) wollen zu einer Station mit ihrer Form; Umstiege passieren automatisch.
-- Am Linienende („Stiftkappe“) ziehst du die Linie weiter oder zurück.
-- Unten auf einen bunten Stift tippen → Zug hinzufügen/abziehen oder Linie löschen.
-- Jede Woche gibt es einen Zug und eine Wahl: neue Linie, Extra-Zug oder großer Bahnhof.
-- Ist eine Station zu lange überfüllt (roter Kreis), ist Endstation.
-
-Das Design-System liegt als Skill in `.claude/skills/heft-metro-design/SKILL.md`.
-Nach Code-Änderungen in `spiel/sw.js` die `CACHE_VERSION` hochzählen.

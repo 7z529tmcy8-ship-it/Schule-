@@ -2,240 +2,112 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <!-- viewport-fit=cover: Inhalt darf bis in die Ecken, Safe Areas regeln wir per CSS.
-       Zoomen ist abgeschaltet, damit Zeichnen und Doppeltippen nichts vergrößern. -->
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <title>Meine Handschrift</title>
-  <meta name="description" content="Wandelt getippten Text in die eigene Handschrift um – offline, alles bleibt auf dem iPad.">
+  <title>Heft-Metro</title>
+  <meta name="description" content="Plane ein U-Bahn-Netz im Schulheft – ein Spiel für das iPad.">
 
   <!-- PWA / „Zum Home-Bildschirm“ -->
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#f4f3ef">
+  <meta name="theme-color" content="#fbfaf6">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Handschrift">
-  <meta name="format-detection" content="telephone=no">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Heft-Metro">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
-  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
 
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- ===== Kopfzeile mit den zwei Bereichen ===== -->
-  <header class="topbar">
-    <div class="brand">
-      <img src="icons/icon-192.png" alt="" class="brand-icon">
-      <span>Meine Handschrift</span>
+  <!-- Spielfeld -->
+  <canvas id="game" class="board" aria-label="Spielfeld"></canvas>
+
+  <!-- ===== Status oben ===== -->
+  <header class="hud hud-top">
+    <div class="score note-chip">
+      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3.2"/><path d="M5.5 20c.8-4 3.4-6.5 6.5-6.5s5.7 2.5 6.5 6.5"/></svg>
+      <span id="score">0</span>
     </div>
-    <nav class="tabs" role="tablist">
-      <button class="tab is-active" role="tab" data-view="capture" aria-selected="true">1 · Handschrift erfassen</button>
-      <button class="tab" role="tab" data-view="compose" aria-selected="false">2 · Text &amp; Export</button>
-    </nav>
+    <div class="hud-right">
+      <div class="week note-chip">
+        <svg class="clock" viewBox="0 0 40 40" aria-hidden="true">
+          <circle cx="20" cy="20" r="15" class="clock-face"/>
+          <path id="clock-pie" class="clock-pie" d=""/>
+        </svg>
+        <span id="week-label">Woche 1 · Mo</span>
+      </div>
+      <div class="speed" role="group" aria-label="Tempo">
+        <button class="icon-btn" data-speed="0" aria-label="Pause">
+          <svg class="ico" viewBox="0 0 24 24"><path d="M8.5 5.5v13M15.5 5.5v13"/></svg>
+        </button>
+        <button class="icon-btn" data-speed="1" aria-label="Normal">
+          <svg class="ico" viewBox="0 0 24 24"><path d="M8 5.5l10 6.5-10 6.5z"/></svg>
+        </button>
+        <button class="icon-btn" data-speed="2" aria-label="Schnell">
+          <svg class="ico" viewBox="0 0 24 24"><path d="M4 6l7.5 6L4 18zM12.5 6l7.5 6-7.5 6z"/></svg>
+        </button>
+      </div>
+    </div>
   </header>
 
-  <main>
-    <!-- ================= BEREICH 1: HANDSCHRIFT ERFASSEN ================= -->
-    <section id="view-capture" class="view capture is-active">
-      <div class="capture-main">
-        <div class="capture-head">
-          <div class="char-badge" id="cap-char" aria-live="polite">a</div>
-          <div class="char-info">
-            <div class="char-name" id="cap-name">Kleinbuchstabe a</div>
-            <div class="char-hint" id="cap-hint">Schreib das Zeichen zwischen die Hilfslinien.</div>
-          </div>
-          <div class="variants" id="cap-variants" role="radiogroup" aria-label="Variante">
-            <!-- wird per JS gefüllt -->
-          </div>
-        </div>
+  <!-- ===== Linien-Stifte unten ===== -->
+  <footer class="hud hud-bottom">
+    <div class="pens" id="pens" aria-label="Linien"></div>
+    <div class="trains note-chip" title="Freie Züge">
+      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="11" rx="3"/><path d="M4 11h16M8 19l-1.5 2M16 19l1.5 2"/><circle cx="8.5" cy="14" r=".6"/><circle cx="15.5" cy="14" r=".6"/></svg>
+      <span id="trains-free">0</span>
+    </div>
+  </footer>
 
-        <div class="pad-wrap" id="pad-wrap">
-          <canvas id="pad" class="draw-surface" aria-label="Zeichenfeld"></canvas>
-          <div class="pad-status" id="pad-status"></div>
-        </div>
-
-        <div class="capture-tools">
-          <button class="btn" id="btn-undo">↶ Rückgängig</button>
-          <button class="btn btn-danger-soft" id="btn-clear">Löschen</button>
-          <label class="toggle" title="Ausschalten, wenn du mit dem Apple Pencil schreibst – dann stört der Handballen nicht.">
-            <input type="checkbox" id="chk-finger" checked>
-            <span>Finger zeichnet</span>
-          </label>
-          <span class="spacer"></span>
-          <button class="btn" id="btn-prev" aria-label="Vorheriges Zeichen">◀</button>
-          <button class="btn btn-primary" id="btn-next">Nächstes Zeichen ▶</button>
-        </div>
-      </div>
-
-      <aside class="capture-side">
-        <div class="progress-block">
-          <div class="progress-label"><span id="progress-text">0 von 80 Zeichen</span><span id="progress-variants" class="muted"></span></div>
-          <div class="progress"><div class="progress-bar" id="progress-bar"></div></div>
-        </div>
-        <div class="char-grid" id="char-grid" aria-label="Alle Zeichen"></div>
-        <div class="side-actions">
-          <p class="backup-note" id="backup-note">Tipp: Sichere deine Handschrift regelmäßig als Datei.</p>
-          <div class="btn-row">
-            <button class="btn" id="btn-export-json">Backup sichern</button>
-            <button class="btn" id="btn-import-json">Backup laden</button>
-          </div>
-          <button class="btn btn-ghost btn-small" id="btn-wipe">Alle Zeichen löschen …</button>
-          <input type="file" id="file-import" accept=".json,application/json" hidden>
-        </div>
-      </aside>
-    </section>
-
-    <!-- ================= BEREICH 2: TEXT, PAPIER, EXPORT ================= -->
-    <section id="view-compose" class="view compose">
-      <div class="settings" id="settings">
-        <!-- Text -->
-        <section class="card">
-          <h2>Text</h2>
-          <!-- Format-Leiste: setzt die Markierungen ins Textfeld (siehe „Formatierung“) -->
-          <div class="fmt-bar" id="fmt-bar" role="toolbar" aria-label="Formatierung">
-            <button class="fmt" data-line="# " title="Überschrift (# am Zeilenanfang)"><b>H1</b></button>
-            <button class="fmt" data-line="## " title="Kleine Überschrift (##)"><b>H2</b></button>
-            <button class="fmt" data-line="- " title="Aufzählungspunkt (- am Zeilenanfang)" aria-label="Aufzählungspunkt"><b>•</b></button>
-            <button class="fmt" data-wrap="==" title="Textmarker (==Text==)"><span class="fmt-hl">Marker</span></button>
-            <button class="fmt" data-wrap="**" title="Zweitfarbe (**Text**)"><span class="fmt-em">Farbe</span></button>
-            <button class="fmt" data-wrap="__" title="Unterstreichen (__Text__)" aria-label="Unterstreichen"><b><u>U</u></b></button>
-          </div>
-          <textarea id="text-input" rows="7" placeholder="Hier tippen oder Text einfügen …" spellcheck="true"></textarea>
-          <div class="missing" id="missing" hidden></div>
-        </section>
-
-        <!-- Stift & Schrift -->
-        <section class="card">
-          <h2>Stift &amp; Schrift</h2>
-          <div class="field">
-            <span class="field-label">Farbe</span>
-            <div class="seg" id="seg-color">
-              <button data-value="blue"><i class="swatch" style="background:#1b3a94"></i>Blau</button>
-              <button data-value="black"><i class="swatch" style="background:#1c1c1e"></i>Schwarz</button>
-              <button data-value="custom"><i class="swatch" id="swatch-custom"></i>Eigene</button>
-            </div>
-            <input type="color" id="color-custom" class="color-input" value="#7a1fa2" hidden>
-          </div>
-          <div class="field range" data-key="thickness" data-min="0.2" data-max="1.2" data-step="0.05" data-unit="mm" data-label="Strichdicke"></div>
-          <div class="field range" data-key="fontSize" data-min="2.5" data-max="10" data-step="0.25" data-unit="mm" data-label="Schriftgröße (Großbuchstaben)"></div>
-          <div class="field range" data-key="normalize" data-min="0" data-max="1" data-step="0.05" data-unit="%" data-label="Größe automatisch angleichen"></div>
-          <p class="note">Gleicht zu groß oder zu klein geschriebene Buchstaben an deine typische Größe an und rückt sie auf die Grundlinie. Deine gespeicherten Zeichen bleiben unverändert.</p>
-          <div class="field range" data-key="lineSpacing" data-min="5" data-max="20" data-step="0.5" data-unit="mm" data-label="Zeilenabstand"></div>
-          <p class="note" id="snap-note" hidden></p>
-          <div class="field range" data-key="letterSpacing" data-min="-0.1" data-max="0.5" data-step="0.01" data-unit="%" data-label="Buchstabenabstand"></div>
-          <div class="field range" data-key="wordSpacing" data-min="0.2" data-max="1.5" data-step="0.05" data-unit="%" data-label="Wortabstand"></div>
-        </section>
-
-        <!-- Formatierung -->
-        <section class="card">
-          <h2>Formatierung</h2>
-          <div class="field">
-            <span class="field-label">Zweitfarbe für **Text**</span>
-            <div class="seg" id="seg-accent">
-              <button data-value="red"><i class="swatch" style="background:#c62828"></i>Rot</button>
-              <button data-value="green"><i class="swatch" style="background:#2e7d32"></i>Grün</button>
-              <button data-value="orange"><i class="swatch" style="background:#e0670b"></i>Orange</button>
-            </div>
-          </div>
-          <div class="field">
-            <span class="field-label">Textmarker für ==Text==</span>
-            <div class="seg" id="seg-highlight">
-              <button data-value="yellow"><i class="swatch" style="background:#ffe83d"></i>Gelb</button>
-              <button data-value="green"><i class="swatch" style="background:#86f08a"></i>Grün</button>
-              <button data-value="pink"><i class="swatch" style="background:#ff86d6"></i>Pink</button>
-              <button data-value="blue"><i class="swatch" style="background:#7fd6ff"></i>Blau</button>
-            </div>
-          </div>
-          <details class="help">
-            <summary>So funktioniert's</summary>
-            <p>Text markieren und oben einen Knopf antippen – oder direkt tippen:</p>
-            <ul>
-              <li><code># Titel</code> große, unterstrichene Überschrift</li>
-              <li><code>## Titel</code> kleinere Überschrift</li>
-              <li><code>- Punkt</code> Aufzählung (Folgezeilen eingerückt)</li>
-              <li><code>==wichtig==</code> Textmarker</li>
-              <li><code>**Merke**</code> Zweitfarbe</li>
-              <li><code>__unterstrichen__</code></li>
-            </ul>
-          </details>
-        </section>
-
-        <!-- Realismus -->
-        <section class="card">
-          <h2>Natürlichkeit</h2>
-          <label class="toggle toggle-block">
-            <input type="checkbox" id="chk-variants">
-            <span>Zufällige Variante pro Buchstabe</span>
-          </label>
-          <label class="toggle toggle-block">
-            <input type="checkbox" id="chk-ligatures">
-            <span>Buchstabenpaare verwenden (sch, ch, ck …)</span>
-          </label>
-          <div class="field range" data-key="jitterSize" data-min="0" data-max="1" data-step="0.05" data-unit="%" data-label="Schwankung Größe"></div>
-          <div class="field range" data-key="jitterRotate" data-min="0" data-max="1" data-step="0.05" data-unit="%" data-label="Schwankung Neigung"></div>
-          <div class="field range" data-key="jitterSpacing" data-min="0" data-max="1" data-step="0.05" data-unit="%" data-label="Schwankung Abstand"></div>
-          <div class="field range" data-key="wave" data-min="0" data-max="1" data-step="0.05" data-unit="%" data-label="Wellige Zeilen"></div>
-          <button class="btn btn-block" id="btn-reseed">🎲 Neu mischen</button>
-        </section>
-
-        <!-- Papier -->
-        <section class="card">
-          <h2>Papier</h2>
-          <div class="seg seg-wrap" id="seg-paper">
-            <button data-value="white">Weiß</button>
-            <button data-value="lined">Linien</button>
-            <button data-value="karo">Karo (Heft)</button>
-            <button data-value="grid5">Kariert 5 mm</button>
-          </div>
-          <label class="toggle toggle-block">
-            <input type="checkbox" id="chk-aged">
-            <span>Leicht vergilbtes Papier</span>
-          </label>
-        </section>
-
-        <!-- Export -->
-        <section class="card">
-          <h2>Export</h2>
-          <div class="btn-row">
-            <button class="btn btn-primary" id="btn-pdf">PDF erstellen</button>
-            <button class="btn" id="btn-png">PNG erstellen</button>
-          </div>
-          <p class="note">Danach kannst du die Datei über das Teilen-Menü in „Dateien“ sichern, drucken oder verschicken.</p>
-          <button class="btn btn-ghost btn-small" id="btn-reset-settings">Einstellungen zurücksetzen</button>
-        </section>
-      </div>
-
-      <div class="preview" id="preview">
-        <div class="preview-empty" id="preview-empty">
-          <p>Hier erscheint die Vorschau auf A4.</p>
-          <p class="muted">Erfasse zuerst ein paar Zeichen in „1 · Handschrift erfassen“ und tippe dann links einen Text.</p>
-        </div>
-        <div class="pages" id="pages"></div>
-      </div>
-    </section>
-  </main>
-
-  <!-- ===== Dialog: Datei fertig → Teilen / Herunterladen ===== -->
-  <dialog id="file-dialog" class="dialog">
-    <form method="dialog">
-      <h3 id="file-dialog-title">Datei ist fertig</h3>
-      <p id="file-dialog-text" class="muted"></p>
-      <div class="dialog-actions">
-        <button type="button" class="btn btn-primary" id="file-dialog-share">Teilen / Sichern …</button>
-        <button type="button" class="btn" id="file-dialog-download">Herunterladen</button>
-        <button class="btn btn-ghost" value="close">Schließen</button>
-      </div>
-    </form>
-  </dialog>
-
-  <!-- ===== Ladeanzeige und Kurzmeldungen ===== -->
-  <div class="busy" id="busy" hidden>
-    <div class="busy-box"><div class="spinner"></div><span id="busy-text">Bitte warten …</span></div>
+  <!-- Menü für eine Linie (über dem Stift) -->
+  <div class="line-menu note" id="line-menu" hidden>
+    <button class="pen-btn" id="lm-add">+ Zug</button>
+    <button class="pen-btn" id="lm-remove">− Zug</button>
+    <button class="pen-btn danger" id="lm-delete">Linie löschen</button>
   </div>
-  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <!-- jsPDF liegt lokal im Projekt, damit der PDF-Export auch offline klappt -->
-  <script src="vendor/jspdf.umd.min.js" defer></script>
-  <script src="app.js" defer></script>
+  <p class="hint" id="hint" hidden></p>
+  <div class="toast note" id="toast" role="status" aria-live="polite"></div>
+
+  <!-- ===== Zettel: Start ===== -->
+  <div class="overlay" id="screen-start">
+    <div class="note note-big">
+      <h1>Heft-Metro</h1>
+      <p class="lead">Die Stadt wächst. Verbinde die Stationen, bevor sie überfüllt sind.</p>
+      <ol class="howto">
+        <li><span class="mini-shape">●</span> Zieh mit Stift oder Finger von Station zu Station – so entsteht eine Linie.</li>
+        <li><span class="mini-shape">▲</span> Fahrgäste wollen zu einer Station mit ihrer Form.</li>
+        <li><span class="mini-shape">■</span> Am Linienende ziehst du weiter. Tipp unten auf einen Stift für Züge oder zum Löschen.</li>
+      </ol>
+      <p class="record" id="start-record"></p>
+      <button class="pen-btn primary" id="btn-start">Losfahren</button>
+      <p class="fineprint">Gemacht für das iPad.</p>
+    </div>
+  </div>
+
+  <!-- ===== Zettel: Wochen-Upgrade ===== -->
+  <div class="overlay" id="screen-upgrade" hidden>
+    <div class="note note-big">
+      <h2 id="up-title">Woche 1 geschafft!</h2>
+      <p class="lead">Du bekommst einen neuen Zug. Wähle dazu:</p>
+      <div class="cards" id="up-cards"></div>
+    </div>
+  </div>
+
+  <!-- ===== Zettel: Game Over ===== -->
+  <div class="overlay" id="screen-over" hidden>
+    <div class="note note-big">
+      <h2>Endstation!</h2>
+      <p class="lead" id="over-reason">Eine Station war überfüllt.</p>
+      <div class="stats">
+        <div><span class="big-num" id="over-score">0</span><span>Fahrgäste</span></div>
+        <div><span class="big-num" id="over-weeks">1</span><span>Wochen</span></div>
+      </div>
+      <p class="record" id="over-record"></p>
+      <button class="pen-btn primary" id="btn-again">Nochmal</button>
+    </div>
+  </div>
+
+  <script src="game.js" defer></script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 ---
 name: heft-metro-design
-description: UI- und Design-System für „Heft-Metro“ (Spiel im Ordner spiel/) – Schulheft-Look mit Karopapier, Filzstift-Linien, gekritzelten Formen und Zettel-UI, nur für iPad. Nutzen, bevor du im Spiel etwas gestaltest, eine neue UI-Komponente, einen Bildschirm, ein Icon oder eine Spielgrafik baust, und vor jeder Abgabe zum Prüfen.
+description: UI- und Design-System für „Heft-Metro“ (das Spiel in diesem Repository) – Schulheft-Look mit Karopapier, Filzstift-Linien, gekritzelten Formen und Zettel-UI, nur für iPad. Nutzen, bevor du im Spiel etwas gestaltest, eine neue UI-Komponente, einen Bildschirm, ein Icon oder eine Spielgrafik baust, und vor jeder Abgabe zum Prüfen.
 ---
 
 # Heft-Metro – UI & Design
@@ -20,7 +20,7 @@ Gerät: **nur iPad** (Safari / Home-Bildschirm-App), Bedienung mit Apple Pencil 
 
 ## 2. Farb-Tokens
 
-Als CSS-Variablen in `spiel/style.css` (`:root`) und als `COLORS` in `spiel/game.js`. Werte nur von dort nehmen.
+Als CSS-Variablen in `style.css` (`:root`) und als `COLORS` in `game.js`. Werte nur von dort nehmen.
 
 | Token | Wert | Verwendung |
 |---|---|---|
@@ -44,7 +44,6 @@ Dark Mode gibt es bewusst nicht: Ein Heft ist hell.
 - **Handschrift-Look** (Titel, Zahlen, Zettel-Überschriften): `"Noteworthy", "Bradley Hand", "Marker Felt", "Comic Sans MS", cursive`. Auf dem iPad ist Noteworthy vorinstalliert, also keine Web-Fonts laden (offline!).
 - **Fließtext/Erklärungen**: `-apple-system, "SF Pro Text", sans-serif`, mindestens 15 px.
 - Zahlen im Status (Punkte, Woche) groß: 26–32 px Handschrift.
-- Später: Stationsnamen in der **eigenen Handschrift** aus der Handschrift-App (gleiche Domain → gleiche IndexedDB `meine-handschrift`).
 
 ## 4. Zeichen-Stil (Canvas)
 
@@ -82,7 +81,7 @@ Wackeln immer über `wobble(seed, i)` (deterministisch), nie `Math.random()` bei
 - Canvas mit `devicePixelRatio` (max. 2) scharf rendern.
 - Safe Areas: `env(safe-area-inset-*)` für Status und Linien-Stifte.
 - Quer- **und** Hochformat: Kamera passt die Stadt automatisch in den freien Bereich ein.
-- PWA: eigener Service Worker und `manifest.json` im Ordner `spiel/`, alles offline.
+- PWA: `sw.js` und `manifest.json` im Hauptordner, alles offline. Nach Änderungen `CACHE_VERSION` in `sw.js` hochzählen.
 
 ## 7. Bewegung
 
