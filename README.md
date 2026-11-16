@@ -46,6 +46,8 @@ Die Lage ist aus dem Gedächtnis eingetragen und **nicht kartengenau** (1 Kästc
 - Am Linienende („Stiftkappe“) ziehst du die Linie weiter oder zurück.
 - Einfacher: An der **Endstation** einer Linie ansetzen und weiterziehen – das verlängert die Linie (am Hauptbahnhof nur, wenn keine neue Linie mehr frei ist).
 - **Station einfügen:** Mitten auf einen Linienabschnitt tippen und zu einer Station ziehen – sie wird zwischen den beiden Halten eingefügt.
+- **Ringlinien:** Zieh eine Linie zurück zu ihrer Startstation (beim Zeichnen oder Verlängern) – sie wird zum Ring und die Fahrzeuge fahren im Kreis. Über das Linien-Menü („Ring öffnen“) wird sie wieder normal.
+- **Nächste Station aussuchen:** Wenn eine neue Station fällig ist, erscheinen gelb-gestrichelte Vorschläge am Rand deines Netzes (mit Form und Stationsart). Tippe einen an, um ihn zu bauen – so bestimmst du, in welche Richtung die Stadt wächst. Wer nicht wählt, bekommt nach Ablauf des Bleistiftbogens einen zufälligen.
 - Unten auf einen bunten Stift tippen → Zug hinzufügen/abziehen oder Linie löschen.
 - Jede Woche gibt es einen Zug und eine Wahl: neue Linie, Extra-Zug oder großer Bahnhof.
 - Ist eine Station zu lange überfüllt (roter Kreis), ist Endstation. Dein Rekord wird gespeichert.

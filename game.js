@@ -344,6 +344,7 @@ function newGame(world = SC?.key || 'hannover', focus = 'balanced') {
     tutorial: false,       // läuft gerade die Anleitung?
     world: SC.key,         // Spielwelt: 'hannover' | 'europa'
     districtsLeft: HANNOVER.districts.map(d => d.name),   // noch nicht erschlossene Stadtteile
+    buildChoice: null,     // Vorschläge für die nächste Station: { opts: [...], until }
   };
   // Hauptbahnhof in der Mitte, drei Stadtteile darum (List, Linden-Nord, Südstadt) – Formen gemischt
   addStation('hub', 0, 0, SC.hubName, 'rail');
@@ -362,6 +363,20 @@ const capacityOf = st => (st.shape === 'hub' ? CFG.hubCapacity : st.big ? CFG.bi
 const vehiclesOn = line => G.trains.filter(t => t.line === line).length;
 const linesOf = mode => G.lines.filter(l => l.mode === mode);
 
+/** Abschnitte einer Linie als [a, b]-Paare – bei Ringlinien inkl. letzter → erster Station */
+function segs(line) {
+  const s = line.stations, out = [];
+  for (let i = 0; i < s.length - 1; i++) out.push([s[i], s[i + 1]]);
+  if (line.loop && s.length >= 3) out.push([s[s.length - 1], s[0]]);
+  return out;
+}
+/** Liegen a und b auf der Linie direkt nebeneinander? */
+function adjacent(line, a, b) {
+  const s = line.stations, n = s.length, i = s.indexOf(a), j = s.indexOf(b);
+  if (i < 0 || j < 0) return false;
+  return Math.abs(i - j) === 1 || (line.loop && n >= 3 && Math.abs(i - j) === n - 1);
+}
+
 function addStation(shape, x, y, name = '', tier = 'bus') {
   const st = { id: G.nextId++, x, y, shape, name, tier, queue: [], over: 0, big: false, born: G.t, flash: 0 };
   G.stations.push(st);
@@ -379,8 +394,7 @@ function addStation(shape, x, y, name = '', tier = 'bus') {
 function rebuildRoutes() {
   const adj = new Map(G.stations.map(s => [s.id, []]));
   for (const line of G.lines) {
-    for (let i = 0; i < line.stations.length - 1; i++) {
-      const a = line.stations[i], b = line.stations[i + 1];
+    for (const [a, b] of segs(line)) {
       adj.get(a)?.push(b);
       adj.get(b)?.push(a);
     }
@@ -406,18 +420,20 @@ const hops = (shape, stationId) => G.dist.get(shape)?.get(stationId) ?? Infinity
 
 /** Nächste Station, wenn ein Zug von a nach b fährt (am Linienende kehrt er um). */
 function nextStop(line, a, b) {
-  const s = line.stations;
+  const s = line.stations, n = s.length;
   const ia = s.indexOf(a), ib = s.indexOf(b);
+  if (line.loop && n >= 3 && ib >= 0) {
+    // Ring: immer in derselben Richtung weiter
+    const dir = (ia + 1) % n === ib ? 1 : -1;
+    return s[(ib + dir + n) % n];
+  }
   const dir = ib > ia ? 1 : -1;
   return s[ib + dir] ?? s[ib - dir] ?? b;
 }
 
 /** Versatz paralleler Linien auf demselben Abschnitt (in U, senkrecht zur Strecke). */
 function segmentOffset(line, a, b) {
-  const shared = G.lines.filter(l => {
-    const i = l.stations.indexOf(a), j = l.stations.indexOf(b);
-    return i >= 0 && j >= 0 && Math.abs(i - j) === 1;
-  });
+  const shared = G.lines.filter(l => adjacent(l, a, b));
   if (shared.length < 2) return { ox: 0, oy: 0 };
   shared.sort((p, q) => p.color - q.color);
   const k = shared.indexOf(line) - (shared.length - 1) / 2;
@@ -529,7 +545,7 @@ function syncTrains(line) {
   for (const tr of G.trains) {
     if (tr.line !== line || s.length < 2) continue;
     const ia = s.indexOf(tr.a), ib = s.indexOf(tr.b);
-    if (ia >= 0 && ib >= 0 && Math.abs(ia - ib) === 1) continue;     // Abschnitt gibt es noch
+    if (adjacent(line, tr.a, tr.b)) continue;     // Abschnitt gibt es noch
     const k = ib >= 0 ? ib : ia >= 0 ? ia : 0;
     tr.a = s[k];
     tr.b = s[k + 1] ?? s[k - 1];
@@ -588,9 +604,7 @@ function spawnStation() {
     if (onMapFeature(x, y)) continue;
     const r = Math.random();
     const tier = r < 0.4 ? 'bus' : r < 0.65 ? 'tram' : r < 0.85 ? 'metro' : 'rail';
-    const onLine = G.lines.some(l => l.stations.some((id, i) => {
-      const nId = l.stations[i + 1];
-      if (!nId) return false;
+    const onLine = G.lines.some(l => segs(l).some(([id, nId]) => {
       const a = stationById(id), b = stationById(nId);
       return distToSegment(x, y, a.x, a.y, b.x, b.y) < CFG.minLineDist;
     }));
@@ -599,6 +613,55 @@ function spawnStation() {
     rebuildRoutes();
     return;
   }
+}
+
+/* ---------- Nächste Station selbst aussuchen ----------
+   Statt zufällig entsteht die nächste Station dort, wo du willst:
+   Es erscheinen Vorschläge am Rand deines Netzes (die nächstgelegenen
+   noch freien Stadtteile). Wer nicht wählt, bekommt nach Ablauf der Zeit
+   einen zufälligen. So wächst das Netz in die Richtung, die du ausbaust. */
+
+const CHOICE_COUNT = 5;
+
+function offerBuildChoice(time) {
+  const near = d => Math.min(...G.stations.map(s => dist(s.x, s.y, d.x, d.y)));
+  const ds = G.districtsLeft.map(n => HANNOVER.districts.find(d => d.name === n)).filter(Boolean);
+  const tooClose = ds.filter(d => near(d) < 2.5).map(d => d.name);
+  G.districtsLeft = G.districtsLeft.filter(n => !tooClose.includes(n));
+  const opts = ds.filter(d => !tooClose.includes(d.name))
+    .sort((a, b) => near(a) - near(b))
+    .slice(0, CHOICE_COUNT)
+    .map(d => ({ name: d.name, x: d.x, y: d.y, tier: tierOfDistrict(d.name), shape: pickShape() }));
+  if (opts.length < 2) return false;
+  G.buildChoice = { opts, until: G.t + Math.max(6, time), total: Math.max(6, time) };
+  if (!G.choiceExplained) {
+    G.choiceExplained = true;
+    toast(`Wo soll die nächste Station hin? Tippe auf einen gestrichelten Vorschlag – sonst entscheidet der Zufall.`, 4200);
+  }
+  return true;
+}
+
+function resolveBuildChoice(opt) {
+  const c = G.buildChoice;
+  if (!c) return;
+  opt = opt || c.opts[Math.floor(Math.random() * c.opts.length)];
+  G.buildChoice = null;
+  G.districtsLeft = G.districtsLeft.filter(n => n !== opt.name);
+  const st = addStation(opt.shape, opt.x, opt.y, opt.name, opt.tier);
+  notifyNewStation(st);
+  rebuildRoutes();
+  return st;
+}
+
+/** Vorschlag unter dem Finger */
+function choiceAt(x, y) {
+  if (!G.buildChoice) return null;
+  let best = null, bestD = hitRadius() * 1.2;
+  for (const o of G.buildChoice.opts) {
+    const d = dist(o.x, o.y, x, y);
+    if (d < bestD) { bestD = d; best = o; }
+  }
+  return best;
 }
 
 /* ---------- Ereignisse in Hannover ---------- */
@@ -694,9 +757,11 @@ function update(dt) {
   // Neue Stationen
   G.stationTimer -= dt;
   if (G.stationTimer <= 0) {
-    spawnStation();
+    if (G.buildChoice) resolveBuildChoice(null);
     G.stationTimer = (SC.spawnInterval ? SC.spawnInterval(G.week) : Math.max(11, 23 - G.week)) * rand(0.85, 1.15);
+    if (!offerBuildChoice(G.stationTimer * 0.7)) spawnStation();
   }
+  if (G.buildChoice && G.t >= G.buildChoice.until) resolveBuildChoice(null);
 
   // Neue Fahrgäste und Überfüllung
   // Sanfter Einstieg, dann steigt der Andrang Woche für Woche
@@ -857,7 +922,7 @@ function updateCamera(rdt) {
   }
   const v = view();
   let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
-  for (const s of G.stations) {
+  for (const s of [...G.stations, ...(G.buildChoice?.opts || [])]) {
     x0 = Math.min(x0, s.x); x1 = Math.max(x1, s.x);
     y0 = Math.min(y0, s.y); y1 = Math.max(y1, s.y);
   }
@@ -1107,6 +1172,7 @@ function drawMap() {
   for (const name of G.districtsLeft) {
     const d = HANNOVER.districts.find(x => x.name === name);
     if (!d || G.stations.some(s => dist(s.x, s.y, d.x, d.y) < 2)) continue;
+    if (G.buildChoice?.opts.some(o => o.name === name)) continue;   // Vorschlag hat eigene Beschriftung
     mapText(d.name, ...toScreen(d.x, d.y), MAP_COLORS.district, fs);
   }
   ctx.restore();
@@ -1300,15 +1366,15 @@ function drawLines() {
     const color = LINE_COLORS[line.color];
     const s = line.stations;
     ctx.strokeStyle = color;
-    for (let i = 0; i < s.length - 1; i++) {
-      const a = stationById(s[i]), b = stationById(s[i + 1]);
+    for (const [ia, ib] of segs(line)) {
+      const a = stationById(ia), b = stationById(ib);
       const { ox, oy } = segmentOffset(line, a.id, b.id);
       strokeSegment(line.mode, a.x + ox, a.y + oy, b.x + ox, b.y + oy, line.id * 1000 + a.id * 31 + b.id);
     }
     if (s.length >= 2) drawLineTag(line);
 
-    // Stiftkappen an beiden Enden
-    if (s.length >= 2) {
+    // Stiftkappen an beiden Enden (Ringlinien haben keine Enden)
+    if (s.length >= 2 && !line.loop) {
       for (const end of ['start', 'end']) {
         const st = stationById(end === 'end' ? s[s.length - 1] : s[0]);
         const prev = stationById(end === 'end' ? s[s.length - 2] : s[1]);
@@ -1620,6 +1686,11 @@ function drawDragPreview() {
     const a = stationById(drag.stations[i]), b = stationById(drag.stations[i + 1]);
     strokeSegment(drag.lineMode, a.x, a.y, b.x, b.y, 7000 + a.id * 31 + b.id);
   }
+  if (drag.loop) {
+    const a = stationById(drag.stations[drag.stations.length - 1]), b = stationById(drag.stations[0]);
+    strokeSegment(drag.lineMode, a.x, a.y, b.x, b.y, 7000 + a.id * 31 + b.id);
+    return;
+  }
   ctx.lineWidth = modeWidth(drag.lineMode) * cam.s;
   const last = stationById(drag.stations[drag.stations.length - 1]);
   const [p, q] = [toScreen(last.x, last.y), toScreen(drag.x, drag.y)];
@@ -1628,6 +1699,37 @@ function drawDragPreview() {
   ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke();
   ctx.setLineDash([]);
   ctx.globalAlpha = 1;
+}
+
+/** Vorschläge für die nächste Station: gestrichelt, leicht pulsierend, mit Restzeit-Bogen */
+function drawBuildChoice() {
+  const c = G.buildChoice;
+  if (!c) return;
+  const pulse = 1 + Math.sin(performance.now() / 260) * 0.06;
+  const left = clamp((c.until - G.t) / c.total, 0, 1);
+  for (const o of c.opts) {
+    const [sx, sy] = toScreen(o.x, o.y);
+    const r = px(TIER_INFO[o.tier].r, o.tier === 'bus' ? 9 : 12) * pulse;
+    ctx.save();
+    ctx.globalAlpha = 0.85;
+    shapePath(o.shape, sx, sy, r, 9000 + o.x * 7);
+    ctx.fillStyle = 'rgba(255, 232, 61, 0.35)';
+    ctx.fill();
+    ctx.setLineDash([5, 4]);
+    ctx.strokeStyle = COLORS.pencil;
+    ctx.lineWidth = Math.max(1.5, 0.09 * cam.s);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // Restzeit als Bleistiftbogen
+    ctx.globalAlpha = 0.55;
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(sx, sy, r + 7, -Math.PI / 2, -Math.PI / 2 + left * Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 1;
+    drawTierBadge({ tier: o.tier, shape: o.shape }, sx, sy, r);
+    ctx.restore();
+    const fs = labelSize();
+    mapText(o.name + ' ?', sx, sy + r + fs * 1.1, MAP_COLORS.name, fs, 0, '');
+  }
 }
 
 /** Gestrichelte Linie vom Finger zu Stationen (Vorschau beim Verlängern/Einfügen) */
@@ -1656,7 +1758,7 @@ function drawExtendPreview() {
 /** Beim Einfügen: Abschnitt wird zum „V“ über den Finger bzw. die Zielstation */
 function drawInsertPreview() {
   const s = drag.line.stations;
-  const a = stationById(s[drag.i]), b = stationById(s[drag.i + 1]);
+  const a = stationById(s[drag.i]), b = stationById(s[(drag.i + 1) % s.length]);
   if (!a || !b) return;
   const tip = drag.target != null ? stationById(drag.target) : drag;
   dashTo(LINE_COLORS[drag.line.color], drag.line.mode, [a, tip, b], drag.target != null ? 0.95 : 0.55);
@@ -1682,6 +1784,7 @@ function draw() {
   drawTrains();
   drawTutorialGlow();
   drawStations();
+  drawBuildChoice();
   drawFloaters();
   drawTutorialPath();
   drawLost();
@@ -1726,9 +1829,9 @@ function segDist(x, y, ax, ay, bx, by) {
 function segmentAt(x, y) {
   let best = null, bestD = Math.max(0.55, 24 / cam.s);
   for (const line of G.lines) {
-    const s = line.stations;
-    for (let i = 0; i < s.length - 1; i++) {
-      const a = stationById(s[i]), b = stationById(s[i + 1]);
+    const sg = segs(line);
+    for (let i = 0; i < sg.length; i++) {
+      const a = stationById(sg[i][0]), b = stationById(sg[i][1]);
       const { ox, oy } = segmentOffset(line, a.id, b.id);
       const d = segDist(x, y, a.x + ox, a.y + oy, b.x + ox, b.y + oy);
       if (d < bestD) { bestD = d; best = { line, i }; }
@@ -1743,7 +1846,7 @@ function segmentAt(x, y) {
  * nur, wenn für das gewählte Verkehrsmittel keine neue Linie mehr frei ist.
  */
 function lineEndAt(st, mode) {
-  const ends = G.lines.filter(l => l.stations.length >= 2 &&
+  const ends = G.lines.filter(l => l.stations.length >= 2 && !l.loop &&
     (l.stations[0] === st.id || l.stations[l.stations.length - 1] === st.id));
   if (!ends.length) return null;
   const own = ends.filter(l => l.mode === mode);
@@ -1805,6 +1908,14 @@ function onDown(e) {
   }
   if (G.state !== 'playing') return false;
 
+  const opt = choiceAt(x, y);
+  if (opt) {
+    const st = resolveBuildChoice(opt);
+    st.flash = 0.35;
+    toast(`${st.name} wird gebaut.`);
+    return true;
+  }
+
   const h = handleAt(x, y);
   const st0 = h ? null : stationAt(x, y);
   const endHit = st0 ? lineEndAt(st0, G.selectedMode) : null;
@@ -1845,12 +1956,17 @@ function onMove(e) {
   if (!drag || e.pointerId !== drag.id) return;
   const [x, y] = toWorld(e.clientX, e.clientY);
   drag.x = x; drag.y = y;
+  if (drag.closed) return;
   const st = stationAt(x, y);
   if (drag.mode === 'insert') { drag.target = st && canInsert(drag.line, drag.i, st) ? st.id : null; return; }
   if (!st) return;
 
   if (drag.mode === 'new') {
     const s = drag.stations;
+    if (st.id === s[0] && s.length >= 3) {                    // zurück zum Start → Ring
+      if (canLink(drag.lineMode, s[s.length - 1], st)) { drag.loop = true; drag.closed = true; }
+      return;
+    }
     if (s[s.length - 2] === st.id) s.pop();                 // zurückgezogen
     else if (!s.includes(st.id) && !tooManyStops(drag.lineMode, s.length) && canLink(drag.lineMode, s[s.length - 1], st)) s.push(st.id);
     return;
@@ -1863,6 +1979,21 @@ function onMove(e) {
   const endId = atEnd ? s[s.length - 1] : s[0];
   const prevId = atEnd ? s[s.length - 2] : s[1];
   if (st.id === endId) return;
+  // Zur anderen Endstation gezogen → Ring schließen
+  const otherId = atEnd ? s[0] : s[s.length - 1];
+  if (st.id === otherId) {
+    if (s.length >= 3 && canLink(line.mode, endId, st)) {
+      line.loop = true;
+      drag.closed = true;
+      rebuildRoutes();
+      syncTrains(line);
+      st.flash = 0.35;
+      toast(`${line.label} ist jetzt eine Ringlinie – die Fahrzeuge fahren im Kreis. Öffnen über das Linien-Menü unten.`, 3600);
+    } else if (s.length < 3) {
+      warnOnce('ring', 'Für einen Ring braucht die Linie mindestens 3 Stationen.');
+    }
+    return;
+  }
   if (st.id === prevId) {
     // Züge dürfen den Hauptbahnhof nicht verlieren
     if (MODES[line.mode].needsHub && stationById(endId).shape === 'hub') return;
@@ -1881,12 +2012,12 @@ function canInsert(line, i, st) {
   const s = line.stations;
   if (s.includes(st.id)) return false;
   if (tooManyStops(line.mode, s.length)) return false;
-  return canLink(line.mode, s[i], st) && canLink(line.mode, s[i + 1], st);
+  return canLink(line.mode, s[i], st) && canLink(line.mode, s[(i + 1) % s.length], st);
 }
 
 /** Station in die Linie einfügen; Fahrzeuge auf dem Abschnitt fahren die neue Station an */
 function insertStation(line, i, id) {
-  const [a, b] = [line.stations[i], line.stations[i + 1]];
+  const [a, b] = [line.stations[i], line.stations[(i + 1) % line.stations.length]];
   line.stations.splice(i + 1, 0, id);
   for (const tr of G.trains) {
     if (tr.line !== line) continue;
@@ -1943,7 +2074,12 @@ function tooManyStops(mode, count) {
 function onUp(e) {
   if (!drag || e.pointerId !== drag.id) return;
   if (drag.mode === 'new' && drag.stations.length >= 2) {
-    createLine(drag.stations, drag.color, drag.lineMode);
+    const line = createLine(drag.stations, drag.color, drag.lineMode);
+    if (drag.loop) {
+      line.loop = true;
+      rebuildRoutes();
+      toast(`${line.label} fährt als Ringlinie im Kreis.`);
+    }
   } else if (drag.mode === 'extend' && drag.line.stations.length < 2) {
     deleteLine(drag.line);
     toast('Linie gelöscht.');
@@ -2170,6 +2306,7 @@ function openLineMenu(line, anchor) {
   $('#lm-remove').textContent = `− ${M.vehicle}`;
   $('#lm-add').disabled = free <= 0;
   $('#lm-remove').disabled = vehiclesOn(line) === 0;
+  $('#lm-ring').hidden = !line.loop;
   m.hidden = false;
   const r = anchor.getBoundingClientRect();
   const mw = m.offsetWidth;
@@ -2201,6 +2338,15 @@ $('#lm-rename').addEventListener('click', () => {
     line.label = name.trim().slice(0, 6);
     saveGame();
   }
+});
+$('#lm-ring').addEventListener('click', () => {
+  const line = menuLine;
+  closeLineMenu();
+  if (!line?.loop) return;
+  line.loop = false;
+  rebuildRoutes();
+  syncTrains(line);
+  toast(`${line.label} ist wieder eine normale Linie mit zwei Enden.`);
 });
 $('#lm-delete').addEventListener('click', () => {
   if (menuLine) { deleteLine(menuLine); autoAssignVehicles(); }
@@ -2335,7 +2481,7 @@ function serialize() {
     money: G.money, price: G.price, marketingUntil: G.marketingUntil,
     weekRev: G.weekRev, weekCost: G.weekCost, history: G.history, lastWeek: G.lastWeek,
     districtsLeft: G.districtsLeft,
-    lines: G.lines.map(({ id, color, mode, label, stations }) => ({ id, color, mode, label, stations })),
+    lines: G.lines.map(({ id, color, mode, label, stations, loop }) => ({ id, color, mode, label, stations, loop: !!loop })),
     trains: G.trains.map(({ id, line, a, b, t, dwell, pax }) => ({ id, line: line.id, a, b, t, dwell, pax })),
   };
 }
@@ -2440,7 +2586,7 @@ function restoreGame(d) {
   G.lines = [];
   for (const l of d.lines) {
     const label = typeof l.label === 'string' && l.label.trim() ? l.label.trim().slice(0, 6) : nextLineName(l.mode);
-    G.lines.push({ id: l.id, color: l.color, mode: l.mode, label, stations: [...l.stations] });
+    G.lines.push({ id: l.id, color: l.color, mode: l.mode, label, stations: [...l.stations], loop: !!l.loop && l.stations.length >= 3 });
   }
   // Ereignis fortsetzen (nur wenn die Station noch existiert)
   G.event = d.event && EVENTS.some(e => e.key === d.event.key) && G.stations.some(st => st.id === d.event.stationId)
