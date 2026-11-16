@@ -23,6 +23,17 @@ Auf dem Startzettel wählst du die Spielwelt. Beide funktionieren nach derselben
 
 Es gibt **einen** Spielstand (die zuletzt gespielte Welt) und einen Rekord pro Welt. Die Anleitung spielt in Hannover. Auch die Europa-Karte ist **grob aus dem Gedächtnis** gezeichnet (1 Kästchen ≈ 60 km); die Daten stehen in `EUROPA_MAP` in `game.js`.
 
+## Europa: deine eigene Airline
+In Europa bist du Unternehmer:in. Die Welt wächst langsamer (längere Wochen, seltener neue Städte), dafür geht es ums Geld:
+- **Kontostand** (Start: 4 Mio €) oben im Status. Jeder angekommene Fluggast-Block bringt **Ticketumsatz** – je größer das Flugzeug, desto mehr. Flugzeuge kosten laufend **Leasing**, Routen **Gebühren**.
+- **Firmen-Shop** (Aktenkoffer-Knopf): Flugzeuge kaufen, Routen-Lizenzen, Flughäfen ausbauen, Umsteige-Terminal, großes Terminal, **Werbekampagne** (+40 % Fluggäste für eine Woche).
+- **Ticketpreis**: Günstig (mehr Fluggäste, weniger pro Ticket), Normal, Premium (weniger Fluggäste, mehr pro Ticket).
+- **Wochenbilanz** am Ende jeder Woche: Umsatz, Kosten, Gewinn, Kontostand, Diagramm der letzten Wochen und ein Tipp.
+- **Pleite = Endstation:** Unter dem Kreditrahmen von −2 Mio € ist die Airline insolvent.
+- Flugzeuge steigen nach dem Start auf und sinken vor der Landung – mit Schatten und Kondensstreifen. Verkäufe steigen als „+55.000 €“ über den Flughäfen auf.
+
+Alle Zahlen stehen gesammelt in `EUROPA.business` in `game.js`.
+
 ## Hannover
 Gespielt wird auf einer **grob skizzierten Karte von Hannover**: Leine, Ihme, Maschsee, Mittellandkanal, Eilenriede, Herrenhäuser Gärten und ein paar Orientierungspunkte (Rathaus, Zoo, Stadion, Messe).
 Neue Stationen entstehen in echten **Stadtteilen** – von innen (Oststadt, Nordstadt, Linden) nach außen (Misburg, Wettbergen, Lahe). Noch nicht erschlossene Stadtteile stehen blass auf der Karte.

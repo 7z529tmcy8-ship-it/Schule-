@@ -216,6 +216,8 @@ const DAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 
 /** Aktive Spielwelt (Hannover oder Europa) – wird von applyScenario() gesetzt */
 let SC = null;
+/** Sekunden pro Spieltag – Europa läuft gemächlicher als Hannover */
+const dayLen = () => SC?.dayLength || CFG.dayLength;
 
 /** Spiel-Balance – hier lässt sich alles feinjustieren */
 const CFG = {
@@ -312,7 +314,7 @@ function newGame(world = SC?.key || 'hannover', focus = 'balanced') {
     state: 'start',        // start | playing | upgrade | placeBig | placeTier | over
     placeTier: null,       // beim Ausbau: Ziel-Stationsart ('tram' | 'metro' | 'rail')
     event: null,           // laufendes Ereignis { key, stationId, end }
-    nextEventT: CFG.dayLength * 7 * 1.3,   // frühestens Woche 2
+    nextEventT: dayLen() * 7 * 1.3,   // frühestens Woche 2
     speed: 1,              // 0 = Pause, 1 = normal, 2 = schnell
     t: 0,                  // Spielzeit in Sekunden
     week: 1,
@@ -324,6 +326,14 @@ function newGame(world = SC?.key || 'hannover', focus = 'balanced') {
     // Pro Verkehrsmittel: freie Linien-Plätze und freie Fahrzeuge
     inv: Object.fromEntries(MODE_ORDER.map((m, i) => [m, { lines: startLines[i], free: 0 }])),
     focus,                 // gewählter Fokus (nur zur Info)
+    // Unternehmer-Modus (Europa)
+    money: SC.business ? SC.business.start : 0,
+    price: 'normal',       // Ticketpreis: cheap | normal | premium
+    marketingUntil: 0,     // Werbekampagne läuft bis zu dieser Spielzeit
+    weekRev: 0,            // Umsatz der laufenden Woche
+    weekCost: 0,           // Kosten der laufenden Woche
+    history: [],           // Gewinn der vergangenen Wochen
+    floaters: [],          // aufsteigende „+90.000 €“ (wird nicht gespeichert)
     selectedMode: MODE_ORDER[startLines.indexOf(Math.max(...startLines))],   // womit neue Linien gezogen werden
     bounds: { hw: 9, hh: 6 },   // halbe Breite/Höhe der Stadt in U
     stationTimer: 10,
@@ -612,7 +622,7 @@ function updateEvent() {
       for (let i = 0; i < 6; i++) { const dest = pickDestination(st.shape, true); if (dest) st.queue.push(dest); }
       toast(`${EVENTS.find(e => e.key === G.event.key)?.name || 'Ereignis'} vorbei – alle wollen gleichzeitig nach Hause!`, 3200);
       G.event = null;
-      G.nextEventT = G.t + CFG.dayLength * 7 * rand(1.1, 2);
+      G.nextEventT = G.t + dayLen() * 7 * rand(1.1, 2);
     }
     return;
   }
@@ -626,9 +636,9 @@ function updateEvent() {
       .sort((a, b) => a.d - b.d)[0];
     return st && st.d < 8 ? { ev, st: st.s } : null;
   }).filter(Boolean);
-  if (!options.length) { G.nextEventT = G.t + CFG.dayLength * 2; return; }
+  if (!options.length) { G.nextEventT = G.t + dayLen() * 2; return; }
   const { ev, st } = options[Math.floor(Math.random() * options.length)];
-  G.event = { key: ev.key, stationId: st.id, end: G.t + CFG.dayLength * CFG.eventDays };
+  G.event = { key: ev.key, stationId: st.id, end: G.t + dayLen() * CFG.eventDays };
   toast(`${ev.text} Ziel: ${st.name || 'die Station mit dem Fähnchen'}.`, 4200);
 }
 
@@ -669,10 +679,11 @@ function update(dt) {
   updateBounds();
 
   // Wochenwechsel → Upgrade wählen
-  const week = Math.floor(G.t / (CFG.dayLength * 7)) + 1;
+  const week = Math.floor(G.t / (dayLen() * 7)) + 1;
   if (week > G.week) {
     G.week = week;
     // Jede Woche mindestens ein Fahrzeug – dort, wo es am meisten fehlt
+    if (SC.business) { closeWeekBalance(); showBalance(); return; }
     giveWeeklyVehicle();
     showUpgrade();
     return;
@@ -684,12 +695,12 @@ function update(dt) {
   G.stationTimer -= dt;
   if (G.stationTimer <= 0) {
     spawnStation();
-    G.stationTimer = Math.max(11, 23 - G.week) * rand(0.85, 1.15);   // nicht zu viele Stationen
+    G.stationTimer = (SC.spawnInterval ? SC.spawnInterval(G.week) : Math.max(11, 23 - G.week)) * rand(0.85, 1.15);
   }
 
   // Neue Fahrgäste und Überfüllung
   // Sanfter Einstieg, dann steigt der Andrang Woche für Woche
-  const rate = Math.min(0.35, 0.035 + 0.016 * G.week + G.t * 0.0003) * (G.event ? 1.4 : 1);
+  const rate = Math.min(0.35, 0.035 + 0.016 * G.week + G.t * 0.0003) * (G.event ? 1.4 : 1) * demandFactor();
   for (const st of G.stations) {
     const stRate = st.shape === 'hub' ? rate * 1.6 : rate;    // am Hauptbahnhof ist mehr los
     if (G.t - st.born > 3 && Math.random() < stRate * dt) {
@@ -701,7 +712,61 @@ function update(dt) {
     st.flash = Math.max(0, st.flash - dt);
     if (st.over >= 1) { gameOver(st); return; }
   }
+  if (SC.business && payRunningCosts(dt)) return;
   updateVehicles(dt);
+  for (const f of G.floaters) f.t += dt;
+  G.floaters = G.floaters.filter(f => f.t < 1.4);
+}
+
+/* ---------- Unternehmer-Modus (Europa) ----------
+   Fluggäste bringen Ticketumsatz, Flugzeuge kosten Leasing, Routen Gebühren.
+   Kosten werden laufend abgebucht (pro Spielsekunde), damit der Kontostand
+   lebendig mitläuft. Unter dem Kreditrahmen ist die Airline pleite.          */
+
+const priceLevel = () => SC.business?.prices[G.price] || { fare: 1, demand: 1 };
+/** Nachfrage-Faktor: Spielwelt, Ticketpreis und Werbekampagne */
+function demandFactor() {
+  if (!SC.business) return SC.demand || 1;
+  return (SC.demand || 1) * priceLevel().demand * (G.t < G.marketingUntil ? 1.4 : 1);
+}
+
+/** Wochenkosten bei aktuellem Netz: Leasing aller Flugzeuge + Routengebühren */
+function weeklyCosts() {
+  const b = SC.business;
+  return G.trains.reduce((a, t) => a + b.lease[t.line.mode], 0) + G.lines.length * b.routeFee;
+}
+
+/** Kosten anteilig abbuchen; true = pleite (Spiel vorbei) */
+function payRunningCosts(dt) {
+  const cost = (weeklyCosts() / (dayLen() * 7)) * dt;
+  G.money -= cost;
+  G.weekCost += cost;
+  if (G.money < -SC.business.credit) { gameOver(null, 'bankrupt'); return true; }
+  return false;
+}
+
+/** Ticketumsatz für einen angekommenen Fahrgast-Block, mit aufsteigender Zahl an der Station */
+function earnFare(st, mode) {
+  const amount = Math.round(SC.business.fare[mode] * priceLevel().fare);
+  G.money += amount;
+  G.weekRev += amount;
+  G.floaters.push({ x: st.x, y: st.y, text: `+${fmtMoney(amount)}`, t: 0 });
+}
+
+/** Geld lesbar: „1,2 Mio €“ oder „90.000 €“ */
+function fmtMoney(v) {
+  const a = Math.abs(v), sign = v < 0 ? '−' : '';
+  if (a >= 1e6) return `${sign}${(a / 1e6).toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} Mio €`;
+  return `${sign}${(Math.round(a / 1000) * 1000).toLocaleString('de-DE')} €`;
+}
+
+/** Woche abschließen: Zahlen merken, Zähler zurücksetzen */
+function closeWeekBalance() {
+  G.lastWeek = { week: G.week - 1, rev: G.weekRev, cost: G.weekCost, profit: G.weekRev - G.weekCost };
+  G.history.push(G.lastWeek.profit);
+  if (G.history.length > 8) G.history.shift();
+  G.weekRev = 0;
+  G.weekCost = 0;
 }
 
 /** Alle Fahrzeuge ein Stück weiterbewegen */
@@ -734,7 +799,11 @@ function arrive(tr) {
   let moved = 0;
 
   tr.pax = tr.pax.filter(p => {
-    if (p === st.shape) { G.score++; moved++; st.flash = 0.35; return false; }   // angekommen
+    if (p === st.shape) {                                                         // angekommen
+      G.score++; moved++; st.flash = 0.35;
+      if (SC.business) earnFare(st, tr.line.mode);
+      return false;
+    }
     const here = hops(p, st.id), there = hops(p, next);
     if (there < here || here === Infinity) return true;                          // bleibt sitzen
     st.queue.push(p);                                                            // steigt um
@@ -1293,6 +1362,66 @@ function drawPlane(L, pax, cap) {
   }
 }
 
+/**
+ * Flugzeug im Flug: steigt nach dem Start, sinkt vor der Landung.
+ * Je höher, desto größer, desto weiter weg der Schatten und desto länger
+ * die Kondensstreifen.
+ */
+function drawFlyingPlane(sx, sy, ang, L, tr, mode) {
+  const alt = tr.dwell > 0 ? 0 : Math.sin(Math.PI * clamp(tr.t, 0, 1));
+  const color = LINE_COLORS[tr.line.color];
+  // Kondensstreifen hinter den Triebwerken
+  if (alt > 0.15) {
+    ctx.save();
+    ctx.translate(sx, sy);
+    ctx.rotate(ang);
+    const len = L * 2.2 * alt;
+    const g = ctx.createLinearGradient(-L * 0.4, 0, -L * 0.4 - len, 0);
+    g.addColorStop(0, `rgba(120, 140, 175, ${0.45 * alt})`);
+    g.addColorStop(1, 'rgba(120, 140, 175, 0)');
+    ctx.strokeStyle = g;
+    ctx.lineWidth = Math.max(1.5, L * 0.05);
+    ctx.lineCap = 'round';
+    for (const k of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(-L * 0.15, k * L * 0.22);
+      ctx.lineTo(-L * 0.4 - len, k * L * 0.22);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  // Schatten auf der Karte
+  ctx.save();
+  ctx.translate(sx + alt * 12, sy + alt * 16);
+  ctx.rotate(ang);
+  ctx.fillStyle = `rgba(43, 43, 43, ${0.08 + 0.1 * alt})`;
+  ctx.strokeStyle = 'rgba(0,0,0,0)';
+  drawPlane(L * 0.95, 0, mode.cap);
+  ctx.restore();
+  // Flugzeug selbst, in der Luft etwas größer
+  ctx.save();
+  ctx.translate(sx, sy);
+  ctx.rotate(ang);
+  ctx.fillStyle = color;
+  ctx.strokeStyle = 'rgba(0,0,0,.4)';
+  ctx.lineWidth = Math.max(1, 0.05 * cam.s);
+  drawPlane(L * (1 + 0.2 * alt), tr.pax.length, mode.cap);
+  ctx.restore();
+}
+
+/** Aufsteigende Umsatz-Zahlen („+90.000 €“) über den Flughäfen */
+function drawFloaters() {
+  if (!G.floaters?.length) return;
+  const fs = clamp(0.5 * cam.s, 13, 17);
+  for (const f of G.floaters) {
+    const [sx, sy] = toScreen(f.x, f.y);
+    ctx.save();
+    ctx.globalAlpha = 1 - f.t / 1.4;
+    mapText(f.text, sx, sy - px(0.9, 18) - f.t * 40, '#2f9e4f', fs, 0, 'bold');
+    ctx.restore();
+  }
+}
+
 function drawTrains() {
   for (const tr of G.trains) {
     if (tr.line.stations.length < 2) continue;
@@ -1312,8 +1441,8 @@ function drawTrains() {
     ctx.strokeStyle = 'rgba(0,0,0,.35)';
     ctx.lineWidth = Math.max(1, 0.05 * cam.s);
     if (mode.plane) {
-      drawPlane(mode.plane * vs, tr.pax.length, mode.cap);
       ctx.restore();
+      drawFlyingPlane(sx, sy, ang, mode.plane * vs, tr, mode);
       continue;
     }
     // Ein Wagen (Bus, U-Bahn) oder zwei gekoppelte (Tram, Zug)
@@ -1519,6 +1648,7 @@ function draw() {
   drawTrains();
   drawTutorialGlow();
   drawStations();
+  drawFloaters();
   drawTutorialPath();
   drawLost();
 }
@@ -1818,7 +1948,15 @@ function setText(id, text) {
 
 function updateHud() {
   setText('#score', String(G.score));
-  const weekT = (G.t % (CFG.dayLength * 7)) / (CFG.dayLength * 7);
+  const biz = !!SC.business;
+  if (hudCache.biz !== biz) { hudCache.biz = biz; $('#money-chip').hidden = !biz; $('#btn-shop').hidden = !biz; }
+  if (biz) {
+    setText('#money', fmtMoney(G.money));
+    const chip = $('#money-chip');
+    chip.classList.toggle('negative', G.money < 0);
+    chip.classList.toggle('ad', G.t < G.marketingUntil);
+  }
+  const weekT = (G.t % (dayLen() * 7)) / (dayLen() * 7);
   const day = Math.min(6, Math.floor(weekT * 7));
   setText('#week-label', `Woche ${G.week} · ${DAYS[day]}`);
 
@@ -2073,7 +2211,7 @@ function showUpgrade() {
 
 const SAVE_KEY = 'heftmetro.save';
 const SAVE_VERSION = 3;          // v3: Stationsarten + S-Bahn (v2 wird übernommen, v1 verworfen)
-const ACTIVE_STATES = ['playing', 'upgrade', 'placeBig', 'placeTier', 'placeNode'];
+const ACTIVE_STATES = ['playing', 'upgrade', 'placeBig', 'placeTier', 'placeNode', 'balance', 'shop'];
 
 function serialize() {
   return {
@@ -2085,6 +2223,8 @@ function serialize() {
     inv: G.inv, selectedMode: G.selectedMode, stationTimer: G.stationTimer,
     stations: G.stations.map(({ id, x, y, shape, name, tier, node, queue, over, big, born }) => ({ id, x, y, shape, name, tier, node, queue, over, big, born })),
     event: G.event, nextEventT: G.nextEventT,
+    money: G.money, price: G.price, marketingUntil: G.marketingUntil,
+    weekRev: G.weekRev, weekCost: G.weekCost, history: G.history, lastWeek: G.lastWeek,
     districtsLeft: G.districtsLeft,
     lines: G.lines.map(({ id, color, mode, label, stations }) => ({ id, color, mode, label, stations })),
     trains: G.trains.map(({ id, line, a, b, t, dwell, pax }) => ({ id, line: line.id, a, b, t, dwell, pax })),
@@ -2196,7 +2336,18 @@ function restoreGame(d) {
   // Ereignis fortsetzen (nur wenn die Station noch existiert)
   G.event = d.event && EVENTS.some(e => e.key === d.event.key) && G.stations.some(st => st.id === d.event.stationId)
     ? { key: d.event.key, stationId: d.event.stationId, end: +d.event.end || G.t } : null;
-  G.nextEventT = Number.isFinite(d.nextEventT) ? d.nextEventT : G.t + CFG.dayLength * 7;
+  G.nextEventT = Number.isFinite(d.nextEventT) ? d.nextEventT : G.t + dayLen() * 7;
+  // Airline-Zahlen
+  if (SC.business) {
+    const num = (v, def) => (Number.isFinite(v) ? v : def);
+    G.money = num(d.money, SC.business.start);
+    G.price = SC.business.prices[d.price] ? d.price : 'normal';
+    G.marketingUntil = num(d.marketingUntil, 0);
+    G.weekRev = num(d.weekRev, 0);
+    G.weekCost = num(d.weekCost, 0);
+    G.history = Array.isArray(d.history) ? d.history.filter(Number.isFinite).slice(-8) : [];
+    G.lastWeek = d.lastWeek && Number.isFinite(d.lastWeek.profit) ? d.lastWeek : null;
+  }
   const lineById = new Map(G.lines.map(l => [l.id, l]));
   G.trains = d.trains.map(tr => ({
     id: tr.id, line: lineById.get(tr.line), a: tr.a, b: tr.b,
@@ -2226,7 +2377,11 @@ function resumeGame() {
   const state = G.resumeState || 'playing';
   G.resumeState = null;
   G.speed = 1;
-  if (state === 'upgrade') {
+  if (state === 'balance') {
+    showBalance();
+  } else if (state === 'shop') {
+    openShop();
+  } else if (state === 'upgrade') {
     showUpgrade();
   } else if (state === 'placeBig') {
     G.state = 'placeBig';
@@ -2242,9 +2397,165 @@ function resumeGame() {
   }
 }
 
+/* ---------- Airline: Wochenbilanz und Firmen-Shop ---------- */
+
+/** Wochenbilanz mit Balkendiagramm der letzten Wochen und einem Tipp */
+function showBalance() {
+  G.state = 'balance';
+  closeLineMenu();
+  drag = null;
+  const w = G.lastWeek || { week: G.week - 1, rev: 0, cost: 0, profit: 0 };
+  $('#bal-title').textContent = `Wochenbilanz – Woche ${w.week}`;
+  $('#bal-rev').textContent = fmtMoney(w.rev);
+  $('#bal-cost').textContent = fmtMoney(-w.cost);
+  const p = $('#bal-profit');
+  p.textContent = (w.profit >= 0 ? '+' : '') + fmtMoney(w.profit);
+  p.className = w.profit >= 0 ? 'plus' : 'minus';
+  const m = $('#bal-money');
+  m.textContent = fmtMoney(G.money);
+  m.className = G.money >= 0 ? '' : 'minus';
+
+  // Balkendiagramm: Gewinn (grün) / Verlust (rot) pro Woche
+  const svg = $('#bal-chart');
+  const hist = G.history.length ? G.history : [0];
+  const max = Math.max(1, ...hist.map(Math.abs));
+  const mid = 55, bw = 400 / Math.max(hist.length, 4);
+  let html = `<line class="axis" x1="0" y1="${mid}" x2="400" y2="${mid}"/>`;
+  hist.forEach((v, i) => {
+    const h = (Math.abs(v) / max) * 45;
+    const x = i * bw + bw * 0.2, y = v >= 0 ? mid - h : mid;
+    html += `<rect class="${v >= 0 ? 'bar-plus' : 'bar-minus'}" x="${x}" y="${y}" width="${bw * 0.6}" height="${Math.max(1, h)}" rx="3"/>`;
+    html += `<text x="${x + bw * 0.3}" y="${v >= 0 ? mid + 14 : mid - 5}" text-anchor="middle">W${w.week - hist.length + i + 1}</text>`;
+  });
+  svg.innerHTML = html;
+
+  // Ein Tipp aus den Zahlen
+  const crowded = G.stations.filter(s => s.queue.length >= capacityOf(s) * 0.7);
+  const connected = new Set(G.lines.flatMap(l => l.stations));
+  const open = G.stations.filter(s => !connected.has(s.id));
+  $('#bal-tip').textContent =
+    G.money < 0 ? `Achtung: Du bist im Minus. Ab ${fmtMoney(-SC.business.credit)} ist die Airline pleite – teure Flugzeuge abgeben oder Preise anpassen.`
+    : w.profit < 0 ? 'Verlust diese Woche: Prüfe, ob teure Großraumjets und Jumbos genug Fluggäste haben.'
+    : crowded.length ? `${crowded[0].name} wird voll – mehr Flugzeuge oder ein Terminal-Ausbau helfen.`
+    : open.length ? `${open.length === 1 ? '1 Flughafen wartet' : `${open.length} Flughäfen warten`} noch auf eine Route – im Shop gibt es Lizenzen.`
+    : 'Läuft! Mit einer Werbekampagne bekommst du noch mehr Fluggäste.';
+  $('#toast').classList.remove('show');
+  $('#screen-balance').hidden = false;
+}
+
+$('#bal-go').addEventListener('click', () => {
+  $('#screen-balance').hidden = true;
+  G.state = 'playing';
+  saveGame();
+});
+$('#bal-shop').addEventListener('click', () => {
+  $('#screen-balance').hidden = true;
+  openShop();
+});
+
+/** Einen Shop-Eintrag bauen; buy() wird nur bei genug Geld ausgeführt */
+function shopItem(icon, title, text, price, enabled, buy) {
+  const b = document.createElement('button');
+  b.className = 'shop-item';
+  b.innerHTML = `<svg class="ico" viewBox="0 0 24 24">${icon}</svg><b></b><small></small><span class="price"></span>`;
+  b.querySelector('b').textContent = title;
+  b.querySelector('small').textContent = text;
+  b.querySelector('.price').textContent = fmtMoney(price);
+  b.disabled = !enabled || G.money < price;
+  b.addEventListener('click', () => {
+    if (G.money < price) return;
+    G.money -= price;
+    G.weekCost += price;
+    buy();
+    saveGame();
+    if (G.state === 'shop') renderShop();
+  });
+  return b;
+}
+
+function renderShop() {
+  const b = SC.business;
+  $('#shop-money').textContent = fmtMoney(G.money);
+  $('#shop-costs').textContent = fmtMoney(weeklyCosts());
+
+  const price = $('#shop-price');
+  price.innerHTML = '';
+  for (const [key, lvl] of Object.entries(b.prices)) {
+    const btn = document.createElement('button');
+    btn.innerHTML = `<span></span><small></small>`;
+    btn.firstChild.textContent = lvl.name;
+    btn.lastChild.textContent = lvl.text;
+    btn.classList.toggle('is-active', G.price === key);
+    btn.addEventListener('click', () => { G.price = key; renderShop(); });
+    price.appendChild(btn);
+  }
+
+  const planes = $('#shop-planes'); planes.innerHTML = '';
+  const routes = $('#shop-routes'); routes.innerHTML = '';
+  for (const mode of MODE_ORDER) {
+    const M = MODES[mode];
+    planes.appendChild(shopItem(M.icon, M.vehicle, `Leasing ${fmtMoney(b.lease[mode])}/Woche · ${G.inv[mode].free} frei`,
+      b.planePrice[mode], true, () => {
+        G.inv[mode].free++;
+        toast(autoAssignVehicles() ? `${M.one} fliegt jetzt auf einer Route ohne Flugzeug.` : `${M.one} steht bereit – im Linien-Menü einsetzen.`);
+      }));
+    const canRoute = G.inv[mode].lines < M.maxLines && totalLineSlots() < LINE_COLORS.length;
+    routes.appendChild(shopItem(M.icon, M.lineName, canRoute ? `${MODE_TEXT[mode]} – mit Flugzeug` : 'Höchstzahl erreicht',
+      b.routePrice[mode], canRoute, () => {
+        G.inv[mode].lines++;
+        G.selectedMode = mode;
+        toast(`Neue ${M.lineName}: zieh sie jetzt auf der Karte.`);
+      }));
+  }
+
+  const build = $('#shop-build'); build.innerHTML = '';
+  for (const u of TIER_UPGRADES) {
+    const ok = G.stations.some(st => st.shape !== 'hub' && tierRank(st.tier) < tierRank(u.tier));
+    build.appendChild(shopItem(BUILD_ICON, u.title, u.text, b.tierPrice[u.tier], ok, () => {
+      closeShop('placeTier');
+      G.placeTier = u.tier;
+      toast(`Tippe auf den Flughafen, der ${TIER_INFO[u.tier].a} ${TIER_INFO[u.tier].name} werden soll.`, 4000);
+    }));
+  }
+  build.appendChild(shopItem('<path d="M4 8h13l-3-3M20 16H7l3 3"/>', 'Umsteige-Terminal', 'Schneller umsteigen, 6 Plätze mehr.',
+    b.nodePrice, G.stations.some(s => !s.node), () => {
+      closeShop('placeNode');
+      toast('Tippe auf den Flughafen für das Umsteige-Terminal.', 4000);
+    }));
+  build.appendChild(shopItem('<circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="9"/>', SC.bigTitle, '12 statt 6 Plätze an einem Flughafen.',
+    b.bigPrice, G.stations.some(s => !s.big && s.shape !== 'hub'), () => {
+      closeShop('placeBig');
+      toast('Tippe auf den Flughafen, der größer werden soll.', 4000);
+    }));
+  const adRunning = G.t < G.marketingUntil;
+  build.appendChild(shopItem('<path d="M4 10v4h3l6 4V6L7 10H4zM16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/>', 'Werbekampagne',
+    adRunning ? 'Läuft gerade.' : '+40 % Fluggäste für eine Woche.', b.marketingPrice, !adRunning, () => {
+      G.marketingUntil = G.t + dayLen() * 7;
+      toast('Werbekampagne läuft – eine Woche lang mehr Fluggäste!');
+    }));
+}
+
+function openShop() {
+  if (!SC.business) return;
+  closeLineMenu();
+  drag = null;
+  G.state = 'shop';
+  renderShop();
+  $('#toast').classList.remove('show');
+  $('#screen-shop').hidden = false;
+}
+/** Shop schließen – optional direkt in einen Platzier-Modus (Ausbau antippen) */
+function closeShop(next = 'playing') {
+  $('#screen-shop').hidden = true;
+  G.state = next;
+  saveGame();
+}
+$('#btn-shop').addEventListener('click', () => { if (G.state === 'playing') openShop(); });
+$('#shop-close').addEventListener('click', () => closeShop());
+
 /* ---------- Start und Ende ---------- */
 
-function gameOver(st) {
+function gameOver(st, reason = 'crowded') {
   G.state = 'over';
   G.lostStation = st;
   clearSave();                         // vorbei ist vorbei
@@ -2253,11 +2564,14 @@ function gameOver(st) {
   const rec = best.get();
   const isNew = G.score > rec;
   if (isNew) best.set(G.score);
-  $('#over-reason').textContent = st.shape === 'hub'
+  $('#over-reason').textContent = reason === 'bankrupt'
+    ? `Deine Airline ist pleite – der Kreditrahmen von ${fmtMoney(SC.business.credit)} ist aufgebraucht.`
+    : st.shape === 'hub'
     ? `${SC.hubTitle} war zu lange überfüllt.`
     : st.name
       ? `Die Station ${st.name} war zu lange überfüllt.`
       : `Die ${SHAPE_NAME[st.shape]}-Station war zu lange überfüllt.`;
+  if (SC.business && reason !== 'bankrupt') $('#over-reason').textContent += ` Kontostand am Ende: ${fmtMoney(G.money)}.`;
   $('#over-score').textContent = G.score;
   $('#over-weeks').textContent = G.week;
   $('#over-record').textContent = isNew ? 'Neuer Rekord!' : rec ? `Rekord: ${rec} Fahrgäste` : '';
@@ -2790,7 +3104,32 @@ const EUROPA_MODES = {
 const EUROPA = {
   key: 'europa',
   title: 'Europa',
-  sub: 'Fluglinien',
+  sub: 'Deine eigene Airline',
+  dayLength: 16,                                    // längere Wochen
+  demand: 0.75,                                     // weniger Andrang am Anfang
+  spawnInterval: week => Math.max(18, 32 - week),   // neue Städte seltener
+  /**
+   * Unternehmer-Modus: Geld verdienen und ausgeben.
+   * Ein Fahrgast-Symbol steht für ~100 Fluggäste.
+   */
+  business: {
+    start: 4e6,                 // Startkapital
+    credit: 2e6,                // Kreditrahmen – darunter ist die Airline pleite
+    fare: { bus: 25e3, tram: 35e3, metro: 55e3, sbahn: 80e3, rail: 120e3 },      // Umsatz pro Symbol
+    lease: { bus: 60e3, tram: 100e3, metro: 160e3, sbahn: 260e3, rail: 400e3 },  // Leasing pro Flugzeug und Woche
+    routeFee: 40e3,             // Gebühren pro Route und Woche
+    planePrice: { bus: 0.3e6, tram: 0.6e6, metro: 1.2e6, sbahn: 2.5e6, rail: 4e6 },
+    routePrice: { bus: 0.5e6, tram: 0.9e6, metro: 1.5e6, sbahn: 2.5e6, rail: 3.5e6 },
+    tierPrice: { tram: 1e6, metro: 2.5e6, rail: 5e6 },
+    nodePrice: 1.5e6,
+    bigPrice: 1e6,
+    marketingPrice: 0.6e6,
+    prices: {
+      cheap: { name: 'Günstig', fare: 0.7, demand: 1.3, text: 'mehr Fluggäste, weniger pro Ticket' },
+      normal: { name: 'Normal', fare: 1, demand: 1, text: 'ausgewogen' },
+      premium: { name: 'Premium', fare: 1.4, demand: 0.7, text: 'weniger Fluggäste, mehr pro Ticket' },
+    },
+  },
   hubName: 'Frankfurt',
   hubTitle: 'Der Flughafen Frankfurt',
   dragHint: 'Zieh von Flughafen zu Flughafen.',
@@ -2835,11 +3174,11 @@ const EUROPA = {
     { tier: 'rail', title: 'Großflughafen', text: 'Hier landen auch Großraumjets und Jumbos.' },
   ],
   bigTitle: 'Großes Terminal',
-  lead: 'Europa fliegt – von Frankfurt aus nach London, Rom und Moskau. Verbinde die Flughäfen, bevor sie überfüllt sind.',
+  lead: 'Gründe deine Airline in Frankfurt – mit 4 Mio € Startkapital. Verdiene an jedem Ticket, zahle Leasing und Gebühren und wachse bis nach London, Rom und Moskau.',
   howto: [
-    'Wähle unten ein Flugzeug und zieh von Flughafen zu Flughafen.',
-    'Fluggäste wollen zu einem Flughafen mit ihrer Form – viele nach Frankfurt.',
-    'Propellermaschinen fliegen kurz und landen überall, Jumbos nur weit und ab Frankfurt. Flughäfen baust du per Upgrade aus.',
+    'Wähle unten ein Flugzeug und zieh von Flughafen zu Flughafen – jede Route least automatisch ein Flugzeug.',
+    'Fluggäste bringen Umsatz, Flugzeuge und Routen kosten laufend Geld. Im Firmen-Shop (Aktenkoffer) kaufst du Flugzeuge, Routen und Ausbauten.',
+    'Achte auf Kontostand und überfüllte Flughäfen: Pleite oder Chaos am Gate heißt Endstation.',
   ],
 };
 
@@ -2948,6 +3287,8 @@ window.__metro = {
   loadSave,
   tut,
   startTutorial,
+  openShop,
+  showBalance,
   showFocus,
   updateEvent,
   get cam() { return cam; },

@@ -113,6 +113,7 @@ Schriftgröße der Beschriftungen: 0,5 U, begrenzt auf 11–15 px. Kartendaten s
 - **Upgrade-Zettel** (`.note-wide`): bis 720 px breit, bis zu 6 Karten in 3 Spalten (ab 700 px Bildschirmbreite), darüber die Wochen-Nachricht („Eine U-Bahn fährt ab jetzt zusätzlich auf Linie U1.“).
 - **Fokus-Zettel** (`#screen-focus`): 4 Karten nebeneinander mit Fahrzeug-Symbolen, Titel, kurzer Beschreibung und unten die Linien-Zahlen in kleiner Bleistiftschrift.
 - **Weltauswahl** (`.worlds`): zwei Kringel-Knöpfe nebeneinander auf dem Startzettel (Name in Handschrift 24 px + Untertitel 14 px); gewählte Welt mit Textmarker hinterlegt.
+- **Airline (Europa)**: Kontostand-Chip neben den Punkten (Münz-Symbol, rot bei Minus, gelbes „Werbung“-Schild während einer Kampagne), Aktenkoffer-Knopf für den Shop. Wochenbilanz-Zettel mit Zahlen in Handschrift (Gewinn grün, Verlust rot) und Balkendiagramm. Shop-Zettel scrollt; Einträge als Kringel-Kärtchen mit Symbol, Name, kurzer Info und Preis; nicht leistbare sind blass. Umsatz steigt als grüne Handschrift-Zahl über dem Flughafen auf (1,4 s). Flugzeuge: Größe +20 % und Schatten-Versatz bis 12/16 px auf Reiseflughöhe, Kondensstreifen mit Verlauf.
 - **Toast**: kleiner Zettel unten mittig, verschwindet nach 2,5 s.
 - Icons: einfache SVG-Striche (`stroke: currentColor; stroke-width: 2.2; stroke-linecap: round`), nie Emoji in Bedienelementen.
 
