@@ -132,6 +132,30 @@
     </div>
   </div>
 
+  <!-- ===== Zettel: Paywall (Freischalten) ===== -->
+  <div class="overlay paywall" id="screen-paywall" hidden>
+    <div class="note note-big pay-note">
+      <span class="pay-stamp">Vollversion</span>
+      <h1>Heft-Metro</h1>
+      <p class="lead">Einmal freischalten – für immer spielen.</p>
+      <ul class="pay-list">
+        <li>Hannover mit Bus, Tram, U-Bahn, S-Bahn &amp; Zug</li>
+        <li>Europa als eigene Airline</li>
+        <li>Ringlinien, Ausbau, Ereignisse &amp; Speicherstand</li>
+        <li>Keine Werbung, kein Abo</li>
+      </ul>
+      <div class="pay-price"><b>5,99 €</b><span>einmalig</span></div>
+      <button class="pen-btn primary pay-buy" id="pay-buy">Jetzt für 5,99 € freischalten</button>
+      <div class="pay-or"><span>oder mit Code</span></div>
+      <form class="pay-code" id="pay-form" autocomplete="off">
+        <input id="pay-input" type="text" inputmode="text" autocapitalize="characters" spellcheck="false" placeholder="Code eingeben" aria-label="Freischalt-Code">
+        <button class="pen-btn" type="submit">Einlösen</button>
+      </form>
+      <p class="pay-msg" id="pay-msg" role="status" aria-live="polite"></p>
+      <p class="fineprint">Einmalzahlung · gilt auf diesem Gerät</p>
+    </div>
+  </div>
+
   <!-- ===== Zettel: Fokus zu Beginn ===== -->
   <div class="overlay" id="screen-focus" hidden>
     <div class="note note-big note-wide">

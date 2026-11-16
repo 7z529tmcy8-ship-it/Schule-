@@ -163,3 +163,11 @@ Spiel-Balance (Tageslänge, Kapazität, Zuggeschwindigkeit …) steht gesammelt 
 npx http-server -p 8080 .
 # dann http://localhost:8080 öffnen
 ```
+
+## Paywall (Vorschau)
+Beim ersten Öffnen erscheint eine Paywall: „5,99 € einmalig“ oder Freischalten per Code.
+- Bezahlen ist noch **nicht** eingebaut – der Kauf-Knopf zeigt nur „Bezahlen kommt bald“.
+- Mit dem Code wird das Spiel freigeschaltet; das merkt sich das Gerät (`localStorage`, Schlüssel `heftmetro.unlocked`).
+- Der Code steht nur als Prüfsumme in `game.js` (`CODE_HASH`). Neuen Code setzen: Prüfsumme mit `codeHash('NEUERCODE')` in der Browser-Konsole berechnen und eintragen.
+- Achtung: Eine reine Browser-Sperre ist nicht wirklich sicher – wer sich auskennt, kann sie umgehen. Für echtes Bezahlen braucht es einen Zahlungsanbieter mit Server.
+

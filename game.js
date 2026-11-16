@@ -3522,10 +3522,49 @@ function frame(now) {
 
 window.addEventListener('resize', resize);
 resize();
+/* ---------- Paywall ----------
+   Noch ohne echtes Bezahlen: Der Kauf-Knopf zeigt nur einen Hinweis,
+   freigeschaltet wird mit Code. Gespeichert wird die Freischaltung auf dem Gerät.
+   Hinweis: Im Browser lässt sich so eine Sperre nie wirklich absichern –
+   der Code steht nur als Prüfsumme im Quelltext, nicht im Klartext. */
+const UNLOCK_KEY = 'heftmetro.unlocked';
+const CODE_HASH = 0x89d3c54a;   // Prüfsumme des Freischalt-Codes
+
+function codeHash(str) {
+  let h = 0x811c9dc5;                     // FNV-1a, 32 Bit
+  for (const ch of str.trim().toUpperCase()) { h ^= ch.codePointAt(0); h = Math.imul(h, 0x01000193) >>> 0; }
+  return h;
+}
+function isUnlocked() {
+  try { return localStorage.getItem(UNLOCK_KEY) === '1'; } catch { return false; }
+}
+function showPaywall(onDone) {
+  G.state = 'start';
+  const scr = $('#screen-paywall'), msg = $('#pay-msg'), input = $('#pay-input'), note = scr.querySelector('.pay-note');
+  scr.hidden = false;
+  $('#screen-start').hidden = true;
+  const say = (text, cls) => { msg.textContent = text; msg.className = 'pay-msg ' + (cls || ''); };
+  $('#pay-buy').onclick = () => say('Bezahlen kommt bald – nutze bis dahin einen Code.');
+  $('#pay-form').onsubmit = e => {
+    e.preventDefault();
+    if (!input.value.trim()) { say('Bitte gib einen Code ein.', 'err'); return; }
+    if (codeHash(input.value) === CODE_HASH) {
+      try { localStorage.setItem(UNLOCK_KEY, '1'); } catch { /* privat-Modus: gilt nur jetzt */ }
+      say('Freigeschaltet – viel Spaß!', 'ok');
+      input.blur();
+      setTimeout(() => { scr.hidden = true; onDone(); }, 700);
+    } else {
+      say('Dieser Code stimmt leider nicht.', 'err');
+      note.classList.remove('shake'); void note.offsetWidth; note.classList.add('shake');
+      input.select();
+    }
+  };
+}
+
 runSplash();
 const saved = loadSave();
 if (saved) restoreGame(saved); else newGame(worldPref.get());
-showStart(saved);
+if (isUnlocked()) showStart(saved); else showPaywall(() => showStart(saved));
 requestAnimationFrame(frame);
 
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {

@@ -544,3 +544,40 @@ button { font: inherit; color: inherit; }
 .shop-price button span { font: 700 19px var(--hand); }
 .shop-price small { font-size: 12px; color: var(--pencil-soft); text-align: center; }
 .shop-price button.is-active { background: linear-gradient(transparent 10%, rgba(255, 232, 61, .55) 10%, rgba(255, 232, 61, .55) 90%, transparent 90%); }
+
+/* ===== Paywall ===== */
+.paywall { z-index: 40; }
+.pay-note { position: relative; text-align: center; width: min(520px, calc(100vw - 32px)); }
+.pay-note h1 { margin-top: 8px; }
+.pay-stamp {
+  position: absolute; top: 18px; right: 18px;
+  font: 700 15px var(--hand); text-transform: uppercase; letter-spacing: .08em;
+  color: var(--danger); border: 2.5px solid var(--danger); border-radius: 6px;
+  padding: 2px 8px; transform: rotate(8deg); opacity: .85;
+}
+.pay-list { text-align: left; margin: 0 auto 18px; padding: 0; list-style: none; max-width: 400px; font-size: 18px; }
+.pay-list li { padding: 4px 0 4px 30px; position: relative; }
+.pay-list li::before { content: "✓"; position: absolute; left: 4px; font-weight: 700; color: #2f9e4f; }
+.pay-price { margin: 4px 0 14px; }
+.pay-price b {
+  font: 700 46px/1 var(--hand);
+  background: linear-gradient(transparent 60%, var(--marker) 60%, var(--marker) 92%, transparent 92%);
+  padding: 0 6px;
+}
+.pay-price span { display: block; font-size: 16px; color: var(--pencil-soft); margin-top: 4px; }
+.pay-buy { width: 100%; max-width: 400px; font-size: 20px; padding: 14px 18px; }
+.pay-or { display: flex; align-items: center; gap: 10px; margin: 18px auto 12px; max-width: 400px; color: var(--pencil-soft); font-size: 15px; }
+.pay-or::before, .pay-or::after { content: ""; flex: 1; border-top: 1.5px dashed var(--pencil-soft); }
+.pay-code { display: flex; gap: 10px; max-width: 400px; margin: 0 auto; }
+.pay-code input {
+  flex: 1; min-width: 0; min-height: 48px; padding: 0 14px;
+  font: 20px var(--hand); letter-spacing: .1em; text-transform: uppercase;
+  background: #fff; color: var(--pencil);
+  border: 2px solid var(--pencil); border-radius: var(--scribble);
+}
+.pay-code input:focus { outline: 3px solid var(--marker); outline-offset: 1px; }
+.pay-msg { min-height: 24px; margin: 10px 0 0; font-size: 16px; }
+.pay-msg.err { color: var(--danger); }
+.pay-msg.ok { color: #2f9e4f; }
+.pay-note.shake { animation: pay-shake .35s; }
+@keyframes pay-shake { 25% { transform: translateX(-8px); } 50% { transform: translateX(7px); } 75% { transform: translateX(-4px); } }
