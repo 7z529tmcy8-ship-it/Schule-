@@ -7,6 +7,22 @@ Inspiriert vom Spielprinzip von Mini Metro, aber mit eigener Grafik und eigenem 
 Beim allerersten Spiel startet automatisch eine **Anleitung in 9 Schritten**: Du baust deine erste Bus- und Zuglinie selbst, die richtige Stelle leuchtet jeweils gelb auf, und ein gestrichelter Pfeil zeigt, wohin du ziehen sollst. Währenddessen gibt es keinen Zeitdruck.
 Später kannst du sie jederzeit über **„Anleitung“** auf dem Startzettel wiederholen oder mit „Überspringen“ abbrechen.
 
+## Zwei Spielwelten
+Auf dem Startzettel wählst du die Spielwelt. Beide funktionieren nach derselben Logik (Drehkreuz, Netzgrößen, Reichweiten, Stationsarten, Ausbau, Upgrades, Ereignisse).
+
+| | Hannover | Europa |
+|---|---|---|
+| Drehkreuz | Hauptbahnhof | Flughafen Frankfurt |
+| Stationen | 42 Stadtteile | ~60 Städte mit Flughafen |
+| Karte | Leine, Ihme, Maschsee, Kanal, Eilenriede | Küsten, Nordsee, Ostsee, Mittelmeer, Schwarzes Meer |
+| großes Netz, kurze Wege | Bus (max. ~2,7 km) | Propellermaschine (max. ~600 km) |
+| mittel | Tram, U-Bahn | Regionaljet (~1.100 km), Mittelstrecke (~2.200 km) |
+| klein, weit | S-Bahn, Zug (mind. ~3 km) | Großraumjet, Jumbo (mind. ~1.500 km) |
+| Stationsarten | Haltestelle · T · U · S | Flugplatz · R · F · G |
+| Ereignisse | 96-Spiel, Messe, Maschseefest, Zoo-Tag | Oktoberfest, Sommerferien, CL-Finale, Hannover Messe, Karneval |
+
+Es gibt **einen** Spielstand (die zuletzt gespielte Welt) und einen Rekord pro Welt. Die Anleitung spielt in Hannover. Auch die Europa-Karte ist **grob aus dem Gedächtnis** gezeichnet (1 Kästchen ≈ 60 km); die Daten stehen in `EUROPA_MAP` in `game.js`.
+
 ## Hannover
 Gespielt wird auf einer **grob skizzierten Karte von Hannover**: Leine, Ihme, Maschsee, Mittellandkanal, Eilenriede, Herrenhäuser Gärten und ein paar Orientierungspunkte (Rathaus, Zoo, Stadion, Messe).
 Neue Stationen entstehen in echten **Stadtteilen** – von innen (Oststadt, Nordstadt, Linden) nach außen (Misburg, Wettbergen, Lahe). Noch nicht erschlossene Stadtteile stehen blass auf der Karte.

@@ -102,11 +102,15 @@
   <div class="overlay" id="screen-start">
     <div class="note note-big">
       <h1>Heft-Metro</h1>
-      <p class="lead">Hannover wächst – vom Hauptbahnhof bis nach Linden, List und Misburg. Verbinde die Stadtteile, bevor die Stationen überfüllt sind.</p>
+      <div class="worlds" role="radiogroup" aria-label="Spielwelt">
+        <button class="world" data-world="hannover"><b>Hannover</b><small>Bus, Tram, U-Bahn, S-Bahn, Zug</small></button>
+        <button class="world" data-world="europa"><b>Europa</b><small>Fluglinien</small></button>
+      </div>
+      <p class="lead" id="start-lead"></p>
       <ol class="howto">
-        <li><span class="mini-shape">●</span> Wähle unten Bus, Tram, U-Bahn oder Zug und zieh mit Stift oder Finger von Station zu Station.</li>
-        <li><span class="mini-shape">▲</span> Fahrgäste wollen zu einer Station mit ihrer Form – viele zum Hauptbahnhof.</li>
-        <li><span class="mini-shape">■</span> Busse halten überall, U-Bahnen nur an „U“-Stationen, S-Bahn und Zug nur an Bahnhöfen („S“). Kleine Haltestellen baust du per Upgrade aus.</li>
+        <li><span class="mini-shape">●</span> <span id="how-0"></span></li>
+        <li><span class="mini-shape">▲</span> <span id="how-1"></span></li>
+        <li><span class="mini-shape">■</span> <span id="how-2"></span></li>
       </ol>
       <p class="record" id="start-record"></p>
       <div class="save-info" id="save-info" hidden></div>
@@ -151,7 +155,7 @@
         <path d="M24 30 V48 M40 30 V48 M24 39 H40"/>
       </svg>
       <h1 class="splash-title">Heft-Metro</h1>
-      <p class="splash-sub">Hannover</p>
+      <p class="splash-sub">Hannover · Europa</p>
       <div class="splash-bar" aria-hidden="true"><span></span></div>
       <p class="splash-hint">Tippen zum Überspringen</p>
     </div>

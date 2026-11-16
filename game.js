@@ -58,35 +58,35 @@ const SHAPE_NAME = {
  */
 const MODES = {
   bus: {
-    name: 'Bus', vehicle: 'Bus', lineName: 'Buslinie', none: 'Kein Bus frei', no: 'kein Bus', gift: 'einen Bus', tier: 'bus',
+    name: 'Bus', vehicle: 'Bus', lineName: 'Buslinie', none: 'Kein Bus frei', no: 'kein Bus', gift: 'einen Bus', the: 'den Bus', two: '2 Busse', style: 'dashed', tier: 'bus',
     speed: 1.6, cap: 4, dwell: 0.25, perPax: 0.15, maxStops: 7, maxLines: 5, startLines: 3, startVehicles: 4,
     maxHop: 9, minHop: 0,
     body: { w: 0.8, h: 0.46, parts: 1 },
     icon: '<rect x="4.5" y="4" width="15" height="13" rx="3"/><path d="M4.5 11h15M8 20.5v-3.5M16 20.5v-3.5"/>',
   },
   tram: {
-    name: 'Tram', vehicle: 'Tram', lineName: 'Tramlinie', none: 'Keine Tram frei', no: 'keine Tram', gift: 'eine Tram', tier: 'tram',
+    name: 'Tram', vehicle: 'Tram', lineName: 'Tramlinie', none: 'Keine Tram frei', no: 'keine Tram', gift: 'eine Tram', the: 'die Tram', style: 'rails', tier: 'tram',
     speed: 2.2, cap: 6, dwell: 0.2, perPax: 0.07, maxStops: 8, maxLines: 3, startLines: 1, startVehicles: 2,
     maxHop: 11, minHop: 0,
     body: { w: 1.35, h: 0.36, parts: 2 },
     icon: '<rect x="5" y="7.5" width="14" height="10.5" rx="3"/><path d="M9 3h6M12 3v4.5M5 13h14M8 21l1.5-3M16 21l-1.5-3"/>',
   },
   metro: {
-    name: 'U-Bahn', vehicle: 'U-Bahn', lineName: 'U-Bahn-Linie', none: 'Keine U-Bahn frei', no: 'keine U-Bahn', gift: 'eine U-Bahn', tier: 'metro',
+    name: 'U-Bahn', vehicle: 'U-Bahn', lineName: 'U-Bahn-Linie', none: 'Keine U-Bahn frei', no: 'keine U-Bahn', gift: 'eine U-Bahn', the: 'die U-Bahn', style: 'solid', tier: 'metro',
     speed: 2.8, cap: 6, dwell: 0.3, perPax: 0.12, maxStops: 99, maxLines: 3, startLines: 1, startVehicles: 2,
     maxHop: 15, minHop: 0,
     body: { w: 1.0, h: 0.5, parts: 1 },
     icon: '<circle cx="12" cy="12" r="8.5"/><path d="M8.7 7.8v4.7a3.3 3.3 0 0 0 6.6 0V7.8"/>',
   },
   sbahn: {
-    name: 'S-Bahn', vehicle: 'S-Bahn', lineName: 'S-Bahn-Linie', none: 'Keine S-Bahn frei', no: 'keine S-Bahn', gift: 'eine S-Bahn', tier: 'rail',
+    name: 'S-Bahn', vehicle: 'S-Bahn', lineName: 'S-Bahn-Linie', none: 'Keine S-Bahn frei', no: 'keine S-Bahn', gift: 'eine S-Bahn', the: 'die S-Bahn', style: 'sbahn', tier: 'rail',
     speed: 3.6, cap: 8, dwell: 0.6, perPax: 0.09, maxStops: 6, maxLines: 2, startLines: 1, startVehicles: 1, needsHub: true,
     maxHop: 99, minHop: 0,
     body: { w: 1.5, h: 0.46, parts: 2 },
     icon: '<circle cx="12" cy="12" r="8.5"/><path d="M15 8.6c-.8-.9-1.9-1.3-3.1-1.3-1.6 0-2.8.9-2.8 2.2 0 2.9 6.2 1.7 6.2 4.8 0 1.4-1.3 2.4-3.1 2.4-1.4 0-2.6-.5-3.4-1.5"/>',
   },
   rail: {
-    name: 'Zug', vehicle: 'Zug', lineName: 'Zugstrecke', none: 'Kein Zug frei', no: 'kein Zug', gift: 'einen Zug', tier: 'rail',
+    name: 'Zug', vehicle: 'Zug', lineName: 'Zugstrecke', none: 'Kein Zug frei', no: 'kein Zug', gift: 'einen Zug', the: 'den Zug', style: 'track', tier: 'rail',
     speed: 4.4, cap: 10, dwell: 0.9, perPax: 0.08, maxStops: 4, maxLines: 2, startLines: 1, startVehicles: 1, needsHub: true,
     maxHop: 99, minHop: 10,
     body: { w: 2.1, h: 0.46, parts: 3 },
@@ -96,7 +96,7 @@ const MODES = {
 const MODE_ORDER = ['bus', 'tram', 'metro', 'sbahn', 'rail'];
 
 /** Liniennamen je Verkehrsmittel (angelehnt an Hannover), werden der Reihe nach vergeben */
-const LINE_NAMES = {
+let LINE_NAMES = {
   bus: ['100', '121', '128', '134', '200'],
   tram: ['10', '17', '11'],
   metro: ['U1', 'U2', 'U3'],
@@ -108,7 +108,7 @@ const LINE_NAMES = {
  * Ereignisse in Hannover: Viele wollen zur Station nahe dem Ort (Anreise),
  * am Ende reisen alle auf einmal ab. at: Kartenpunkt in U (siehe HANNOVER).
  */
-const EVENTS = [
+let EVENTS = [
   { key: '96', name: '96-Spiel', place: 'Stadion', text: 'Hannover 96 spielt – alle wollen ins Stadion!' },
   { key: 'messe', name: 'Messe', place: 'Messe', text: 'Messe in Hannover – Besuch aus aller Welt!' },
   { key: 'maschsee', name: 'Maschseefest', place: 'Maschsee', text: 'Maschseefest – die halbe Stadt will an den See!' },
@@ -137,7 +137,7 @@ const servesMode = (st, mode) => st.shape === 'hub' || tierRank(st.tier || 'metr
 const KM_PER_U = 0.3;
 const km = pts => pts.map(([x, y]) => [x / KM_PER_U, y / KM_PER_U]);
 
-const HANNOVER = {
+let HANNOVER = {
   water: [
     { name: 'Leine', width: 0.6, label: 8, pts: km([[2.2, 10.5], [1.6, 9.0], [1.2, 7.5], [0.9, 6.0], [0.4, 4.6], [-0.2, 3.6], [-0.35, 2.6], [-0.3, 1.6], [-0.55, 0.9], [-0.75, 0.3], [-1.2, -0.1], [-1.7, -0.4], [-2.4, -0.8], [-3.4, -1.1], [-3.9, -1.9], [-4.4, -2.9], [-5.4, -3.6], [-7.0, -4.6], [-8.5, -5.6], [-10.5, -6.5]]) },
     { name: 'Ihme', width: 0.42, label: 2, pts: km([[-3.0, 5.5], [-2.6, 4.4], [-2.0, 3.2], [-1.7, 2.2], [-1.35, 1.3], [-1.3, 0.6], [-1.45, 0.0], [-1.7, -0.4]]) },
@@ -181,7 +181,7 @@ const HANNOVER = {
  * Stationsart je Stadtteil – grob angelehnt an Hannovers S-Bahn- und Stadtbahnnetz,
  * aber fürs Spiel vereinfacht. Nicht genannte Stadtteile sind Bushaltestellen.
  */
-const DISTRICT_TIER = {
+let DISTRICT_TIER = {
   rail: ['Nordstadt', 'Linden-Süd', 'Kleefeld', 'Misburg', 'Anderten', 'Ledeburg', 'Wülfel', 'Kronsberg'],
   metro: ['List', 'Oststadt', 'Südstadt', 'Vahrenwald', 'Linden-Mitte', 'Calenberger Neustadt', 'Döhren',
     'Groß-Buchholz', 'Kirchrode', 'Bothfeld', 'Stöcken'],
@@ -199,8 +199,11 @@ function inPolygon(x, y, pts) {
   }
   return inside;
 }
-/** Liegt der Punkt im oder zu nah am Wasser / im Wald? */
+/** Liegt der Punkt im oder zu nah am Wasser / im Wald (bzw. in Europa: nicht an Land)? */
 function onMapFeature(x, y) {
+  if (HANNOVER.land) {
+    return !HANNOVER.land.some(p => inPolygon(x, y, p)) || HANNOVER.innerSeas.some(sea => inPolygon(x, y, sea.pts));
+  }
   for (const w of HANNOVER.water) {
     for (let i = 0; i < w.pts.length - 1; i++) {
       if (distToSegment(x, y, w.pts[i][0], w.pts[i][1], w.pts[i + 1][0], w.pts[i + 1][1]) < 1.2) return true;
@@ -210,6 +213,9 @@ function onMapFeature(x, y) {
 }
 
 const DAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+
+/** Aktive Spielwelt (Hannover oder Europa) – wird von applyScenario() gesetzt */
+let SC = null;
 
 /** Spiel-Balance – hier lässt sich alles feinjustieren */
 const CFG = {
@@ -273,9 +279,10 @@ function toast(msg, ms = 2600) {
 }
 
 /** Rekord lokal merken (nur Komfort – darf fehlen, z. B. im privaten Modus) */
+const bestKey = w => 'heftmetro.best' + (w && w !== 'hannover' ? '.' + w : '');
 const best = {
-  get() { try { return +localStorage.getItem('heftmetro.best') || 0; } catch { return 0; } },
-  set(v) { try { localStorage.setItem('heftmetro.best', String(v)); } catch { /* egal */ } },
+  get(w = SC?.key) { try { return +localStorage.getItem(bestKey(w)) || 0; } catch { return 0; } },
+  set(v, w = SC?.key) { try { localStorage.setItem(bestKey(w), String(v)); } catch { /* egal */ } },
 };
 
 /* =====================================================================
@@ -285,7 +292,8 @@ const best = {
 /** @type {any} Der komplette Zustand einer Runde */
 let G;
 
-function newGame() {
+function newGame(world = SC?.key || 'hannover') {
+  applyScenario(world);
   if (typeof cam !== 'undefined') cam.manual = false;
   G = {
     state: 'start',        // start | playing | upgrade | placeBig | placeTier | over
@@ -310,10 +318,11 @@ function newGame() {
     lostStation: null,
     resumeState: null,     // Zustand, zu dem „Weiterspielen“ zurückkehrt
     tutorial: false,       // läuft gerade die Anleitung?
+    world: SC.key,         // Spielwelt: 'hannover' | 'europa'
     districtsLeft: HANNOVER.districts.map(d => d.name),   // noch nicht erschlossene Stadtteile
   };
   // Hauptbahnhof in der Mitte, drei Stadtteile darum (List, Linden-Nord, Südstadt) – Formen gemischt
-  addStation('hub', 0, 0, 'Hauptbahnhof', 'rail');
+  addStation('hub', 0, 0, SC.hubName, 'rail');
   const shapes = [...COMMON_SHAPES].sort(() => Math.random() - 0.5);
   HANNOVER.districts.slice(0, 3).forEach((d, i) => addStation(shapes[i], d.x, d.y, d.name, tierOfDistrict(d.name)));
   G.districtsLeft = G.districtsLeft.slice(3);
@@ -560,7 +569,9 @@ function eventPlace(ev) {
   const poi = HANNOVER.pois.find(p => p.name === ev.place);
   if (poi) return poi.at;
   const lake = HANNOVER.lakes.find(l => l.name === ev.place);
-  return lake ? lake.pts.reduce((c, p) => [c[0] + p[0] / lake.pts.length, c[1] + p[1] / lake.pts.length], [0, 0]) : null;
+  if (lake) return lake.pts.reduce((c, p) => [c[0] + p[0] / lake.pts.length, c[1] + p[1] / lake.pts.length], [0, 0]);
+  const city = HANNOVER.districts.find(d => d.name === ev.place);
+  return city ? [city.x, city.y] : null;
 }
 
 /** Ereignis starten, laufen lassen und beenden (Abreise: alle auf einmal) */
@@ -906,6 +917,26 @@ function drawMap() {
   ctx.lineJoin = 'round';
   const fs = labelSize();
 
+  // Europa: Meer = alles außer Land (innere Meere wieder Wasser), Küsten als Buntstift-Linie
+  if (HANNOVER.land) {
+    const polys = [...HANNOVER.land, ...HANNOVER.innerSeas.map(sea => sea.pts)];
+    const addPoly = pts => {
+      const p = pts.map(([x, y]) => toScreen(x, y));
+      ctx.moveTo(p[0][0], p[0][1]);
+      for (let i = 1; i < p.length; i++) ctx.lineTo(p[i][0], p[i][1]);
+      ctx.closePath();
+    };
+    ctx.beginPath();
+    ctx.rect(-10, -10, innerWidth + 20, innerHeight + 20);
+    for (const pts of polys) addPoly(pts);
+    ctx.fillStyle = 'rgba(90, 150, 215, 0.20)';
+    ctx.fill('evenodd');
+    ctx.strokeStyle = MAP_COLORS.waterEdge;
+    ctx.lineWidth = 1.5;
+    for (const pts of polys) { smoothPath(pts, true); ctx.stroke(); }
+    for (const l of HANNOVER.seaLabels) mapText(l.name, ...toScreen(l.at[0], l.at[1]), MAP_COLORS.waterText, fs * 1.15, 0, 'italic');
+  }
+
   // Grünflächen: blass gefüllt und schräg schraffiert
   for (const g of HANNOVER.green) {
     smoothPath(g.pts, true);
@@ -1066,7 +1097,7 @@ function shapePath(shape, sx, sy, r, seed = 0, overshoot = false) {
 }
 
 /** Strichbreite eines Verkehrsmittels in U (für Kappen und Vorschau) */
-const modeWidth = mode => (mode === 'metro' ? CFG.lineWidth : mode === 'sbahn' ? 0.28 : 0.2);
+const modeWidth = mode => ({ solid: CFG.lineWidth, sbahn: 0.28, jumbo: 0.36 })[MODES[mode].style] || 0.2;
 
 /**
  * Ein Streckenabschnitt im Stil des Verkehrsmittels:
@@ -1079,20 +1110,36 @@ function strokeSegment(mode, x1, y1, x2, y2, seed) {
   const s = cam.s;
   const len = dist(x1, y1, x2, y2) || 1;
   const nx = -(y2 - y1) / len, ny = (x2 - x1) / len;
+  const style = MODES[mode].style;
   ctx.globalAlpha = 0.92;
-  if (mode === 'bus') {
+  if (style === 'dotted') {
+    // Punktlinie (Regionaljet)
+    ctx.lineWidth = 0.22 * s;
+    ctx.setLineDash([0.01 * s, 0.38 * s]);
+    wobblyStroke(x1, y1, x2, y2, seed);
+    ctx.setLineDash([]);
+  } else if (style === 'jumbo') {
+    // Dicker Strich mit dünner weißer Mittellinie (Jumbo)
+    ctx.lineWidth = 0.36 * s;
+    wobblyStroke(x1, y1, x2, y2, seed, 0.03);
+    const stroke = ctx.strokeStyle;
+    ctx.strokeStyle = '#fffdf3';
+    ctx.lineWidth = Math.max(1.2, 0.06 * s);
+    wobblyStroke(x1, y1, x2, y2, seed, 0.03);
+    ctx.strokeStyle = stroke;
+  } else if (style === 'dashed') {
     ctx.lineWidth = 0.2 * s;
     ctx.setLineDash([0.55 * s, 0.32 * s]);
     wobblyStroke(x1, y1, x2, y2, seed);
     ctx.setLineDash([]);
-  } else if (mode === 'tram') {
+  } else if (style === 'rails') {
     ctx.globalAlpha = 0.22;
     ctx.lineWidth = 0.34 * s;
     wobblyStroke(x1, y1, x2, y2, seed);
     ctx.globalAlpha = 0.95;
     ctx.lineWidth = Math.max(1.2, 0.07 * s);
     for (const k of [-1, 1]) wobblyStroke(x1 + nx * 0.11 * k, y1 + ny * 0.11 * k, x2 + nx * 0.11 * k, y2 + ny * 0.11 * k, seed);
-  } else if (mode === 'sbahn') {
+  } else if (style === 'sbahn') {
     ctx.lineWidth = 0.28 * s;
     wobblyStroke(x1, y1, x2, y2, seed, 0.03);
     const stroke = ctx.strokeStyle;
@@ -1102,7 +1149,7 @@ function strokeSegment(mode, x1, y1, x2, y2, seed) {
     wobblyStroke(x1, y1, x2, y2, seed, 0.03);
     ctx.setLineDash([]);
     ctx.strokeStyle = stroke;
-  } else if (mode === 'rail') {
+  } else if (style === 'track') {
     // Schwellen quer zur Strecke, dann zwei Schienen
     ctx.lineWidth = Math.max(1, 0.07 * s);
     ctx.beginPath();
@@ -1187,6 +1234,38 @@ function drawLines() {
   }
 }
 
+/**
+ * Flugzeug von oben, Nase nach rechts (+x), Länge L in Pixeln.
+ * Rumpf, gepfeilte Flügel und Leitwerk; Fahrgäste als weiße Punkte im Rumpf.
+ */
+function drawPlane(L, pax, cap) {
+  const wing = (x0, span, sweep, depth) => {
+    ctx.beginPath();
+    ctx.moveTo(x0, 0);
+    ctx.lineTo(x0 - sweep, -span);
+    ctx.lineTo(x0 - sweep - depth, -span);
+    ctx.lineTo(x0 - depth * 1.4, 0);
+    ctx.lineTo(x0 - sweep - depth, span);
+    ctx.lineTo(x0 - sweep, span);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  };
+  wing(L * 0.12, L * 0.48, L * 0.2, L * 0.12);          // Tragflächen
+  wing(-L * 0.36, L * 0.18, L * 0.08, L * 0.08);        // Leitwerk
+  ctx.beginPath();
+  ctx.ellipse(0, 0, L / 2, L * 0.09, 0, 0, Math.PI * 2);  // Rumpf
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#fff';
+  const n = Math.min(pax, cap);
+  for (let i = 0; i < n; i++) {
+    ctx.beginPath();
+    ctx.arc(L * 0.36 - (i * L * 0.6) / Math.max(cap - 1, 1), 0, Math.max(1.2, L * 0.035), 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
 function drawTrains() {
   for (const tr of G.trains) {
     if (tr.line.stations.length < 2) continue;
@@ -1205,6 +1284,11 @@ function drawTrains() {
     ctx.fillStyle = LINE_COLORS[tr.line.color];
     ctx.strokeStyle = 'rgba(0,0,0,.35)';
     ctx.lineWidth = Math.max(1, 0.05 * cam.s);
+    if (mode.plane) {
+      drawPlane(mode.plane * vs, tr.pax.length, mode.cap);
+      ctx.restore();
+      continue;
+    }
     // Ein Wagen (Bus, U-Bahn) oder zwei gekoppelte (Tram, Zug)
     const parts = mode.body.parts, gap = 0.06 * cam.s, pw = (w - gap * (parts - 1)) / parts;
     for (let k = 0; k < parts; k++) {
@@ -1239,14 +1323,14 @@ function drawTierBadge(st, sx, sy, r) {
   const bx = sx + r * 0.9, by = sy - r * 0.9;
   ctx.save();
   ctx.beginPath();
-  if (badge === 'S') ctx.arc(bx, by, size / 2, 0, Math.PI * 2);
+  if (st.tier === 'rail') ctx.arc(bx, by, size / 2, 0, Math.PI * 2);
   else ctx.roundRect(bx - size / 2, by - size / 2, size, size, size * 0.22);
-  ctx.fillStyle = badge === 'U' ? '#2456c9' : badge === 'S' ? '#2f9e4f' : '#fffdf3';
+  ctx.fillStyle = st.tier === 'metro' ? '#2456c9' : st.tier === 'rail' ? '#2f9e4f' : '#fffdf3';
   ctx.fill();
   ctx.strokeStyle = COLORS.pencil;
   ctx.lineWidth = 1.3;
   ctx.stroke();
-  ctx.fillStyle = badge === 'T' ? COLORS.pencil : '#fff';
+  ctx.fillStyle = st.tier === 'tram' ? COLORS.pencil : '#fff';
   ctx.font = `700 ${size * 0.68}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -1503,11 +1587,11 @@ function onDown(e) {
       return true;
     }
     if (!servesMode(st, lineMode)) {
-      toast(`${st.name || TIER_INFO[st.tier].name} ist ${TIER_INFO[st.tier].a} ${TIER_INFO[st.tier].name} – hier hält ${M.no}. Baue sie per Upgrade aus.`, 3400);
+      toast(`${st.name || TIER_INFO[st.tier].name} ist ${TIER_INFO[st.tier].a} ${TIER_INFO[st.tier].name} – hier ${SC.stopVerb} ${M.no}. Baue die Station per Upgrade aus.`, 3400);
       return true;
     }
     if (M.needsHub && st.shape !== 'hub') {
-      toast(`${M.name}-Linien starten immer am Hauptbahnhof – starte dort.`);
+      toast(`${M.lineName}n starten immer ${SC.atHub} – starte dort.`);
       return true;
     }
     drag = { mode: 'new', lineMode, stations: [st.id], color: freeColor(), x, y, id: e.pointerId };
@@ -1567,22 +1651,26 @@ function warnOnce(key, msg) {
 function canLink(mode, fromId, st) {
   const M = MODES[mode];
   if (!servesMode(st, mode)) {
-    warnOnce('tier' + st.id, `${st.name || TIER_INFO[st.tier].name} ist ${TIER_INFO[st.tier].a} ${TIER_INFO[st.tier].name} – hier hält ${M.no}.`);
+    warnOnce('tier' + st.id, `${st.name || TIER_INFO[st.tier].name} ist ${TIER_INFO[st.tier].a} ${TIER_INFO[st.tier].name} – hier ${SC.stopVerb} ${M.no}.`);
     return false;
   }
   const from = stationById(fromId);
   const d = dist(from.x, from.y, st.x, st.y);
   if (d > M.maxHop) {
-    warnOnce('far', `Zu weit für ${M.name === 'Bus' ? 'den Bus' : 'die ' + M.name}: höchstens ${fmtKm(M.maxHop)} zwischen zwei Halten.`);
+    warnOnce('far', `Zu weit für ${M.the}: höchstens ${fmtKm(M.maxHop)} zwischen zwei Halten.`);
     return false;
   }
   if (d < M.minHop) {
-    warnOnce('near', `Züge fahren nur weite Strecken: mindestens ${fmtKm(M.minHop)} zwischen zwei Halten.`);
+    warnOnce('near', `${M.vehicle}: nur weite Strecken – mindestens ${fmtKm(M.minHop)} zwischen zwei Halten.`);
     return false;
   }
   return true;
 }
-const fmtKm = u => `${(u * KM_PER_U).toLocaleString('de-DE', { maximumFractionDigits: 1 })} km`;
+/** Abstand in U als Text: „2,7 km“ (Hannover) oder „1.500 km“ (Europa, auf 50 km gerundet) */
+const fmtKm = u => {
+  const k = u * SC.kmPerU;
+  return `${k >= 100 ? (Math.round(k / 50) * 50).toLocaleString('de-DE') : k.toLocaleString('de-DE', { maximumFractionDigits: 1 })} km`;
+};
 
 /** Höchstzahl an Haltestellen erreicht? (mit Hinweis, einmal pro Ziehen) */
 function tooManyStops(mode, count) {
@@ -1722,7 +1810,7 @@ function updateHud() {
   const showHint = G.state === 'playing' && G.lines.length === 0 && !drag && !G.tutorial;
   if (hint.hidden === showHint) {
     hint.hidden = !showHint;
-    hint.textContent = 'Wähle unten ein Verkehrsmittel und zieh von Station zu Station.';
+    hint.textContent = SC.hint;
   }
   for (const b of document.querySelectorAll('[data-speed]')) b.classList.toggle('is-active', +b.dataset.speed === G.speed);
   $('#zoom-fit').classList.toggle('is-active', !cam.manual);
@@ -1747,7 +1835,7 @@ function selectMode(mode) {
   if (G.tutorial) { tut.tapped = mode; return; }   // im Tutorial erklärt der Zettel
   const M = MODES[mode];
   toast(canCreateLine(mode)
-    ? `${M.name}: ${MODE_TEXT[mode]}. Zieh von Station zu Station.`
+    ? `${M.name}: ${MODE_TEXT[mode]}. ${SC.dragHint}`
     : `${M.name} gewählt – aber alle ${M.lineName}n sind vergeben.`, 3200);
 }
 
@@ -1793,6 +1881,7 @@ function renderPens() {
     box.appendChild(group);
   }
   bottomInset = ($('.hud-bottom').offsetHeight || 80) + 10;
+  $('#hint').style.bottom = `${bottomInset + 6}px`;      // Hinweis immer über der Leiste
 }
 
 let menuLine = null;
@@ -1854,7 +1943,7 @@ for (const b of document.querySelectorAll('[data-speed]')) {
 /* ---------- Upgrade am Wochenende ---------- */
 
 const totalLineSlots = () => MODE_ORDER.reduce((a, m) => a + G.inv[m].lines, 0);
-const MODE_TEXT = {
+let MODE_TEXT = {
   bus: 'großes Netz, kurze Wege, hält überall',
   tram: 'schnelles Einsteigen, max. 8 Halte',
   metro: 'schnell, nur an U-Bahn-Stationen',
@@ -1863,7 +1952,7 @@ const MODE_TEXT = {
 };
 
 /** Ausbau-Stufen als Upgrade: eine Station wird eine Stufe größer */
-const TIER_UPGRADES = [
+let TIER_UPGRADES = [
   { tier: 'tram', title: 'Tram-Gleise legen', text: 'Eine Bushaltestelle wird zum Tram-Halt.' },
   { tier: 'metro', title: 'U-Bahn-Station bauen', text: 'Eine Station bekommt einen U-Bahn-Zugang.' },
   { tier: 'rail', title: 'Bahnhof bauen', text: 'Eine Station wird Bahnhof für S-Bahn und Zug.' },
@@ -1871,14 +1960,15 @@ const TIER_UPGRADES = [
 const BUILD_ICON = '<path d="M4 20h16M6 20V10l6-5 6 5v10"/><path d="M10 20v-5h4v5"/><path d="M17 3v4M15 5h4"/>';
 
 /** Alle möglichen Upgrades; pro Woche werden drei passende ausgelost. */
-const UPGRADES = [
+let UPGRADES = [];
+const buildUpgrades = () => [
   ...MODE_ORDER.map(mode => ({
     key: 'line-' + mode, title: `Neue ${MODES[mode].lineName}`, text: `inkl. 1 Fahrzeug – ${MODE_TEXT[mode]}`, icon: MODES[mode].icon,
     ok: () => G.inv[mode].lines < MODES[mode].maxLines && totalLineSlots() < LINE_COLORS.length,
     apply: () => { G.inv[mode].lines++; G.inv[mode].free++; G.selectedMode = mode; },
   })),
   ...MODE_ORDER.map(mode => ({
-    key: 'veh-' + mode, title: mode === 'bus' ? '2 Busse' : `Extra-${MODES[mode].vehicle}`,
+    key: 'veh-' + mode, title: mode === 'bus' ? MODES.bus.two : `Extra-${MODES[mode].vehicle}`,
     text: `Mehr Fahrzeuge für deine ${MODES[mode].lineName}n.`, icon: MODES[mode].icon,
     ok: () => true,
     apply: () => { G.inv[mode].free += mode === 'bus' ? 2 : 1; },
@@ -1899,7 +1989,7 @@ const UPGRADES = [
     apply: () => { G.state = 'placeNode'; toast('Tippe auf die Station, die Umsteigeknoten werden soll.', 4000); },
   },
   {
-    key: 'big', title: 'Großer Bahnhof', text: 'Eine Station fasst 12 statt 6 Fahrgäste.',
+    key: 'big', title: SC.bigTitle, text: 'Eine Station fasst 12 statt 6 Fahrgäste.',
     icon: '<circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="9"/>',
     ok: () => G.stations.some(s => !s.big && s.shape !== 'hub'),
     apply: () => { G.state = 'placeBig'; toast('Tippe auf die Station, die größer werden soll.', 4000); },
@@ -1966,6 +2056,7 @@ const ACTIVE_STATES = ['playing', 'upgrade', 'placeBig', 'placeTier', 'placeNode
 function serialize() {
   return {
     v: SAVE_VERSION,
+    world: G.world,
     savedAt: Date.now(),
     state: G.state,
     t: G.t, week: G.week, score: G.score, nextId: G.nextId, placeTier: G.placeTier, gift: G.gift,
@@ -2052,7 +2143,7 @@ function loadSave() {
 
 /** Baut eine gespeicherte Runde wieder auf (zunächst hinter dem Startzettel). */
 function restoreGame(d) {
-  newGame();
+  newGame(SCENARIOS[d.world] ? d.world : 'hannover');
   Object.assign(G, {
     t: d.t, week: d.week, score: d.score, nextId: d.nextId, stationTimer: d.stationTimer,
     selectedMode: MODES[d.selectedMode] ? d.selectedMode : 'bus',
@@ -2141,7 +2232,7 @@ function gameOver(st) {
   const isNew = G.score > rec;
   if (isNew) best.set(G.score);
   $('#over-reason').textContent = st.shape === 'hub'
-    ? 'Der Hauptbahnhof war zu lange überfüllt.'
+    ? `${SC.hubTitle} war zu lange überfüllt.`
     : st.name
       ? `Die Station ${st.name} war zu lange überfüllt.`
       : `Die ${SHAPE_NAME[st.shape]}-Station war zu lange überfüllt.`;
@@ -2153,9 +2244,26 @@ function gameOver(st) {
 }
 
 /** Startzettel. Mit Spielstand: „Weiterspielen“ und „Neues Spiel“. */
+/** Texte des Startzettels für eine Spielwelt (ohne das laufende Spiel zu verändern) */
+function renderWorldPick(w) {
+  const sc = SCENARIOS[w];
+  for (const b of document.querySelectorAll('.world')) b.classList.toggle('is-active', b.dataset.world === w);
+  $('#start-lead').textContent = sc.lead;
+  sc.howto.forEach((t, i) => { $(`#how-${i}`).textContent = t; });
+  const rec = best.get(w);
+  $('#start-record').textContent = rec ? `Dein Rekord in ${sc.title}: ${rec} Fahrgäste` : '';
+}
+
+/** Spielwelt auf dem Startzettel wählen. Ohne Spielstand wechselt auch die Karte dahinter. */
+function pickWorld(w) {
+  worldPref.set(w);
+  renderWorldPick(w);
+  if (!G.resumeState) { newGame(w); cam.ready = false; }
+}
+for (const b of document.querySelectorAll('.world')) b.addEventListener('click', () => pickWorld(b.dataset.world));
+
 function showStart(saved, canResume = !!saved) {
-  const rec = best.get();
-  $('#start-record').textContent = rec ? `Dein Rekord: ${rec} Fahrgäste` : '';
+  renderWorldPick(worldPref.get());
   const info = $('#save-info');
   info.hidden = !saved;
   $('#btn-continue').hidden = !canResume;
@@ -2163,7 +2271,7 @@ function showStart(saved, canResume = !!saved) {
   start.textContent = canResume ? 'Neues Spiel' : 'Losfahren';
   start.classList.toggle('primary', !canResume);
   if (saved) {
-    info.textContent = `Gespeichert ${timeAgo(saved.savedAt)}: Woche ${saved.week} · ${saved.score} Fahrgäste`;
+    info.textContent = `Gespeichert ${timeAgo(saved.savedAt)}: ${SCENARIOS[saved.world]?.title || 'Hannover'} · Woche ${saved.week} · ${saved.score} Fahrgäste`;
   }
   $('#screen-start').hidden = false;
 }
@@ -2173,9 +2281,10 @@ $('#btn-continue').addEventListener('click', resumeGame);
 $('#btn-start').addEventListener('click', () => {
   if (G.resumeState && !confirm('Neues Spiel starten? Dein gespeichertes Spiel wird dabei überschrieben.')) return;
   $('#screen-start').hidden = true;
-  if (!tutorialSeen()) { startTutorial(); return; }   // allererstes Spiel: mit Anleitung
+  const world = worldPref.get();
+  if (world === 'hannover' && !tutorialSeen()) { startTutorial(); return; }   // allererstes Spiel: mit Anleitung
   clearSave();
-  newGame();
+  newGame(world);
   cam.ready = false;
   G.state = 'playing';
   G.speed = 1;
@@ -2194,7 +2303,7 @@ $('#btn-menu').addEventListener('click', () => {
 });
 $('#btn-again').addEventListener('click', () => {
   $('#screen-over').hidden = true;
-  newGame();
+  newGame(G.world);
   cam.ready = false;
   G.state = 'playing';
   G.speed = 1;
@@ -2296,7 +2405,8 @@ const tut = { step: 0, time: 0, tapped: null, menuOpened: false, focus: {} };
 
 function startTutorial() {
   clearSave();
-  newGame();
+  worldPref.set('hannover');
+  newGame('hannover');
   cam.ready = false;
   G.tutorial = true;
   G.state = 'playing';
@@ -2518,6 +2628,226 @@ function runSplash() {
 }
 
 /* =====================================================================
+   SPIELWELTEN
+   Beide Welten nutzen dieselbe Spiellogik. Eine Welt bringt Karte,
+   Stationen, Stationsarten, Fahrzeug-Namen/-Werte, Liniennamen,
+   Ereignisse und Texte mit. applyScenario() tauscht alles aus.
+   ===================================================================== */
+
+/* ---------- Spielwelt Europa (Fluglinien) ----------
+   Grobe Skizze aus dem Gedächtnis – nicht kartengenau! Koordinaten als
+   [Längengrad, Breitengrad], umgerechnet um Frankfurt herum: 1 U ≈ 60 km.  */
+const EU_KM_PER_U = 60;
+const eu = ([lon, lat]) => [((lon - 8.68) * 71.3) / EU_KM_PER_U, (-(lat - 50.04) * 111) / EU_KM_PER_U];
+const euPoly = pts => pts.map(eu);
+
+const EUROPA_MAP = {
+  // Landflächen (das Meer ist alles andere); innere Meere werden wieder zu Wasser
+  land: [
+    euPoly([[45, 72], [33, 69.5], [28, 71.0], [23.5, 70.8], [18.9, 69.7], [15.0, 68.5], [12.5, 66.0], [10.4, 63.4], [5.3, 62.5],
+      [5.0, 60.4], [5.6, 58.9], [7.0, 58.0], [9.5, 59.0], [10.7, 59.9], [11.0, 59.0], [11.9, 57.7], [12.9, 55.6], [14.3, 55.6],
+      [16.4, 56.6], [16.5, 57.8], [18.1, 59.3], [17.3, 60.7], [17.3, 62.5], [21.0, 64.0], [22.1, 65.6], [25.4, 65.0], [24.5, 64.0],
+      [21.5, 61.5], [21.5, 60.5], [24.9, 60.2], [28.0, 60.5], [30.3, 59.9], [28.0, 59.5], [24.0, 59.4], [23.5, 58.3], [24.1, 57.0],
+      [21.0, 56.8], [21.0, 55.3], [19.5, 54.4], [18.6, 54.5], [16.5, 54.5], [14.2, 53.9], [12.5, 54.4], [10.9, 54.4], [10.5, 55.5],
+      [10.6, 57.7], [8.2, 56.8], [8.1, 55.5], [8.6, 54.9], [8.8, 54.0], [7.0, 53.6], [5.0, 53.4], [4.6, 52.3], [3.6, 51.4],
+      [2.5, 51.1], [1.6, 50.9], [1.5, 50.2], [0.1, 49.7], [-1.2, 49.6], [-1.6, 48.6], [-3.0, 48.8], [-4.7, 48.4], [-4.3, 47.8],
+      [-2.5, 47.3], [-1.2, 46.2], [-1.3, 44.7], [-1.6, 43.4], [-3.8, 43.5], [-5.8, 43.6], [-8.0, 43.7], [-9.2, 43.1], [-8.9, 42.0],
+      [-8.7, 41.1], [-9.4, 39.4], [-9.2, 38.7], [-8.9, 37.9], [-8.9, 37.0], [-7.4, 37.2], [-6.4, 36.8], [-5.6, 36.0], [-4.4, 36.7],
+      [-2.1, 36.8], [-0.8, 37.6], [0.0, 38.8], [-0.3, 39.5], [0.9, 41.0], [2.2, 41.4], [3.2, 42.4], [3.1, 43.1], [4.8, 43.4],
+      [6.0, 43.1], [7.3, 43.7], [8.9, 44.4], [10.3, 43.6], [11.2, 42.4], [12.4, 41.7], [14.2, 40.8], [15.6, 40.0], [15.6, 38.2],
+      [16.6, 38.9], [17.1, 39.4], [16.5, 40.2], [18.5, 40.1], [16.9, 41.1], [15.6, 41.9], [14.0, 42.6], [13.6, 43.6], [12.3, 44.5],
+      [12.3, 45.4], [13.7, 45.6], [14.5, 45.2], [15.3, 44.2], [16.4, 43.5], [18.1, 42.6], [19.4, 41.9], [19.4, 40.5], [20.2, 39.6],
+      [21.2, 38.3], [21.7, 36.8], [22.9, 36.4], [23.7, 37.9], [24.0, 38.5], [22.9, 40.6], [24.4, 40.9], [26.0, 40.8], [26.5, 40.3],
+      [26.2, 39.5], [27.0, 38.4], [27.3, 37.0], [28.5, 36.6], [30.7, 36.9], [33.0, 36.1], [36.0, 36.5], [45, 36]]),
+    // Großbritannien, Irland, Island
+    euPoly([[-5.7, 50.1], [-3.0, 50.6], [-1.0, 50.8], [1.4, 51.1], [1.7, 52.6], [0.3, 53.5], [-0.1, 54.5], [-1.6, 55.6], [-2.0, 57.1],
+      [-3.0, 58.6], [-5.0, 58.6], [-6.2, 56.6], [-5.6, 55.4], [-4.9, 54.8], [-3.2, 54.5], [-3.1, 53.4], [-4.6, 53.3], [-4.2, 52.2],
+      [-5.2, 51.7], [-3.0, 51.4], [-4.2, 51.1]]),
+    euPoly([[-6.2, 53.3], [-6.0, 54.6], [-7.3, 55.3], [-8.5, 54.6], [-10.0, 53.5], [-9.8, 52.0], [-8.5, 51.6], [-6.4, 52.2]]),
+    euPoly([[-22.5, 64.0], [-23.9, 64.9], [-22.0, 66.4], [-16.0, 66.5], [-13.6, 65.2], [-15.0, 64.3], [-18.0, 63.4], [-21.0, 63.8]]),
+    // Inseln im Süden
+    euPoly([[12.4, 37.8], [13.4, 38.2], [15.6, 38.3], [15.1, 37.0], [14.0, 37.1]]),
+    euPoly([[8.4, 41.1], [9.8, 41.0], [9.7, 39.2], [9.0, 39.1], [8.4, 39.9]]),
+    euPoly([[9.4, 43.0], [9.5, 42.0], [8.8, 41.4], [8.6, 42.6]]),
+    euPoly([[23.5, 35.3], [26.3, 35.2], [25.0, 34.95], [23.6, 35.0]]),
+    euPoly([[32.3, 35.0], [34.6, 35.6], [33.9, 34.9], [32.6, 34.7]]),
+    euPoly([[2.4, 39.6], [3.4, 39.8], [3.2, 39.3]]),
+    euPoly([[10.9, 55.7], [12.6, 56.0], [12.6, 55.3], [11.8, 55.0], [11.0, 55.2]]),
+    // Nordafrika und Levante (unten am Rand)
+    euPoly([[-15, 25], [-15, 30], [-9.6, 30.4], [-6.8, 34.0], [-5.9, 35.8], [-2.0, 35.1], [3.0, 36.7], [10.2, 37.2], [11.1, 36.9],
+      [10.0, 34.0], [15.0, 32.4], [20.0, 32.0], [25.0, 31.7], [29.9, 31.2], [32.3, 31.2], [34.9, 32.8], [35.6, 34.6], [45, 34.6], [45, 25]]),
+  ],
+  innerSeas: [
+    { name: 'Schwarzes Meer', pts: euPoly([[29.1, 41.2], [28.0, 41.9], [27.9, 43.2], [28.7, 44.2], [29.7, 45.2], [30.7, 46.5], [32.5, 46.1],
+      [33.5, 44.5], [36.6, 45.3], [37.8, 44.7], [39.7, 43.6], [41.6, 41.6], [37.5, 41.0], [34.0, 42.0], [31.5, 41.3]]) },
+  ],
+  seaLabels: [
+    { name: 'Nordsee', at: eu([3, 56]) }, { name: 'Ostsee', at: eu([19, 57.6]) }, { name: 'Mittelmeer', at: eu([5.5, 39.5]) },
+    { name: 'Mittelmeer', at: eu([19, 35.3]) }, { name: 'Atlantik', at: eu([-14, 47]) }, { name: 'Schwarzes Meer', at: eu([34, 43.5]) },
+    { name: 'Nordatlantik', at: eu([-12, 61]) },
+  ],
+  water: [], lakes: [], green: [], pois: [],
+  // Länder: groß und blass (wie das Umland in Hannover)
+  towns: [
+    ['Deutschland', 10.5, 51.3], ['Frankreich', 2.0, 46.8], ['Spanien', -4.5, 39.2], ['Italien', 12.8, 43.2], ['Polen', 19.5, 52.2],
+    ['Großbritannien', -2.3, 52.6], ['Skandinavien', 15, 63.5], ['Türkei', 33, 39], ['Griechenland', 22, 39.6], ['Rumänien', 25, 46],
+    ['Ukraine', 31, 49], ['Russland', 38, 58],
+  ].map(([name, lon, lat]) => ({ name, at: eu([lon, lat]) })),
+  // Flughäfen: die ersten drei sind die Startstationen
+  districts: [
+    ['Amsterdam', 4.76, 52.31], ['München', 11.79, 48.35], ['Berlin', 13.5, 52.37],
+    ['Düsseldorf', 6.77, 51.29], ['Hannover', 9.68, 52.46], ['Zürich', 8.55, 47.46], ['Brüssel', 4.48, 50.9], ['Prag', 14.26, 50.1],
+    ['Paris', 2.55, 49.01], ['Hamburg', 9.99, 53.63], ['Mailand', 8.72, 45.63], ['Wien', 16.57, 48.11], ['Lyon', 5.08, 45.73],
+    ['London', -0.45, 51.47], ['Kopenhagen', 12.65, 55.62], ['Venedig', 12.35, 45.5], ['Warschau', 20.97, 52.17], ['Krakau', 19.8, 50.08],
+    ['Budapest', 19.26, 47.43], ['Manchester', -2.27, 53.35], ['Marseille', 5.21, 43.44], ['Nizza', 7.21, 43.66], ['Danzig', 18.47, 54.38],
+    ['Toulouse', 1.37, 43.63], ['Rom', 12.25, 41.8], ['Oslo', 11.1, 60.19], ['Barcelona', 2.08, 41.3], ['Dublin', -6.27, 53.42],
+    ['Edinburgh', -3.37, 55.95], ['Split', 16.3, 43.54], ['Stockholm', 17.92, 59.65], ['Belgrad', 20.31, 44.82], ['Bilbao', -2.91, 43.3],
+    ['Neapel', 14.29, 40.88], ['Vilnius', 25.29, 54.63], ['Riga', 23.97, 56.92], ['Palma', 2.74, 39.55], ['Cork', -8.49, 51.84],
+    ['Madrid', -3.57, 40.49], ['Bergen', 5.22, 60.29], ['Valencia', -0.48, 39.49], ['Bukarest', 26.08, 44.57], ['Sofia', 23.41, 42.7],
+    ['Helsinki', 24.96, 60.32], ['Thessaloniki', 22.97, 40.52], ['Catania', 15.07, 37.47], ['Malta', 14.48, 35.86], ['Porto', -8.68, 41.24],
+    ['Sevilla', -5.9, 37.42], ['Lissabon', -9.13, 38.77], ['Málaga', -4.5, 36.67], ['Athen', 23.94, 37.94], ['Istanbul', 28.75, 41.26],
+    ['Heraklion', 25.18, 35.34], ['Antalya', 30.8, 36.9], ['Moskau', 37.4, 55.97], ['Larnaka', 33.62, 34.87], ['Tromsø', 18.92, 69.68],
+    ['Reykjavík', -22.6, 63.98],
+  ].map(([name, lon, lat]) => { const [x, y] = eu([lon, lat]); return { name, x: Math.round(x), y: Math.round(y) }; }),
+};
+
+const EUROPA_TIERS = {
+  rail: ['London', 'Paris', 'Amsterdam', 'Madrid', 'Rom', 'Istanbul', 'München', 'Barcelona', 'Moskau'],
+  metro: ['Berlin', 'Zürich', 'Wien', 'Kopenhagen', 'Stockholm', 'Oslo', 'Helsinki', 'Dublin', 'Lissabon', 'Brüssel', 'Mailand',
+    'Athen', 'Warschau', 'Prag', 'Düsseldorf', 'Hamburg', 'Manchester', 'Palma', 'Budapest', 'Edinburgh', 'Nizza'],
+  tram: ['Hannover', 'Lyon', 'Venedig', 'Neapel', 'Krakau', 'Bukarest', 'Sofia', 'Riga', 'Belgrad', 'Toulouse', 'Porto'],
+};
+
+const PLANE = 'M3 12h18M14 12 9.5 4.5M14 12l-4.5 7.5M5.5 12 3.5 8.5M5.5 12l-2 3.5';
+const EUROPA_MODES = {
+  bus: { name: 'Propeller', vehicle: 'Propellermaschine', lineName: 'Propellerlinie', none: 'Keine Propellermaschine frei',
+    no: 'keine Propellermaschine', gift: 'eine Propellermaschine', the: 'die Propellermaschine', two: '2 Propellermaschinen',
+    speed: 3.2, dwell: 0.4, maxHop: 10, minHop: 0, maxStops: 6, style: 'dashed', plane: 0.9,
+    icon: `<path d="${PLANE}"/><circle cx="11.5" cy="8.2" r="1.3"/><circle cx="11.5" cy="15.8" r="1.3"/>` },
+  tram: { name: 'Regionaljet', vehicle: 'Regionaljet', lineName: 'Regionalroute', none: 'Kein Regionaljet frei',
+    no: 'kein Regionaljet', gift: 'einen Regionaljet', the: 'den Regionaljet',
+    speed: 4.2, dwell: 0.35, maxHop: 18, minHop: 0, maxStops: 7, style: 'dotted', plane: 1.0,
+    icon: `<path d="${PLANE}"/>` },
+  metro: { name: 'Mittelstrecke', vehicle: 'Mittelstreckenjet', lineName: 'Mittelstreckenroute', none: 'Kein Mittelstreckenjet frei',
+    no: 'kein Mittelstreckenjet', gift: 'einen Mittelstreckenjet', the: 'den Mittelstreckenjet',
+    speed: 5.5, dwell: 0.45, maxHop: 37, minHop: 0, maxStops: 99, style: 'solid', plane: 1.2,
+    icon: `<path d="${PLANE}"/><path d="M11 8.5h2M11 15.5h2"/>` },
+  sbahn: { name: 'Großraumjet', vehicle: 'Großraumjet', lineName: 'Großraumroute', none: 'Kein Großraumjet frei',
+    no: 'kein Großraumjet', gift: 'einen Großraumjet', the: 'den Großraumjet',
+    speed: 6.5, dwell: 0.7, maxHop: 99, minHop: 0, maxStops: 6, style: 'sbahn', plane: 1.5,
+    icon: `<path d="${PLANE}"/><path d="M10.5 7.5h2M11.8 6.2h2M10.5 16.5h2M11.8 17.8h2"/>` },
+  rail: { name: 'Jumbo', vehicle: 'Jumbo', lineName: 'Jumbo-Route', none: 'Kein Jumbo frei',
+    no: 'kein Jumbo', gift: 'einen Jumbo', the: 'den Jumbo',
+    speed: 8, dwell: 0.9, maxHop: 99, minHop: 25, maxStops: 4, style: 'jumbo', plane: 1.8,
+    icon: `<path d="${PLANE}"/><path d="M15 10h4.5"/>` },
+};
+
+const EUROPA = {
+  key: 'europa',
+  title: 'Europa',
+  sub: 'Fluglinien',
+  hubName: 'Frankfurt',
+  hubTitle: 'Der Flughafen Frankfurt',
+  dragHint: 'Zieh von Flughafen zu Flughafen.',
+  hint: 'Wähle unten ein Flugzeug und zieh von Flughafen zu Flughafen.',
+  atHub: 'in Frankfurt',
+  stopVerb: 'landet',
+  kmPerU: EU_KM_PER_U,
+  map: EUROPA_MAP,
+  tiers: EUROPA_TIERS,
+  modes: EUROPA_MODES,
+  tierInfo: {
+    bus: { name: 'Flugplatz', a: 'ein' },
+    tram: { name: 'Regionalflughafen', a: 'ein', badge: 'R' },
+    metro: { name: 'Flughafen', a: 'ein', badge: 'F' },
+    rail: { name: 'Großflughafen', a: 'ein', badge: 'G' },
+  },
+  lineNames: { bus: ['P1', 'P2', 'P3', 'P4', 'P5'], tram: ['RJ1', 'RJ2', 'RJ3'], metro: ['M1', 'M2', 'M3'], sbahn: ['G1', 'G2'], rail: ['J1', 'J2'] },
+  events: [
+    { key: 'okt', name: 'Oktoberfest', place: 'München', text: 'Oktoberfest – ganz Europa will nach München!' },
+    { key: 'ferien', name: 'Sommerferien', place: 'Palma', text: 'Sommerferien – alle wollen auf die Insel!' },
+    { key: 'cl', name: 'Champions-League-Finale', place: 'London', text: 'Champions-League-Finale in London!' },
+    { key: 'messe', name: 'Hannover Messe', place: 'Hannover', text: 'Hannover Messe – Geschäftsreisende aus ganz Europa!' },
+    { key: 'karneval', name: 'Karneval', place: 'Venedig', text: 'Karneval in Venedig – Masken überall!' },
+  ],
+  modeText: {
+    bus: 'kurze Strecken bis ~600 km, landet überall',
+    tram: 'bis ~1.100 km, ab Regionalflughafen',
+    metro: 'bis ~2.200 km, nur Flughäfen',
+    sbahn: 'nur Großflughäfen, über Frankfurt',
+    rail: 'nur Langstrecken ab ~1.500 km, ab Frankfurt',
+  },
+  tierUpgrades: [
+    { tier: 'tram', title: 'Landebahn verlängern', text: 'Ein Flugplatz wird Regionalflughafen.' },
+    { tier: 'metro', title: 'Terminal bauen', text: 'Ein Flughafen für Mittelstrecken-Jets.' },
+    { tier: 'rail', title: 'Großflughafen', text: 'Hier landen auch Großraumjets und Jumbos.' },
+  ],
+  bigTitle: 'Großes Terminal',
+  lead: 'Europa fliegt – von Frankfurt aus nach London, Rom und Moskau. Verbinde die Flughäfen, bevor sie überfüllt sind.',
+  howto: [
+    'Wähle unten ein Flugzeug und zieh von Flughafen zu Flughafen.',
+    'Fluggäste wollen zu einem Flughafen mit ihrer Form – viele nach Frankfurt.',
+    'Propellermaschinen fliegen kurz und landen überall, Jumbos nur weit und ab Frankfurt. Flughäfen baust du per Upgrade aus.',
+  ],
+};
+
+// Hannover: die ursprünglichen Werte merken, damit man zurückwechseln kann
+const HANNOVER_MODES = Object.fromEntries(MODE_ORDER.map(m => [m, { ...MODES[m], plane: 0 }]));
+const BASE_TIER_INFO = Object.fromEntries(TIERS.map(t => [t, { ...TIER_INFO[t] }]));
+
+const SCENARIOS = {
+  hannover: {
+    key: 'hannover',
+    title: 'Hannover',
+    sub: 'Bus, Tram, U-Bahn, S-Bahn, Zug',
+    hubName: 'Hauptbahnhof',
+    hubTitle: 'Der Hauptbahnhof',
+    dragHint: 'Zieh von Station zu Station.',
+    hint: 'Wähle unten ein Verkehrsmittel und zieh von Station zu Station.',
+    atHub: 'am Hauptbahnhof',
+    stopVerb: 'hält',
+    kmPerU: KM_PER_U,
+    map: HANNOVER,
+    tiers: DISTRICT_TIER,
+    modes: {},
+    tierInfo: {},
+    lineNames: LINE_NAMES,
+    events: EVENTS,
+    modeText: MODE_TEXT,
+    tierUpgrades: TIER_UPGRADES,
+    bigTitle: 'Großer Bahnhof',
+    lead: 'Hannover wächst – vom Hauptbahnhof bis nach Linden, List und Misburg. Verbinde die Stadtteile, bevor die Stationen überfüllt sind.',
+    howto: [
+      'Wähle unten Bus, Tram, U-Bahn oder Zug und zieh mit Stift oder Finger von Station zu Station.',
+      'Fahrgäste wollen zu einer Station mit ihrer Form – viele zum Hauptbahnhof.',
+      'Busse halten überall, U-Bahnen nur an „U“-Stationen, S-Bahn und Zug nur an Bahnhöfen („S“). Kleine Haltestellen baust du per Upgrade aus.',
+    ],
+  },
+  europa: EUROPA,
+};
+
+/** Spielwelt wechseln: Daten, Fahrzeuge, Stationsarten und Upgrades austauschen */
+function applyScenario(key) {
+  SC = SCENARIOS[key] || SCENARIOS.hannover;
+  HANNOVER = SC.map;
+  DISTRICT_TIER = SC.tiers;
+  LINE_NAMES = SC.lineNames;
+  EVENTS = SC.events;
+  MODE_TEXT = SC.modeText;
+  TIER_UPGRADES = SC.tierUpgrades;
+  for (const m of MODE_ORDER) Object.assign(MODES[m], HANNOVER_MODES[m], SC.modes[m] || {});
+  for (const t of TIERS) Object.assign(TIER_INFO[t], BASE_TIER_INFO[t], SC.tierInfo[t] || {});
+  UPGRADES = buildUpgrades();
+  hudCache.pens = null;
+}
+
+/** Zuletzt gewählte Spielwelt (nur Komfort) */
+const worldPref = {
+  get() { try { return localStorage.getItem('heftmetro.world') || 'hannover'; } catch { return 'hannover'; } },
+  set(v) { try { localStorage.setItem('heftmetro.world', v); } catch { /* egal */ } },
+};
+
+/* =====================================================================
    10. START
    ===================================================================== */
 
@@ -2541,7 +2871,7 @@ window.addEventListener('resize', resize);
 resize();
 runSplash();
 const saved = loadSave();
-if (saved) restoreGame(saved); else newGame();
+if (saved) restoreGame(saved); else newGame(worldPref.get());
 showStart(saved);
 requestAnimationFrame(frame);
 
@@ -2561,7 +2891,9 @@ window.__metro = {
   startTutorial,
   updateEvent,
   get cam() { return cam; },
-  HANNOVER,
+  get HANNOVER() { return HANNOVER; },
+  get SC() { return SC; },
+  applyScenario,
   addStation,
   tierOfDistrict,
   rebuildRoutes,

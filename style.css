@@ -249,6 +249,23 @@ button { font: inherit; color: inherit; }
 .howto li { display: flex; gap: 12px; align-items: baseline; }
 .mini-shape { font-size: 20px; width: 22px; text-align: center; flex: none; }
 .record { font: 20px var(--hand); color: var(--pencil-soft); margin: 0 0 14px; min-height: 1em; }
+/* Spielwelt wählen */
+.worlds { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 4px 0 14px; }
+.world {
+  min-height: 64px;
+  padding: 8px 12px;
+  border: 2px solid var(--line, #d8d4c8);
+  border-radius: var(--scribble);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.world b { font: 700 24px/1.1 var(--hand); }
+.world small { font-size: 14px; color: var(--pencil-soft); }
+.world.is-active { border-color: var(--pencil); background: linear-gradient(transparent 8%, rgba(255, 232, 61, .45) 8%, rgba(255, 232, 61, .45) 92%, transparent 92%); }
 .start-actions { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
 .save-info {
   margin: 0 0 14px;

@@ -94,6 +94,8 @@ Symbole (SVG, 24er-Raster) stehen in `MODES[…].icon` in `game.js` und werden �
 
 Schriftgröße der Beschriftungen: 0,5 U, begrenzt auf 11–15 px. Kartendaten stehen in `HANNOVER` in `game.js` (km relativ zum Hauptbahnhof, 1 U ≈ 300 m).
 
+**Spielwelt Europa:** Meer = blasses Blau `rgba(90,150,215,.20)` über allem außer Land (Even-Odd-Füllung), Küsten als Buntstift-Linie (`waterEdge`, 1,5 px), Meeresnamen kursiv in Blau, Länder wie das Umland (groß, blass, Großbuchstaben). Fahrzeuge sind Flugzeuge von oben (Rumpf, gepfeilte Flügel, Leitwerk) in Linienfarbe, Länge je Typ 0,9–1,8 U. Zusätzliche Strich-Stile: Regionaljet = Punktlinie, Jumbo = dicker Strich (0,36 U) mit dünner weißer Mittellinie. Abzeichen: R (Papier), F (blau), G (grün, rund).
+
 **Stationsformen:** Kreis ●, Dreieck ▲, Quadrat ■ (häufig) – Stern ★, Raute ◆, Kreuz ✚ (selten, je max. eine Station).
 
 ## 5. UI-Komponenten (HTML über dem Canvas)
@@ -109,6 +111,7 @@ Schriftgröße der Beschriftungen: 0,5 U, begrenzt auf 11–15 px. Kartendaten s
 - **Ereignis**: rotes Fähnchen (`--danger`) über der Station, leicht wehend; Zettel-Chip oben links mit rotem Rand („96-Spiel · Südstadt“).
 - **Zoom-Knöpfe** (`.zoom-ctrl`): rechts mittig übereinander, drei `.icon-btn` (+, −, ◎). ◎ ist mit Textmarker hinterlegt, solange die automatische Kamera aktiv ist.
 - **Upgrade-Zettel** (`.note-wide`): bis 720 px breit, 4 Karten nebeneinander (ab 700 px Bildschirmbreite), darüber „Du bekommst … geschenkt“.
+- **Weltauswahl** (`.worlds`): zwei Kringel-Knöpfe nebeneinander auf dem Startzettel (Name in Handschrift 24 px + Untertitel 14 px); gewählte Welt mit Textmarker hinterlegt.
 - **Toast**: kleiner Zettel unten mittig, verschwindet nach 2,5 s.
 - Icons: einfache SVG-Striche (`stroke: currentColor; stroke-width: 2.2; stroke-linecap: round`), nie Emoji in Bedienelementen.
 
