@@ -12,6 +12,12 @@ Inspiriert vom Spielprinzip von Mini Metro, aber mit eigener Grafik und eigenem 
 - Ist eine Station zu lange überfüllt (roter Kreis), ist Endstation. Dein Rekord wird gespeichert.
 - Oben rechts: Pause, normal, schnell. Verlässt du die App, pausiert das Spiel automatisch.
 
+## Speichern
+Das Spiel **speichert sich automatisch**: alle 5 Sekunden, beim Pausieren, nach jedem Wochen-Upgrade und sobald du die App verlässt.
+Beim nächsten Öffnen tippst du auf **Weiterspielen**. Über den **Menü-Knopf** (☰ oben rechts) speicherst du sofort und kommst zum Startzettel.
+„Neues Spiel“ fragt vorher nach, weil es den Spielstand überschreibt. Nach „Endstation“ wird der Stand gelöscht – nur der Rekord bleibt.
+Der Spielstand liegt nur auf diesem iPad (im Speicher von Safari bzw. der Home-Bildschirm-App).
+
 ## Das Spiel aufs iPad bringen (kostenlos)
 
 Die App muss einmal im Internet liegen (über **https**), damit Safari sie installieren kann. Danach funktioniert sie auch **offline**.
@@ -43,7 +49,7 @@ Du brauchst dafür keinen Computer – alles geht auf dem iPad.
 
 
 ### Updates
-Nach Änderungen am Code in `sw.js` die Zeile `CACHE_VERSION = 'heftmetro-v2'` hochzählen (v3, v4 …).
+Nach Änderungen am Code in `sw.js` die Zeile `CACHE_VERSION = 'heftmetro-v3'` hochzählen (v4, v5 …).
 Das iPad holt sich die neue Version beim nächsten Start mit Internet (eventuell zweimal öffnen).
 
 ## Technik

@@ -36,6 +36,9 @@
         </svg>
         <span id="week-label">Woche 1 · Mo</span>
       </div>
+      <button class="icon-btn" id="btn-menu" aria-label="Speichern und Menü">
+        <svg class="ico" viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h14"/></svg>
+      </button>
       <div class="speed" role="group" aria-label="Tempo">
         <button class="icon-btn" data-speed="0" aria-label="Pause">
           <svg class="ico" viewBox="0 0 24 24"><path d="M8.5 5.5v13M15.5 5.5v13"/></svg>
@@ -80,7 +83,11 @@
         <li><span class="mini-shape">■</span> Am Linienende ziehst du weiter. Tipp unten auf einen Stift für Züge oder zum Löschen.</li>
       </ol>
       <p class="record" id="start-record"></p>
-      <button class="pen-btn primary" id="btn-start">Losfahren</button>
+      <div class="save-info" id="save-info" hidden></div>
+      <div class="start-actions">
+        <button class="pen-btn primary" id="btn-continue" hidden>Weiterspielen</button>
+        <button class="pen-btn primary" id="btn-start">Losfahren</button>
+      </div>
       <p class="fineprint">Gemacht für das iPad.</p>
     </div>
   </div>

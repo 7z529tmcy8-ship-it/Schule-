@@ -131,6 +131,7 @@ function newGame() {
     dist: new Map(),       // Form → Map(Station-ID → Anzahl Haltestellen bis dorthin)
     handles: [],           // Linienenden zum Anfassen (pro Bild neu berechnet)
     lostStation: null,
+    resumeState: null,     // Zustand, zu dem „Weiterspielen“ zurückkehrt
   };
   // Drei Startstationen, eine pro Grundform
   addStation('circle', -3 + Math.round(rand(-1, 1)), -1 + Math.round(rand(-1, 1)));
@@ -923,7 +924,10 @@ $('#lm-delete').addEventListener('click', () => {
 });
 
 for (const b of document.querySelectorAll('[data-speed]')) {
-  b.addEventListener('click', () => { G.speed = +b.dataset.speed; });
+  b.addEventListener('click', () => {
+    G.speed = +b.dataset.speed;
+    if (G.speed === 0 && saveGame()) toast('Pause – dein Spiel ist gespeichert.');
+  });
 }
 
 /* ---------- Upgrade am Wochenende ---------- */
@@ -964,10 +968,130 @@ function showUpgrade() {
       $('#screen-upgrade').hidden = true;
       G.state = 'playing';
       up.apply();
+      saveGame();
     });
     box.appendChild(b);
   }
   $('#screen-upgrade').hidden = false;
+}
+
+/* ---------- Speichern ----------
+   Das Spiel speichert sich selbst: alle paar Sekunden, beim Pausieren,
+   über das Menü und wenn die App in den Hintergrund geht. Gespeichert
+   wird nur, was nötig ist (Stationen, Linien, Züge, Zeit, Punkte) –
+   alles andere (Wegfindung, Griffe) wird beim Laden neu berechnet. */
+
+const SAVE_KEY = 'heftmetro.save';
+const SAVE_VERSION = 1;
+const ACTIVE_STATES = ['playing', 'upgrade', 'placeBig'];
+
+function serialize() {
+  return {
+    v: SAVE_VERSION,
+    savedAt: Date.now(),
+    state: G.state,
+    t: G.t, week: G.week, score: G.score, nextId: G.nextId,
+    maxLines: G.maxLines, trainsFree: G.trainsFree, stationTimer: G.stationTimer,
+    stations: G.stations.map(({ id, x, y, shape, queue, over, big, born }) => ({ id, x, y, shape, queue, over, big, born })),
+    lines: G.lines.map(({ id, color, stations }) => ({ id, color, stations })),
+    trains: G.trains.map(({ id, line, a, b, t, dwell, pax }) => ({ id, line: line.id, a, b, t, dwell, pax })),
+  };
+}
+
+/** Speichert die laufende Runde. Gibt true zurück, wenn es geklappt hat. */
+function saveGame() {
+  const state = G.state === 'start' ? G.resumeState : G.state;
+  if (!ACTIVE_STATES.includes(state)) return false;
+  try {
+    const data = serialize();
+    data.state = state;
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    return true;
+  } catch {
+    return false;          // z. B. privater Modus – das Spiel läuft trotzdem
+  }
+}
+
+function clearSave() {
+  try { localStorage.removeItem(SAVE_KEY); } catch { /* egal */ }
+}
+
+/** Prüft einen Spielstand gründlich, damit ein kaputter Stand das Spiel nicht lahmlegt. */
+function isValidSave(d) {
+  const num = v => Number.isFinite(v);
+  const shapes = [...COMMON_SHAPES, ...RARE_SHAPES];
+  if (!d || d.v !== SAVE_VERSION || !Array.isArray(d.stations) || !Array.isArray(d.lines) || !Array.isArray(d.trains)) return false;
+  if (![d.t, d.week, d.score, d.nextId, d.maxLines, d.trainsFree, d.stationTimer].every(num)) return false;
+  const ids = new Set();
+  for (const st of d.stations) {
+    if (!num(st.id) || !num(st.x) || !num(st.y) || !shapes.includes(st.shape) || !Array.isArray(st.queue)) return false;
+    if (!st.queue.every(p => shapes.includes(p))) return false;
+    ids.add(st.id);
+  }
+  const lineIds = new Set();
+  for (const l of d.lines) {
+    if (!num(l.id) || !(l.color >= 0 && l.color < LINE_COLORS.length) || !Array.isArray(l.stations) || l.stations.length < 2) return false;
+    if (!l.stations.every(id => ids.has(id))) return false;
+    lineIds.add(l.id);
+  }
+  return d.trains.every(tr => lineIds.has(tr.line) && ids.has(tr.a) && ids.has(tr.b) && num(tr.t) && Array.isArray(tr.pax));
+}
+
+function loadSave() {
+  try {
+    const d = JSON.parse(localStorage.getItem(SAVE_KEY));
+    if (isValidSave(d)) return d;
+    if (d) clearSave();
+  } catch { /* kein oder kaputter Stand */ }
+  return null;
+}
+
+/** Baut eine gespeicherte Runde wieder auf (zunächst hinter dem Startzettel). */
+function restoreGame(d) {
+  newGame();
+  Object.assign(G, {
+    t: d.t, week: d.week, score: d.score, nextId: d.nextId,
+    maxLines: clamp(d.maxLines, 1, CFG.maxLines), trainsFree: Math.max(0, d.trainsFree), stationTimer: d.stationTimer,
+  });
+  G.stations = d.stations.map(st => ({ ...st, queue: [...st.queue], over: clamp(+st.over || 0, 0, 0.99), big: !!st.big, born: +st.born || 0, flash: 0 }));
+  G.lines = d.lines.map(l => ({ id: l.id, color: l.color, stations: [...l.stations] }));
+  const lineById = new Map(G.lines.map(l => [l.id, l]));
+  G.trains = d.trains.map(tr => ({
+    id: tr.id, line: lineById.get(tr.line), a: tr.a, b: tr.b,
+    t: clamp(tr.t, 0, 1), dwell: +tr.dwell || 0, pax: [...tr.pax],
+  }));
+  for (const l of G.lines) syncTrains(l);
+  rebuildRoutes();
+  updateBounds();
+  G.resumeState = d.state;
+  cam.ready = false;
+}
+
+/** Zeitangabe wie „vor 5 Min.“ */
+function timeAgo(ts) {
+  const min = Math.round((Date.now() - ts) / 60000);
+  if (min < 1) return 'gerade eben';
+  if (min < 60) return `vor ${min} Min.`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `vor ${h} Std.`;
+  const days = Math.round(h / 24);
+  return days === 1 ? 'gestern' : `vor ${days} Tagen`;
+}
+
+/** Laufende Runde fortsetzen (nach Laden oder aus dem Menü) */
+function resumeGame() {
+  $('#screen-start').hidden = true;
+  const state = G.resumeState || 'playing';
+  G.resumeState = null;
+  G.speed = 1;
+  if (state === 'upgrade') {
+    showUpgrade();
+  } else if (state === 'placeBig') {
+    G.state = 'placeBig';
+    toast('Tippe auf die Station, die größer werden soll.', 4000);
+  } else {
+    G.state = 'playing';
+  }
 }
 
 /* ---------- Start und Ende ---------- */
@@ -975,6 +1099,7 @@ function showUpgrade() {
 function gameOver(st) {
   G.state = 'over';
   G.lostStation = st;
+  clearSave();                         // vorbei ist vorbei
   drag = null;
   closeLineMenu();
   const rec = best.get();
@@ -988,36 +1113,73 @@ function gameOver(st) {
   setTimeout(() => { $('#screen-over').hidden = false; }, 900);
 }
 
-function showStart() {
+/** Startzettel. Mit Spielstand: „Weiterspielen“ und „Neues Spiel“. */
+function showStart(saved) {
   const rec = best.get();
   $('#start-record').textContent = rec ? `Dein Rekord: ${rec} Fahrgäste` : '';
+  const info = $('#save-info');
+  info.hidden = !saved;
+  $('#btn-continue').hidden = !saved;
+  const start = $('#btn-start');
+  start.textContent = saved ? 'Neues Spiel' : 'Losfahren';
+  start.classList.toggle('primary', !saved);
+  if (saved) {
+    info.textContent = `Gespeichert ${timeAgo(saved.savedAt)}: Woche ${saved.week} · ${saved.score} Fahrgäste`;
+  }
   $('#screen-start').hidden = false;
 }
 
+$('#btn-continue').addEventListener('click', resumeGame);
+
 $('#btn-start').addEventListener('click', () => {
+  if (G.resumeState && !confirm('Neues Spiel starten? Dein gespeichertes Spiel wird dabei überschrieben.')) return;
+  clearSave();
   $('#screen-start').hidden = true;
+  newGame();
+  cam.ready = false;
   G.state = 'playing';
+  G.speed = 1;
+});
+
+// Menü: sofort speichern und zum Startzettel
+$('#btn-menu').addEventListener('click', () => {
+  if (!ACTIVE_STATES.includes(G.state)) return;
+  closeLineMenu();
+  drag = null;
+  G.resumeState = G.state;
+  G.state = 'start';
+  const ok = saveGame();
+  showStart(ok ? serialize() : null);
+  if (!ok) toast('Speichern ist hier nicht möglich (privater Modus?).');
 });
 $('#btn-again').addEventListener('click', () => {
   $('#screen-over').hidden = true;
   newGame();
   cam.ready = false;
   G.state = 'playing';
+  G.speed = 1;
 });
 
 // App im Hintergrund → automatisch pausieren
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden && G.state === 'playing') G.speed = 0;
+  if (!document.hidden) return;
+  if (G.state === 'playing') G.speed = 0;
+  saveGame();
 });
+window.addEventListener('pagehide', () => saveGame());
 
 /* =====================================================================
    10. START
    ===================================================================== */
 
 let lastFrame = performance.now();
+let autosaveTimer = 0;
 function frame(now) {
   const rdt = Math.min(0.05, (now - lastFrame) / 1000);
   lastFrame = now;
+  // Auto-Speichern alle 5 Sekunden, solange gespielt wird
+  autosaveTimer += rdt;
+  if (autosaveTimer >= 5) { autosaveTimer = 0; if (G.state === 'playing' && G.speed > 0) saveGame(); }
   if (G.state === 'playing' && G.speed > 0) update(rdt * G.speed);
   updateCamera(rdt);
   draw();
@@ -1027,8 +1189,9 @@ function frame(now) {
 
 window.addEventListener('resize', resize);
 resize();
-newGame();
-showStart();
+const saved = loadSave();
+if (saved) restoreGame(saved); else newGame();
+showStart(saved);
 requestAnimationFrame(frame);
 
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
@@ -1041,4 +1204,6 @@ window.__metro = {
   step(dt) { update(dt); },
   toScreen,
   newGame,
+  saveGame,
+  loadSave,
 };
