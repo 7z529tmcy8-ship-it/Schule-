@@ -2,7 +2,7 @@
    Service Worker von Heft-Metro – macht das Spiel offline spielbar.
    Nach Änderungen am Code CACHE_VERSION hochzählen.
    ===================================================================== */
-const CACHE_VERSION = 'heftmetro-v13';
+const CACHE_VERSION = 'heftmetro-v14';
 
 const ASSETS = [
   './',

@@ -1610,6 +1610,8 @@ function drawStations() {
 
 /** Vorschau beim Ziehen einer neuen Linie */
 function drawDragPreview() {
+  if (drag?.mode === 'extend') return drawExtendPreview();
+  if (drag?.mode === 'insert') return drawInsertPreview();
   if (!drag || drag.mode !== 'new') return;
   const color = LINE_COLORS[drag.color];
   ctx.strokeStyle = color;
@@ -1626,6 +1628,38 @@ function drawDragPreview() {
   ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke();
   ctx.setLineDash([]);
   ctx.globalAlpha = 1;
+}
+
+/** Gestrichelte Linie vom Finger zu Stationen (Vorschau beim Verlängern/Einfügen) */
+function dashTo(color, mode, pts, alpha) {
+  ctx.strokeStyle = color;
+  ctx.lineCap = 'round';
+  ctx.lineWidth = Math.max(modeWidth(mode), 0.2) * cam.s;
+  ctx.setLineDash([0.35 * cam.s, 0.25 * cam.s]);
+  ctx.globalAlpha = alpha;
+  ctx.beginPath();
+  pts.forEach((p, k) => { const [sx, sy] = toScreen(p.x, p.y); k ? ctx.lineTo(sx, sy) : ctx.moveTo(sx, sy); });
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.globalAlpha = 1;
+}
+
+/** Beim Verlängern: Strich vom Linienende zum Finger, solange der Finger noch unterwegs ist */
+function drawExtendPreview() {
+  const s = drag.line.stations;
+  if (s.length < 1) return;
+  const end = stationById(drag.end === 'end' ? s[s.length - 1] : s[0]);
+  if (!end || dist(end.x, end.y, drag.x, drag.y) < hitRadius()) return;
+  dashTo(LINE_COLORS[drag.line.color], drag.line.mode, [end, drag], 0.6);
+}
+
+/** Beim Einfügen: Abschnitt wird zum „V“ über den Finger bzw. die Zielstation */
+function drawInsertPreview() {
+  const s = drag.line.stations;
+  const a = stationById(s[drag.i]), b = stationById(s[drag.i + 1]);
+  if (!a || !b) return;
+  const tip = drag.target != null ? stationById(drag.target) : drag;
+  dashTo(LINE_COLORS[drag.line.color], drag.line.mode, [a, tip, b], drag.target != null ? 0.95 : 0.55);
 }
 
 /** Am Spielende: die überfüllte Station dick rot einkreisen */
@@ -1673,12 +1707,52 @@ function stationAt(x, y) {
 }
 
 function handleAt(x, y) {
-  let bestH = null, bestD = Math.max(0.75, 26 / cam.s);
+  let bestH = null, bestD = Math.max(1.0, 36 / cam.s);
   for (const h of G.handles) {
     const d = dist(h.x, h.y, x, y);
     if (d < bestD) { bestD = d; bestH = h; }
   }
   return bestH;
+}
+
+/** Abstand Punkt–Strecke (in U) */
+function segDist(x, y, ax, ay, bx, by) {
+  const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy || 1;
+  const t = clamp(((x - ax) * dx + (y - ay) * dy) / l2, 0, 1);
+  return dist(x, y, ax + dx * t, ay + dy * t);
+}
+
+/** Linienabschnitt unter dem Finger → { line, i } (Abschnitt zwischen stations[i] und stations[i+1]) */
+function segmentAt(x, y) {
+  let best = null, bestD = Math.max(0.55, 24 / cam.s);
+  for (const line of G.lines) {
+    const s = line.stations;
+    for (let i = 0; i < s.length - 1; i++) {
+      const a = stationById(s[i]), b = stationById(s[i + 1]);
+      const { ox, oy } = segmentOffset(line, a.id, b.id);
+      const d = segDist(x, y, a.x + ox, a.y + oy, b.x + ox, b.y + oy);
+      if (d < bestD) { bestD = d; best = { line, i }; }
+    }
+  }
+  return best;
+}
+
+/**
+ * Welche Linie endet an dieser Station und soll beim Ziehen verlängert werden?
+ * Bevorzugt das gewählte Verkehrsmittel. Am Hauptbahnhof (dort starten neue Linien)
+ * nur, wenn für das gewählte Verkehrsmittel keine neue Linie mehr frei ist.
+ */
+function lineEndAt(st, mode) {
+  const ends = G.lines.filter(l => l.stations.length >= 2 &&
+    (l.stations[0] === st.id || l.stations[l.stations.length - 1] === st.id));
+  if (!ends.length) return null;
+  const own = ends.filter(l => l.mode === mode);
+  const free = canCreateLine(mode);
+  let line = null;
+  if (st.shape === 'hub') line = !free ? own[0] : null;
+  else line = own[0] || (!free ? ends[0] : null);
+  if (!line) return null;
+  return { line, end: line.stations[line.stations.length - 1] === st.id ? 'end' : 'start' };
 }
 
 /**
@@ -1732,10 +1806,18 @@ function onDown(e) {
   if (G.state !== 'playing') return false;
 
   const h = handleAt(x, y);
-  if (h) {
-    drag = { mode: 'extend', line: h.line, end: h.end, x, y, id: e.pointerId };
+  const st0 = h ? null : stationAt(x, y);
+  const endHit = st0 ? lineEndAt(st0, G.selectedMode) : null;
+  const seg = !h && !st0 ? segmentAt(x, y) : null;
+  if (h || endHit) {
+    // Linienende (Stiftkappe oder Endstation) anfassen → weiterziehen
+    const t = h || endHit;
+    drag = { mode: 'extend', line: t.line, end: t.end, x, y, id: e.pointerId };
+  } else if (seg) {
+    // Mitten auf der Linie anfassen → Station dazwischen einfügen
+    drag = { mode: 'insert', line: seg.line, i: seg.i, target: null, x, y, id: e.pointerId };
   } else {
-    const st = stationAt(x, y);
+    const st = st0;
     if (!st) return false;                  // leere Fläche → Karte verschieben
     const lineMode = G.selectedMode;
     const M = MODES[lineMode];
@@ -1764,6 +1846,7 @@ function onMove(e) {
   const [x, y] = toWorld(e.clientX, e.clientY);
   drag.x = x; drag.y = y;
   const st = stationAt(x, y);
+  if (drag.mode === 'insert') { drag.target = st && canInsert(drag.line, drag.i, st) ? st.id : null; return; }
   if (!st) return;
 
   if (drag.mode === 'new') {
@@ -1788,6 +1871,27 @@ function onMove(e) {
     if (atEnd) s.push(st.id); else s.unshift(st.id);
   } else {
     return;
+  }
+  rebuildRoutes();
+  syncTrains(line);
+}
+
+/** Darf Station st zwischen stations[i] und stations[i+1] eingefügt werden? */
+function canInsert(line, i, st) {
+  const s = line.stations;
+  if (s.includes(st.id)) return false;
+  if (tooManyStops(line.mode, s.length)) return false;
+  return canLink(line.mode, s[i], st) && canLink(line.mode, s[i + 1], st);
+}
+
+/** Station in die Linie einfügen; Fahrzeuge auf dem Abschnitt fahren die neue Station an */
+function insertStation(line, i, id) {
+  const [a, b] = [line.stations[i], line.stations[i + 1]];
+  line.stations.splice(i + 1, 0, id);
+  for (const tr of G.trains) {
+    if (tr.line !== line) continue;
+    if (tr.a === a && tr.b === b) { tr.b = id; tr.t = Math.min(tr.t, 0.5); }
+    else if (tr.a === b && tr.b === a) { tr.b = id; tr.t = Math.min(tr.t, 0.5); }
   }
   rebuildRoutes();
   syncTrains(line);
@@ -1843,6 +1947,11 @@ function onUp(e) {
   } else if (drag.mode === 'extend' && drag.line.stations.length < 2) {
     deleteLine(drag.line);
     toast('Linie gelöscht.');
+  } else if (drag.mode === 'insert' && drag.target != null) {
+    insertStation(drag.line, drag.i, drag.target);
+    const st = stationById(drag.target);
+    st.flash = 0.35;
+    toast(`${st.name || 'Station'} hängt jetzt an ${drag.line.label}.`);
   }
   drag = null;
   penActive = false;
@@ -2731,7 +2840,7 @@ const TUTORIAL = [
     done: () => lineWith('metro', stationOf('hub'), stationNamed('List')),
   },
   {
-    text: 'Ein neuer Stadtteil: Linden-Mitte. Zieh die Stiftkappe deiner Buslinie bei Linden-Nord dorthin – so verlängerst du die Linie.',
+    text: 'Ein neuer Stadtteil: Linden-Mitte. Zieh von Linden-Nord (Endstation deiner Buslinie) dorthin – so verlängerst du die Linie. Tipp: Ziehst du mitten an einer Linie, fügst du eine Station dazwischen ein.',
     enter: () => {
       if (stationNamed('Linden-Mitte')) return;
       const d = HANNOVER.districts.find(x => x.name === 'Linden-Mitte');

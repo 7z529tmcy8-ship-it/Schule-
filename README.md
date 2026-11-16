@@ -44,6 +44,8 @@ Die Lage ist aus dem Gedächtnis eingetragen und **nicht kartengenau** (1 Kästc
 - Wähle unten ein Verkehrsmittel und zieh mit Stift oder Finger von Station zu Station – so entsteht eine Linie.
 - Fahrgäste (kleine Formen) wollen zu einer Station mit ihrer Form. Umstiege – auch zwischen Bus, Tram, U-Bahn und Zug – passieren automatisch.
 - Am Linienende („Stiftkappe“) ziehst du die Linie weiter oder zurück.
+- Einfacher: An der **Endstation** einer Linie ansetzen und weiterziehen – das verlängert die Linie (am Hauptbahnhof nur, wenn keine neue Linie mehr frei ist).
+- **Station einfügen:** Mitten auf einen Linienabschnitt tippen und zu einer Station ziehen – sie wird zwischen den beiden Halten eingefügt.
 - Unten auf einen bunten Stift tippen → Zug hinzufügen/abziehen oder Linie löschen.
 - Jede Woche gibt es einen Zug und eine Wahl: neue Linie, Extra-Zug oder großer Bahnhof.
 - Ist eine Station zu lange überfüllt (roter Kreis), ist Endstation. Dein Rekord wird gespeichert.
