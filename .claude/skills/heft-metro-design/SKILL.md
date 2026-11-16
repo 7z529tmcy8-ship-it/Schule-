@@ -71,9 +71,12 @@ Wackeln immer über `wobble(seed, i)` (deterministisch), nie `Math.random()` bei
 | Bus | gestrichelter Marker, 0,20 U, Strich 0,55 / Lücke 0,32 U | ein kurzer Wagen 0,8 × 0,46 U, eckiger |
 | Tram | helles Band (Alpha 0,22, 0,34 U) + zwei dünne Schienen ±0,11 U | zwei Glieder, 1,35 × 0,36 U |
 | U-Bahn | dicker Filzstift 0,30 U | ein Wagen 1,0 × 0,5 U |
-| Zug | Gleis: Schwellen alle 0,45 U (0,44 U breit) + zwei Schienen ±0,12 U | zwei Wagen, 1,75 × 0,46 U |
+| S-Bahn | kräftiger Strich 0,28 U mit weiß gestrichelter Mittellinie (wie Bahnstrecken auf Karten) | zwei Wagen, 1,5 × 0,46 U |
+| Zug | Gleis: Schwellen alle 0,45 U (0,44 U breit) + zwei Schienen ±0,12 U | drei Wagen, 2,1 × 0,46 U |
 
 Symbole (SVG, 24er-Raster) stehen in `MODES[…].icon` in `game.js` und werden überall wiederverwendet.
+
+**Stationsarten:** Bushaltestelle (kleiner, Radius 0,42 U, kein Abzeichen) · Tram-Halt (Abzeichen „T“ auf Papier) · U-Bahn-Station (blaues Quadrat „U“) · Bahnhof (grüner Kreis „S“). Abzeichen oben rechts an der Station, mindestens 15 px. Ist ein Verkehrsmittel gewählt, werden Stationen, an denen es nicht halten kann, auf 30 % abgeblendet.
 
 **Hauptbahnhof:** Hausform (Radius 0,9 U) mit Bleistift-„H“; Fahrgäste mit Ziel Hauptbahnhof sind kleine gefüllte Häuser.
 

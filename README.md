@@ -24,15 +24,26 @@ Die Lage ist aus dem Gedächtnis eingetragen und **nicht kartengenau** (1 Kästc
 
 ## Die Verkehrsmittel
 
-| | Bus | Tram | U-Bahn | Zug |
-|---|---|---|---|---|
-| Tempo | langsam | mittel | schnell | sehr schnell |
-| Plätze | 4 | 6 | 6 | 10 |
-| Halte pro Linie | max. 6 | max. 8 | beliebig | max. 5 |
-| Besonderheit | viele Fahrzeuge, jede Woche ein Bus geschenkt | schnelles Ein- und Aussteigen | – | startet immer am Hauptbahnhof, längere Halte |
-| Am Anfang | 2 Linien, 3 Busse | 1 Linie, 1 Tram | 1 Linie, 1 U-Bahn | 1 Strecke, 1 Zug |
+| | Bus | Tram | U-Bahn | S-Bahn | Zug |
+|---|---|---|---|---|---|
+| Netz | groß (bis 5 Linien) | mittel | mittel | klein | sehr klein |
+| Abstand zwischen Halten | max. ~2,7 km | max. ~3,3 km | max. ~4,5 km | beliebig | **mind. ~3 km** |
+| Hält an | allen Stationen | Tram-Halt, U-Bahn, Bahnhof | U-Bahn-Station, Bahnhof | nur Bahnhof | nur Bahnhof |
+| Tempo / Plätze | langsam / 4 | mittel / 6 | schnell / 6 | schnell / 8 | sehr schnell / 10 |
+| Besonderheit | hält überall, kurze Wege | schnelles Einsteigen | – | Linie über den Hauptbahnhof | nur lange Strecken ab Hauptbahnhof |
 
-Jede Woche werden drei Upgrades ausgelost: neue Linien, zusätzliche Fahrzeuge oder ein großer Bahnhof.
+## Stationsarten und Ausbau
+- **Bushaltestelle** (klein, ohne Abzeichen) – nur Busse
+- **Tram-Halt** („T“) – Bus und Tram
+- **U-Bahn-Station** (blaues „U“) – Bus, Tram, U-Bahn
+- **Bahnhof** (grünes „S“) – alles, auch S-Bahn und Zug
+- **Hauptbahnhof** – alles
+
+Welche Art ein Stadtteil hat, ist grob an Hannovers echtes Netz angelehnt, aber vereinfacht.
+Wählst du ein Verkehrsmittel, werden Stationen blass, an denen es nicht halten kann.
+**Ausbau:** Wöchentliche Upgrades wie „Tram-Gleise legen“, „U-Bahn-Station bauen“ oder „Bahnhof bauen“ machen eine Station eine Stufe größer – einfach danach auf die Station tippen.
+
+Jede Woche werden drei Upgrades ausgelost: neue Linien, zusätzliche Fahrzeuge, Ausbau oder ein großer Bahnhof.
 
 ## Speichern
 Das Spiel **speichert sich automatisch**: alle 5 Sekunden, beim Pausieren, nach jedem Wochen-Upgrade und sobald du die App verlässt.

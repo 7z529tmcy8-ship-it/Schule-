@@ -35,7 +35,8 @@ const COLORS = {
   danger: '#d0342c',
 };
 /** Filzstift-Farben der Linien, feste Reihenfolge */
-const LINE_COLORS = ['#d23b2f', '#2456c9', '#2f9e4f', '#ef8a17', '#8a3fb8', '#1199a8', '#8b5a2b', '#d81b7a', '#6d7f12', '#1f3a7a'];
+const LINE_COLORS = ['#d23b2f', '#2456c9', '#2f9e4f', '#ef8a17', '#8a3fb8', '#1199a8', '#8b5a2b', '#d81b7a', '#6d7f12', '#1f3a7a',
+  '#c2185b', '#00897b', '#5c6bc0', '#a1887f'];
 
 const COMMON_SHAPES = ['circle', 'triangle', 'square'];
 const RARE_SHAPES = ['star', 'diamond', 'cross'];
@@ -46,39 +47,68 @@ const SHAPE_NAME = {
 };
 
 /**
- * Die vier Verkehrsmittel. Jedes fährt anders:
+ * Die fünf Verkehrsmittel. Jedes fährt anders und hat ein eigenes Netz:
+ *   Bus groß und kleinräumig, Tram/U-Bahn mittel, S-Bahn und Zug klein, aber weit.
  *   speed  Tempo in U pro Sekunde     cap      Plätze
  *   dwell  Grund-Haltezeit (s)        perPax   Sekunden pro ein-/aussteigendem Fahrgast
  *   maxStops  Haltestellen pro Linie  maxLines Linien höchstens (durch Upgrades)
- *   needsHub  Linie muss am Hauptbahnhof beginnen
+ *   maxHop / minHop  größter / kleinster Abstand zwischen zwei Halten (U, 1 U ≈ 300 m)
+ *   tier   Mindest-Stationsart, an der das Verkehrsmittel halten kann (siehe TIERS)
+ *   needsHub  Linie muss den Hauptbahnhof enthalten
  */
 const MODES = {
   bus: {
-    name: 'Bus', vehicle: 'Bus', lineName: 'Buslinie', none: 'Kein Bus frei',
-    speed: 1.6, cap: 4, dwell: 0.25, perPax: 0.15, maxStops: 6, maxLines: 3, startLines: 2, startVehicles: 3,
+    name: 'Bus', vehicle: 'Bus', lineName: 'Buslinie', none: 'Kein Bus frei', no: 'kein Bus', tier: 'bus',
+    speed: 1.6, cap: 4, dwell: 0.25, perPax: 0.15, maxStops: 7, maxLines: 5, startLines: 3, startVehicles: 4,
+    maxHop: 9, minHop: 0,
     body: { w: 0.8, h: 0.46, parts: 1 },
     icon: '<rect x="4.5" y="4" width="15" height="13" rx="3"/><path d="M4.5 11h15M8 20.5v-3.5M16 20.5v-3.5"/>',
   },
   tram: {
-    name: 'Tram', vehicle: 'Tram', lineName: 'Tramlinie', none: 'Keine Tram frei',
+    name: 'Tram', vehicle: 'Tram', lineName: 'Tramlinie', none: 'Keine Tram frei', no: 'keine Tram', tier: 'tram',
     speed: 2.2, cap: 6, dwell: 0.2, perPax: 0.07, maxStops: 8, maxLines: 3, startLines: 1, startVehicles: 1,
+    maxHop: 11, minHop: 0,
     body: { w: 1.35, h: 0.36, parts: 2 },
     icon: '<rect x="5" y="7.5" width="14" height="10.5" rx="3"/><path d="M9 3h6M12 3v4.5M5 13h14M8 21l1.5-3M16 21l-1.5-3"/>',
   },
   metro: {
-    name: 'U-Bahn', vehicle: 'U-Bahn', lineName: 'U-Bahn-Linie', none: 'Keine U-Bahn frei',
+    name: 'U-Bahn', vehicle: 'U-Bahn', lineName: 'U-Bahn-Linie', none: 'Keine U-Bahn frei', no: 'keine U-Bahn', tier: 'metro',
     speed: 2.8, cap: 6, dwell: 0.3, perPax: 0.12, maxStops: 99, maxLines: 3, startLines: 1, startVehicles: 1,
+    maxHop: 15, minHop: 0,
     body: { w: 1.0, h: 0.5, parts: 1 },
     icon: '<circle cx="12" cy="12" r="8.5"/><path d="M8.7 7.8v4.7a3.3 3.3 0 0 0 6.6 0V7.8"/>',
   },
+  sbahn: {
+    name: 'S-Bahn', vehicle: 'S-Bahn', lineName: 'S-Bahn-Linie', none: 'Keine S-Bahn frei', no: 'keine S-Bahn', tier: 'rail',
+    speed: 3.6, cap: 8, dwell: 0.6, perPax: 0.09, maxStops: 6, maxLines: 2, startLines: 1, startVehicles: 1, needsHub: true,
+    maxHop: 99, minHop: 0,
+    body: { w: 1.5, h: 0.46, parts: 2 },
+    icon: '<circle cx="12" cy="12" r="8.5"/><path d="M15 8.6c-.8-.9-1.9-1.3-3.1-1.3-1.6 0-2.8.9-2.8 2.2 0 2.9 6.2 1.7 6.2 4.8 0 1.4-1.3 2.4-3.1 2.4-1.4 0-2.6-.5-3.4-1.5"/>',
+  },
   rail: {
-    name: 'Zug', vehicle: 'Zug', lineName: 'Zugstrecke', none: 'Kein Zug frei',
-    speed: 3.8, cap: 10, dwell: 0.9, perPax: 0.08, maxStops: 5, maxLines: 2, startLines: 1, startVehicles: 1, needsHub: true,
-    body: { w: 1.75, h: 0.46, parts: 2 },
+    name: 'Zug', vehicle: 'Zug', lineName: 'Zugstrecke', none: 'Kein Zug frei', no: 'kein Zug', tier: 'rail',
+    speed: 4.4, cap: 10, dwell: 0.9, perPax: 0.08, maxStops: 4, maxLines: 2, startLines: 1, startVehicles: 1, needsHub: true,
+    maxHop: 99, minHop: 10,
+    body: { w: 2.1, h: 0.46, parts: 3 },
     icon: '<path d="M6.5 18V8.5a4.5 4.5 0 0 1 4.5-4.5h2a4.5 4.5 0 0 1 4.5 4.5V18z"/><path d="M6.5 12.5h11M8 21.5l1.5-3.5M16 21.5l-1.5-3.5"/>',
   },
 };
-const MODE_ORDER = ['bus', 'tram', 'metro', 'rail'];
+const MODE_ORDER = ['bus', 'tram', 'metro', 'sbahn', 'rail'];
+
+/**
+ * Stationsarten, aufsteigend. Ein Verkehrsmittel hält an seiner Art und allen höheren.
+ * Der Hauptbahnhof ist immer 'rail' – dort hält alles.
+ */
+const TIERS = ['bus', 'tram', 'metro', 'rail'];
+const TIER_INFO = {
+  bus: { name: 'Bushaltestelle', a: 'eine', badge: '', r: 0.42 },
+  tram: { name: 'Tram-Halt', a: 'ein', badge: 'T', r: 0.55 },
+  metro: { name: 'U-Bahn-Station', a: 'eine', badge: 'U', r: 0.55 },
+  rail: { name: 'Bahnhof', a: 'ein', badge: 'S', r: 0.6 },
+};
+const tierRank = t => TIERS.indexOf(t);
+/** Darf dieses Verkehrsmittel an der Station halten? */
+const servesMode = (st, mode) => st.shape === 'hub' || tierRank(st.tier || 'metro') >= tierRank(MODES[mode].tier);
 
 /* ---------- Karte von Hannover ----------
    Grobe Skizze aus dem Gedächtnis – nicht kartengenau! Angaben in km
@@ -106,7 +136,7 @@ const HANNOVER = {
     { name: 'Stadion', at: km([[-0.68, 1.84]])[0] },
     { name: 'Messe', at: km([[6.6, 7.0]])[0] },
   ],
-  // Die ersten drei sind die Startstationen
+  // Die ersten drei sind die Startstationen. Die Stationsart (tier) steht in DISTRICT_TIER.
   districts: [
     ['List', 1.4, -2.1], ['Linden-Nord', -2.3, 0.1], ['Südstadt', 1.3, 2.0],
     ['Oststadt', 1.1, -0.5], ['Nordstadt', -1.2, -1.3], ['Calenberger Neustadt', -1.0, 0.9], ['Bult', 1.4, 0.75],
@@ -121,6 +151,19 @@ const HANNOVER = {
     ['Anderten', 9.0, 2.0], ['Kronsberg', 6.8, 5.6], ['Isernhagen-Süd', 5.0, -6.0],
   ].map(([name, x, y]) => ({ name, x: Math.round(x / KM_PER_U), y: Math.round(y / KM_PER_U) })),
 };
+
+/**
+ * Stationsart je Stadtteil – grob angelehnt an Hannovers S-Bahn- und Stadtbahnnetz,
+ * aber fürs Spiel vereinfacht. Nicht genannte Stadtteile sind Bushaltestellen.
+ */
+const DISTRICT_TIER = {
+  rail: ['Nordstadt', 'Linden-Süd', 'Kleefeld', 'Misburg', 'Anderten', 'Ledeburg', 'Wülfel', 'Kronsberg'],
+  metro: ['List', 'Oststadt', 'Südstadt', 'Vahrenwald', 'Linden-Mitte', 'Calenberger Neustadt', 'Döhren',
+    'Groß-Buchholz', 'Kirchrode', 'Bothfeld', 'Stöcken'],
+  tram: ['Linden-Nord', 'Bult', 'Hainholz', 'Herrenhausen', 'Limmer', 'Ricklingen', 'Oberricklingen', 'Waldhausen',
+    'Vahrenheide', 'Sahlkamp', 'Bemerode', 'Mühlenberg', 'Wettbergen', 'Badenstedt'],
+};
+const tierOfDistrict = name => Object.keys(DISTRICT_TIER).find(t => DISTRICT_TIER[t].includes(name)) || 'bus';
 
 /** Punkt in Polygon (für See, Wald – Zufalls-Stationen landen nicht im Wasser) */
 function inPolygon(x, y, pts) {
@@ -215,7 +258,8 @@ let G;
 
 function newGame() {
   G = {
-    state: 'start',        // start | playing | upgrade | placeBig | over
+    state: 'start',        // start | playing | upgrade | placeBig | placeTier | over
+    placeTier: null,       // beim Ausbau: Ziel-Stationsart ('tram' | 'metro' | 'rail')
     speed: 1,              // 0 = Pause, 1 = normal, 2 = schnell
     t: 0,                  // Spielzeit in Sekunden
     week: 1,
@@ -237,9 +281,9 @@ function newGame() {
     districtsLeft: HANNOVER.districts.map(d => d.name),   // noch nicht erschlossene Stadtteile
   };
   // Hauptbahnhof in der Mitte, drei Stadtteile darum (List, Linden-Nord, Südstadt) – Formen gemischt
-  addStation('hub', 0, 0, 'Hauptbahnhof');
+  addStation('hub', 0, 0, 'Hauptbahnhof', 'rail');
   const shapes = [...COMMON_SHAPES].sort(() => Math.random() - 0.5);
-  HANNOVER.districts.slice(0, 3).forEach((d, i) => addStation(shapes[i], d.x, d.y, d.name));
+  HANNOVER.districts.slice(0, 3).forEach((d, i) => addStation(shapes[i], d.x, d.y, d.name, tierOfDistrict(d.name)));
   G.districtsLeft = G.districtsLeft.slice(3);
   for (const st of G.stations) st.born = -10;   // Startstationen sind sofort da (kein Aufploppen)
   rebuildRoutes();
@@ -248,13 +292,13 @@ function newGame() {
 const stationById = id => G.stations.find(s => s.id === id);
 const hub = () => G.stations.find(s => s.shape === 'hub');
 /** Radius einer Station in U (Hauptbahnhof ist größer) */
-const stationR = st => (st.shape === 'hub' ? CFG.hubR : CFG.stationR);
+const stationR = st => (st.shape === 'hub' ? CFG.hubR : TIER_INFO[st.tier || 'metro'].r);
 const capacityOf = st => (st.shape === 'hub' ? CFG.hubCapacity : st.big ? CFG.bigCapacity : CFG.capacity);
 const vehiclesOn = line => G.trains.filter(t => t.line === line).length;
 const linesOf = mode => G.lines.filter(l => l.mode === mode);
 
-function addStation(shape, x, y, name = '') {
-  const st = { id: G.nextId++, x, y, shape, name, queue: [], over: 0, big: false, born: G.t, flash: 0 };
+function addStation(shape, x, y, name = '', tier = 'bus') {
+  const st = { id: G.nextId++, x, y, shape, name, tier, queue: [], over: 0, big: false, born: G.t, flash: 0 };
   G.stations.push(st);
   return st;
 }
@@ -416,7 +460,7 @@ function spawnStation() {
     const d = near[Math.floor(Math.random() * near.length)];
     G.districtsLeft = G.districtsLeft.filter(n => n !== d.name);
     if (G.stations.some(s => dist(s.x, s.y, d.x, d.y) < 2.5)) continue;   // zu nah an einer anderen Station
-    addStation(pickShape(), d.x, d.y, d.name);
+    addStation(pickShape(), d.x, d.y, d.name, tierOfDistrict(d.name));
     rebuildRoutes();
     return;
   }
@@ -426,6 +470,8 @@ function spawnStation() {
     const y = Math.round(rand(-hh + 1, hh - 1));
     if (G.stations.some(s => dist(s.x, s.y, x, y) < CFG.minStationDist + (s.shape === 'hub' ? 1.2 : 0))) continue;
     if (onMapFeature(x, y)) continue;
+    const r = Math.random();
+    const tier = r < 0.4 ? 'bus' : r < 0.65 ? 'tram' : r < 0.85 ? 'metro' : 'rail';
     const onLine = G.lines.some(l => l.stations.some((id, i) => {
       const nId = l.stations[i + 1];
       if (!nId) return false;
@@ -433,7 +479,7 @@ function spawnStation() {
       return distToSegment(x, y, a.x, a.y, b.x, b.y) < CFG.minLineDist;
     }));
     if (onLine) continue;
-    addStation(pickShape(), x, y);
+    addStation(pickShape(), x, y, '', tier);
     rebuildRoutes();
     return;
   }
@@ -863,7 +909,7 @@ function shapePath(shape, sx, sy, r, seed = 0, overshoot = false) {
 }
 
 /** Strichbreite eines Verkehrsmittels in U (für Kappen und Vorschau) */
-const modeWidth = mode => (mode === 'metro' ? CFG.lineWidth : 0.2);
+const modeWidth = mode => (mode === 'metro' ? CFG.lineWidth : mode === 'sbahn' ? 0.28 : 0.2);
 
 /**
  * Ein Streckenabschnitt im Stil des Verkehrsmittels:
@@ -889,6 +935,16 @@ function strokeSegment(mode, x1, y1, x2, y2, seed) {
     ctx.globalAlpha = 0.95;
     ctx.lineWidth = Math.max(1.2, 0.07 * s);
     for (const k of [-1, 1]) wobblyStroke(x1 + nx * 0.11 * k, y1 + ny * 0.11 * k, x2 + nx * 0.11 * k, y2 + ny * 0.11 * k, seed);
+  } else if (mode === 'sbahn') {
+    ctx.lineWidth = 0.28 * s;
+    wobblyStroke(x1, y1, x2, y2, seed, 0.03);
+    const stroke = ctx.strokeStyle;
+    ctx.strokeStyle = '#fffdf3';
+    ctx.lineWidth = Math.max(1.5, 0.09 * s);
+    ctx.setLineDash([0.45 * s, 0.35 * s]);
+    wobblyStroke(x1, y1, x2, y2, seed, 0.03);
+    ctx.setLineDash([]);
+    ctx.strokeStyle = stroke;
   } else if (mode === 'rail') {
     // Schwellen quer zur Strecke, dann zwei Schienen
     ctx.lineWidth = Math.max(1, 0.07 * s);
@@ -985,9 +1041,41 @@ function drawTrains() {
   }
 }
 
+/** Welches Verkehrsmittel ist gerade „in der Hand“? (zum Abblenden unpassender Stationen) */
+function activeMode() {
+  if (drag) return drag.lineMode || drag.line?.mode;
+  return G.state === 'playing' ? G.selectedMode : null;
+}
+
+/** Abzeichen der Stationsart: T (Tram), U (blau, U-Bahn), S (grün, Bahnhof) */
+function drawTierBadge(st, sx, sy, r) {
+  const badge = TIER_INFO[st.tier]?.badge;
+  if (!badge || st.shape === 'hub') return;
+  const size = Math.max(15, 0.46 * cam.s);
+  const bx = sx + r * 0.9, by = sy - r * 0.9;
+  ctx.save();
+  ctx.beginPath();
+  if (badge === 'S') ctx.arc(bx, by, size / 2, 0, Math.PI * 2);
+  else ctx.roundRect(bx - size / 2, by - size / 2, size, size, size * 0.22);
+  ctx.fillStyle = badge === 'U' ? '#2456c9' : badge === 'S' ? '#2f9e4f' : '#fffdf3';
+  ctx.fill();
+  ctx.strokeStyle = COLORS.pencil;
+  ctx.lineWidth = 1.3;
+  ctx.stroke();
+  ctx.fillStyle = badge === 'T' ? COLORS.pencil : '#fff';
+  ctx.font = `700 ${size * 0.68}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(badge, bx, by + size * 0.04);
+  ctx.restore();
+}
+
 function drawStations() {
+  const mode = activeMode();
   for (const st of G.stations) {
-    const R = px(stationR(st), st.shape === 'hub' ? 18 : 12);
+    // Station, an der das gewählte Verkehrsmittel nicht halten kann → blass
+    ctx.globalAlpha = mode && !servesMode(st, mode) ? 0.3 : 1;
+    const R = px(stationR(st), st.shape === 'hub' ? 18 : st.tier === 'bus' ? 9 : 12);
     const [sx, sy] = toScreen(st.x, st.y);
     const age = G.t - st.born;
     const pop = age < 0.35 ? (age < 0.2 ? smooth(age / 0.2) * 1.15 : 1.15 - 0.15 * smooth((age - 0.2) / 0.15)) : 1;
@@ -1018,11 +1106,13 @@ function drawStations() {
     ctx.lineJoin = 'round';
     shapePath(st.shape, sx, sy, r, st.id, true);
     ctx.stroke();
-    ctx.globalAlpha = 0.35;
+    const baseAlpha = ctx.globalAlpha;
+    ctx.globalAlpha = baseAlpha * 0.35;
     ctx.lineWidth = Math.max(1, 0.06 * cam.s);
     shapePath(st.shape, sx + 0.03 * cam.s, sy - 0.02 * cam.s, r, st.id + 7, true);
     ctx.stroke();
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = baseAlpha;
+    drawTierBadge(st, sx, sy, r);
     if (st.big) {
       ctx.lineWidth = Math.max(1.2, 0.07 * cam.s);
       shapePath(st.shape, sx, sy, r + 0.22 * cam.s, st.id + 3, true);
@@ -1055,6 +1145,7 @@ function drawStations() {
       ctx.fill();
     });
   }
+  ctx.globalAlpha = 1;
 }
 
 /** Vorschau beim Ziehen einer neuen Linie */
@@ -1144,6 +1235,19 @@ function onDown(e) {
     }
     return;
   }
+  if (G.state === 'placeTier') {
+    const st = stationAt(x, y);
+    if (st && st.shape !== 'hub' && tierRank(st.tier) < tierRank(G.placeTier)) {
+      st.tier = G.placeTier;
+      st.flash = 0.35;
+      G.state = 'playing';
+      rebuildRoutes();
+      toast(`${st.name || 'Die Station'} ist jetzt ${TIER_INFO[st.tier].a} ${TIER_INFO[st.tier].name}.`);
+    } else if (st) {
+      toast('Diese Station ist schon mindestens so groß – wähle eine andere.');
+    }
+    return;
+  }
   if (G.state !== 'playing') return;
 
   const h = handleAt(x, y);
@@ -1158,8 +1262,12 @@ function onDown(e) {
       toast(`Alle ${M.lineName}n sind vergeben. Wähle unten ein anderes Verkehrsmittel oder verlängere eine Linie.`, 3400);
       return;
     }
+    if (!servesMode(st, lineMode)) {
+      toast(`${st.name || TIER_INFO[st.tier].name} ist ${TIER_INFO[st.tier].a} ${TIER_INFO[st.tier].name} – hier hält ${M.no}. Baue sie per Upgrade aus.`, 3400);
+      return;
+    }
     if (M.needsHub && st.shape !== 'hub') {
-      toast('Züge fahren immer ab dem Hauptbahnhof – starte dort.');
+      toast(`${M.name}-Linien starten immer am Hauptbahnhof – starte dort.`);
       return;
     }
     drag = { mode: 'new', lineMode, stations: [st.id], color: freeColor(), x, y, id: e.pointerId };
@@ -1179,7 +1287,7 @@ function onMove(e) {
   if (drag.mode === 'new') {
     const s = drag.stations;
     if (s[s.length - 2] === st.id) s.pop();                 // zurückgezogen
-    else if (!s.includes(st.id) && !tooManyStops(drag.lineMode, s.length)) s.push(st.id);
+    else if (!s.includes(st.id) && !tooManyStops(drag.lineMode, s.length) && canLink(drag.lineMode, s[s.length - 1], st)) s.push(st.id);
     return;
   }
 
@@ -1194,7 +1302,7 @@ function onMove(e) {
     // Züge dürfen den Hauptbahnhof nicht verlieren
     if (MODES[line.mode].needsHub && stationById(endId).shape === 'hub') return;
     if (atEnd) s.pop(); else s.shift();
-  } else if (!s.includes(st.id) && !tooManyStops(line.mode, s.length)) {
+  } else if (!s.includes(st.id) && !tooManyStops(line.mode, s.length) && canLink(line.mode, endId, st)) {
     if (atEnd) s.push(st.id); else s.unshift(st.id);
   } else {
     return;
@@ -1203,13 +1311,42 @@ function onMove(e) {
   syncTrains(line);
 }
 
+/** Hinweis nur einmal pro Zieh-Vorgang (sonst flackert der Toast) */
+function warnOnce(key, msg) {
+  if (!drag || drag.warned === key) return;
+  drag.warned = key;
+  toast(msg, 3200);
+}
+
+/**
+ * Darf die Linie von Station fromId zur Station st weitergehen?
+ * Prüft Stationsart und Reichweite: Busse fahren nur kurze Stücke,
+ * Züge nur lange (weite Entfernungen).
+ */
+function canLink(mode, fromId, st) {
+  const M = MODES[mode];
+  if (!servesMode(st, mode)) {
+    warnOnce('tier' + st.id, `${st.name || TIER_INFO[st.tier].name} ist ${TIER_INFO[st.tier].a} ${TIER_INFO[st.tier].name} – hier hält ${M.no}.`);
+    return false;
+  }
+  const from = stationById(fromId);
+  const d = dist(from.x, from.y, st.x, st.y);
+  if (d > M.maxHop) {
+    warnOnce('far', `Zu weit für ${M.name === 'Bus' ? 'den Bus' : 'die ' + M.name}: höchstens ${fmtKm(M.maxHop)} zwischen zwei Halten.`);
+    return false;
+  }
+  if (d < M.minHop) {
+    warnOnce('near', `Züge fahren nur weite Strecken: mindestens ${fmtKm(M.minHop)} zwischen zwei Halten.`);
+    return false;
+  }
+  return true;
+}
+const fmtKm = u => `${(u * KM_PER_U).toLocaleString('de-DE', { maximumFractionDigits: 1 })} km`;
+
 /** Höchstzahl an Haltestellen erreicht? (mit Hinweis, einmal pro Ziehen) */
 function tooManyStops(mode, count) {
   if (count < MODES[mode].maxStops) return false;
-  if (drag && !drag.warned) {
-    drag.warned = true;
-    toast(`Eine ${MODES[mode].lineName} hat höchstens ${MODES[mode].maxStops} Haltestellen.`);
-  }
+  warnOnce('stops', `Eine ${MODES[mode].lineName} hat höchstens ${MODES[mode].maxStops} Haltestellen.`);
   return true;
 }
 
@@ -1280,10 +1417,9 @@ function selectMode(mode) {
   G.selectedMode = mode;
   if (G.tutorial) { tut.tapped = mode; return; }   // im Tutorial erklärt der Zettel
   const M = MODES[mode];
-  const extra = M.needsHub ? ' Züge starten immer am Hauptbahnhof.' : '';
   toast(canCreateLine(mode)
-    ? `${M.name} gewählt – zieh von Station zu Station.${extra}`
-    : `${M.name} gewählt – aber alle ${M.lineName}n sind vergeben.`);
+    ? `${M.name}: ${MODE_TEXT[mode]}. Zieh von Station zu Station.`
+    : `${M.name} gewählt – aber alle ${M.lineName}n sind vergeben.`, 3200);
 }
 
 /**
@@ -1378,11 +1514,20 @@ for (const b of document.querySelectorAll('[data-speed]')) {
 
 const totalLineSlots = () => MODE_ORDER.reduce((a, m) => a + G.inv[m].lines, 0);
 const MODE_TEXT = {
-  bus: 'langsam, 4 Plätze, max. 6 Halte',
+  bus: 'großes Netz, kurze Wege, hält überall',
   tram: 'schnelles Einsteigen, max. 8 Halte',
-  metro: 'schnell, beliebig lang',
-  rail: 'sehr schnell, 10 Plätze, ab Hauptbahnhof',
+  metro: 'schnell, nur an U-Bahn-Stationen',
+  sbahn: 'weite Wege, nur Bahnhöfe, über den Hbf',
+  rail: 'sehr schnell, nur lange Strecken ab Hbf',
 };
+
+/** Ausbau-Stufen als Upgrade: eine Station wird eine Stufe größer */
+const TIER_UPGRADES = [
+  { tier: 'tram', title: 'Tram-Gleise legen', text: 'Eine Bushaltestelle wird zum Tram-Halt.' },
+  { tier: 'metro', title: 'U-Bahn-Station bauen', text: 'Eine Station bekommt einen U-Bahn-Zugang.' },
+  { tier: 'rail', title: 'Bahnhof bauen', text: 'Eine Station wird Bahnhof für S-Bahn und Zug.' },
+];
+const BUILD_ICON = '<path d="M4 20h16M6 20V10l6-5 6 5v10"/><path d="M10 20v-5h4v5"/><path d="M17 3v4M15 5h4"/>';
 
 /** Alle möglichen Upgrades; pro Woche werden drei passende ausgelost. */
 const UPGRADES = [
@@ -1396,6 +1541,15 @@ const UPGRADES = [
     text: `Mehr Fahrzeuge für deine ${MODES[mode].lineName}n.`, icon: MODES[mode].icon,
     ok: () => true,
     apply: () => { G.inv[mode].free += mode === 'bus' ? 2 : 1; },
+  })),
+  ...TIER_UPGRADES.map(u => ({
+    key: 'tier-' + u.tier, title: u.title, text: u.text, icon: BUILD_ICON,
+    ok: () => G.stations.some(st => st.shape !== 'hub' && tierRank(st.tier) < tierRank(u.tier)),
+    apply: () => {
+      G.state = 'placeTier';
+      G.placeTier = u.tier;
+      toast(`Tippe auf die Station, die ${TIER_INFO[u.tier].a === 'ein' ? 'ein' : 'eine'} ${TIER_INFO[u.tier].name} werden soll.`, 4000);
+    },
   })),
   {
     key: 'big', title: 'Großer Bahnhof', text: 'Eine Station fasst 12 statt 6 Fahrgäste.',
@@ -1444,17 +1598,17 @@ function showUpgrade() {
    alles andere (Wegfindung, Griffe) wird beim Laden neu berechnet. */
 
 const SAVE_KEY = 'heftmetro.save';
-const SAVE_VERSION = 2;          // v2: Verkehrsmittel und Hauptbahnhof (v1-Stände werden verworfen)
-const ACTIVE_STATES = ['playing', 'upgrade', 'placeBig'];
+const SAVE_VERSION = 3;          // v3: Stationsarten + S-Bahn (v2 wird übernommen, v1 verworfen)
+const ACTIVE_STATES = ['playing', 'upgrade', 'placeBig', 'placeTier'];
 
 function serialize() {
   return {
     v: SAVE_VERSION,
     savedAt: Date.now(),
     state: G.state,
-    t: G.t, week: G.week, score: G.score, nextId: G.nextId,
+    t: G.t, week: G.week, score: G.score, nextId: G.nextId, placeTier: G.placeTier,
     inv: G.inv, selectedMode: G.selectedMode, stationTimer: G.stationTimer,
-    stations: G.stations.map(({ id, x, y, shape, name, queue, over, big, born }) => ({ id, x, y, shape, name, queue, over, big, born })),
+    stations: G.stations.map(({ id, x, y, shape, name, tier, queue, over, big, born }) => ({ id, x, y, shape, name, tier, queue, over, big, born })),
     districtsLeft: G.districtsLeft,
     lines: G.lines.map(({ id, color, mode, stations }) => ({ id, color, mode, stations })),
     trains: G.trains.map(({ id, line, a, b, t, dwell, pax }) => ({ id, line: line.id, a, b, t, dwell, pax })),
@@ -1503,9 +1657,30 @@ function isValidSave(d) {
   return d.trains.every(tr => lineIds.has(tr.line) && ids.has(tr.a) && ids.has(tr.b) && num(tr.t) && Array.isArray(tr.pax));
 }
 
+/**
+ * Spielstand v2 → v3: S-Bahn-Inventar ergänzen und jeder Station eine
+ * Stationsart geben – mindestens so groß, wie ihre bestehenden Linien brauchen,
+ * damit kein vorhandenes Netz kaputtgeht.
+ */
+function migrateSave(d) {
+  if (d?.v !== 2 || !Array.isArray(d.stations) || !Array.isArray(d.lines)) return d;
+  d.inv = { ...d.inv, sbahn: d.inv?.sbahn || { lines: MODES.sbahn.startLines, free: MODES.sbahn.startVehicles } };
+  for (const st of d.stations) {
+    let tier = st.shape === 'hub' ? 'rail' : tierOfDistrict(st.name || '');
+    for (const l of d.lines) {
+      if (Array.isArray(l.stations) && l.stations.includes(st.id) && MODES[l.mode] && tierRank(MODES[l.mode].tier) > tierRank(tier)) {
+        tier = MODES[l.mode].tier;
+      }
+    }
+    st.tier = tier;
+  }
+  d.v = 3;
+  return d;
+}
+
 function loadSave() {
   try {
-    const d = JSON.parse(localStorage.getItem(SAVE_KEY));
+    const d = migrateSave(JSON.parse(localStorage.getItem(SAVE_KEY)));
     if (isValidSave(d)) return d;
     if (d) clearSave();
   } catch { /* kein oder kaputter Stand */ }
@@ -1518,6 +1693,7 @@ function restoreGame(d) {
   Object.assign(G, {
     t: d.t, week: d.week, score: d.score, nextId: d.nextId, stationTimer: d.stationTimer,
     selectedMode: MODES[d.selectedMode] ? d.selectedMode : 'bus',
+    placeTier: TIERS.includes(d.placeTier) ? d.placeTier : null,
     inv: Object.fromEntries(MODE_ORDER.map(m => [m, {
       lines: clamp(Math.round(d.inv[m].lines), 0, MODES[m].maxLines),
       free: Math.max(0, Math.round(d.inv[m].free)),
@@ -1525,6 +1701,7 @@ function restoreGame(d) {
   });
   G.stations = d.stations.map(st => ({
     ...st, name: typeof st.name === 'string' ? st.name.slice(0, 40) : '',
+    tier: st.shape === 'hub' ? 'rail' : TIERS.includes(st.tier) ? st.tier : 'metro',
     queue: [...st.queue], over: clamp(+st.over || 0, 0, 0.99), big: !!st.big, born: +st.born || 0, flash: 0,
   }));
   // Offene Stadtteile: aus dem Stand, sonst alle, die noch keine Station haben
@@ -1568,6 +1745,9 @@ function resumeGame() {
   } else if (state === 'placeBig') {
     G.state = 'placeBig';
     toast('Tippe auf die Station, die größer werden soll.', 4000);
+  } else if (state === 'placeTier' && TIERS.includes(G.placeTier)) {
+    G.state = 'placeTier';
+    toast('Tippe auf die Station, die ausgebaut werden soll.', 4000);
   } else {
     G.state = 'playing';
   }
@@ -1666,6 +1846,7 @@ const tutorialSeen = () => { try { return localStorage.getItem(TUT_DONE_KEY) ===
 const markTutorialSeen = () => { try { localStorage.setItem(TUT_DONE_KEY, '1'); } catch { /* egal */ } };
 
 const stationOf = shape => G.stations.find(s => s.shape === shape);
+const stationNamed = name => G.stations.find(s => s.name === name);
 /** Gibt es eine Linie dieses Verkehrsmittels, die beide Stationen verbindet? */
 const lineWith = (mode, a, b) => G.lines.find(l => l.mode === mode && l.stations.includes(a.id) && l.stations.includes(b.id));
 
@@ -1677,22 +1858,23 @@ const TUTORIAL = [
   {
     text: 'Die kleinen Formen neben den Stationen sind Fahrgäste. Jeder will zu einer Station mit seiner Form – ein Häuschen heißt: zum Hauptbahnhof.',
     enter: () => {
-      stationOf('hub').queue.push('circle', 'circle', 'triangle');
-      stationOf('circle').queue.push('hub', 'hub');
-      stationOf('triangle').queue.push('hub', 'circle');
-      stationOf('square').queue.push('hub');
+      const ln = stationNamed('Linden-Nord'), list = stationNamed('List');
+      stationOf('hub').queue.push(ln.shape, ln.shape, list.shape);
+      ln.queue.push('hub', 'hub');
+      list.queue.push('hub');
+      stationNamed('Südstadt').queue.push('hub');
     },
-    focus: () => ({ station: stationOf('circle') }),
+    focus: () => ({ station: stationNamed('Linden-Nord') }),
   },
   {
-    text: 'Unten wählst du das Verkehrsmittel. Tippe auf „Bus“.',
+    text: 'Unten wählst du das Verkehrsmittel. Tippe auf „Bus“ – Busse halten überall, fahren aber nur kurze Stücke.',
     focus: () => ({ tab: 'bus' }),
     done: t => t.tapped === 'bus',
   },
   {
-    text: 'Zieh jetzt mit Stift oder Finger vom Hauptbahnhof zum Kreis. So entsteht deine erste Buslinie.',
-    focus: () => ({ path: [stationOf('hub'), stationOf('circle')] }),
-    done: () => lineWith('bus', stationOf('hub'), stationOf('circle')),
+    text: 'Zieh jetzt mit Stift oder Finger vom Hauptbahnhof nach Linden-Nord. So entsteht deine erste Buslinie.',
+    focus: () => ({ path: [stationOf('hub'), stationNamed('Linden-Nord')] }),
+    done: () => lineWith('bus', stationOf('hub'), stationNamed('Linden-Nord')),
   },
   {
     text: 'Super! Der Bus holt die Fahrgäste ab und bringt sie ans Ziel. Schau kurz zu …',
@@ -1700,21 +1882,28 @@ const TUTORIAL = [
     done: t => G.score >= 2 || t.time > 18,
   },
   {
-    text: 'Züge sind schnell und haben viel Platz, starten aber immer am Hauptbahnhof. Tippe auf „Zug“ und zieh vom Hauptbahnhof zum Dreieck.',
-    focus: () => ({ tab: G.selectedMode === 'rail' ? null : 'rail', path: [stationOf('hub'), stationOf('triangle')] }),
-    done: () => lineWith('rail', stationOf('hub'), stationOf('triangle')),
+    text: 'Die U-Bahn ist schneller, hält aber nur an Stationen mit blauem „U“. Tippe auf „U-Bahn“ und zieh vom Hauptbahnhof nach List.',
+    focus: () => ({ tab: G.selectedMode === 'metro' ? null : 'metro', path: [stationOf('hub'), stationNamed('List')] }),
+    done: () => lineWith('metro', stationOf('hub'), stationNamed('List')),
   },
   {
-    text: 'Jede Linie endet mit einer Stiftkappe. Zieh die Kappe deiner Buslinie zum Quadrat – so verlängerst du die Linie.',
-    focus: () => {
-      const bus = lineWith('bus', stationOf('hub'), stationOf('circle'));
-      if (!bus) return {};
-      const circle = stationOf('circle');
-      const handle = G.handles.find(h => h.line === bus &&
-        (h.end === 'end' ? bus.stations[bus.stations.length - 1] : bus.stations[0]) === circle.id);
-      return { handle, path: handle ? [{ x: handle.x, y: handle.y }, stationOf('square')] : null };
+    text: 'Ein neuer Stadtteil: Linden-Mitte. Zieh die Stiftkappe deiner Buslinie bei Linden-Nord dorthin – so verlängerst du die Linie.',
+    enter: () => {
+      if (stationNamed('Linden-Mitte')) return;
+      const d = HANNOVER.districts.find(x => x.name === 'Linden-Mitte');
+      addStation('square', d.x, d.y, d.name, tierOfDistrict(d.name));
+      G.districtsLeft = G.districtsLeft.filter(n => n !== d.name);
+      rebuildRoutes();
     },
-    done: () => G.lines.some(l => l.mode === 'bus' && l.stations.includes(stationOf('square').id)),
+    focus: () => {
+      const ln = stationNamed('Linden-Nord');
+      const bus = lineWith('bus', stationOf('hub'), ln);
+      if (!bus) return {};
+      const handle = G.handles.find(h => h.line === bus &&
+        (h.end === 'end' ? bus.stations[bus.stations.length - 1] : bus.stations[0]) === ln.id);
+      return { handle, path: handle ? [{ x: handle.x, y: handle.y }, stationNamed('Linden-Mitte')] : null };
+    },
+    done: () => G.lines.some(l => l.mode === 'bus' && l.stations.includes(stationNamed('Linden-Mitte')?.id)),
   },
   {
     text: 'Tippe unten auf deine Buslinie. Dort setzt du weitere Fahrzeuge ein oder löschst die Linie wieder.',
@@ -1722,7 +1911,7 @@ const TUTORIAL = [
     done: t => t.menuOpened,
   },
   {
-    text: 'Wird eine Station zu voll, erscheint ein roter Kreis – dann schnell helfen! Jede Woche bekommst du neue Linien oder Fahrzeuge. Viel Spaß!',
+    text: 'Wird eine Station zu voll, erscheint ein roter Kreis – dann schnell helfen! Jede Woche gibt es Upgrades: neue Linien, Fahrzeuge oder den Ausbau kleiner Haltestellen zu U-Bahn-Stationen und Bahnhöfen. Viel Spaß!',
     button: 'Los geht’s!',
   },
 ];
@@ -1884,4 +2073,8 @@ window.__metro = {
   loadSave,
   tut,
   startTutorial,
+  HANNOVER,
+  addStation,
+  tierOfDistrict,
+  rebuildRoutes,
 };
