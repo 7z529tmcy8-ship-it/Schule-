@@ -190,6 +190,18 @@ button { font: inherit; color: inherit; }
   text-align: center;
 }
 
+/* Zoom-Knöpfe rechts am Rand */
+.zoom-ctrl {
+  position: fixed;
+  right: calc(16px + var(--sar));
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 6;
+}
+
 /* Menü einer Linie */
 .line-menu {
   position: fixed;
@@ -284,7 +296,9 @@ button { font: inherit; color: inherit; }
 .pen-btn:disabled { opacity: .35; }
 
 /* Upgrade-Karten */
+.note-big.note-wide { width: min(720px, calc(100vw - 40px)); }
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; }
+@media (min-width: 700px) { .note-wide .cards { grid-template-columns: repeat(4, 1fr); } }
 .card {
   min-height: 150px;
   padding: 14px 12px;

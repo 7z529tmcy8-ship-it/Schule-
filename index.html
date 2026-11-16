@@ -53,6 +53,19 @@
     </div>
   </header>
 
+  <!-- ===== Zoomen: +, −, ganze Stadt ===== -->
+  <div class="zoom-ctrl" role="group" aria-label="Karte zoomen">
+    <button class="icon-btn" id="zoom-in" aria-label="Hineinzoomen">
+      <svg class="ico" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+    <button class="icon-btn" id="zoom-out" aria-label="Herauszoomen">
+      <svg class="ico" viewBox="0 0 24 24"><path d="M5 12h14"/></svg>
+    </button>
+    <button class="icon-btn" id="zoom-fit" aria-label="Ganze Stadt zeigen">
+      <svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+    </button>
+  </div>
+
   <!-- ===== Linien-Stifte unten ===== -->
   <footer class="hud hud-bottom">
     <div class="pens" id="pens" aria-label="Verkehrsmittel und Linien"></div>
@@ -108,9 +121,9 @@
 
   <!-- ===== Zettel: Wochen-Upgrade ===== -->
   <div class="overlay" id="screen-upgrade" hidden>
-    <div class="note note-big">
+    <div class="note note-big note-wide">
       <h2 id="up-title">Woche 1 geschafft!</h2>
-      <p class="lead">Du bekommst einen Bus geschenkt. Wähle dazu:</p>
+      <p class="lead" id="up-lead">Du bekommst ein Fahrzeug geschenkt. Wähle dazu ein Upgrade:</p>
       <div class="cards" id="up-cards"></div>
     </div>
   </div>

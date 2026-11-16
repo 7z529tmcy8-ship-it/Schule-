@@ -58,35 +58,35 @@ const SHAPE_NAME = {
  */
 const MODES = {
   bus: {
-    name: 'Bus', vehicle: 'Bus', lineName: 'Buslinie', none: 'Kein Bus frei', no: 'kein Bus', tier: 'bus',
+    name: 'Bus', vehicle: 'Bus', lineName: 'Buslinie', none: 'Kein Bus frei', no: 'kein Bus', gift: 'einen Bus', tier: 'bus',
     speed: 1.6, cap: 4, dwell: 0.25, perPax: 0.15, maxStops: 7, maxLines: 5, startLines: 3, startVehicles: 4,
     maxHop: 9, minHop: 0,
     body: { w: 0.8, h: 0.46, parts: 1 },
     icon: '<rect x="4.5" y="4" width="15" height="13" rx="3"/><path d="M4.5 11h15M8 20.5v-3.5M16 20.5v-3.5"/>',
   },
   tram: {
-    name: 'Tram', vehicle: 'Tram', lineName: 'Tramlinie', none: 'Keine Tram frei', no: 'keine Tram', tier: 'tram',
-    speed: 2.2, cap: 6, dwell: 0.2, perPax: 0.07, maxStops: 8, maxLines: 3, startLines: 1, startVehicles: 1,
+    name: 'Tram', vehicle: 'Tram', lineName: 'Tramlinie', none: 'Keine Tram frei', no: 'keine Tram', gift: 'eine Tram', tier: 'tram',
+    speed: 2.2, cap: 6, dwell: 0.2, perPax: 0.07, maxStops: 8, maxLines: 3, startLines: 1, startVehicles: 2,
     maxHop: 11, minHop: 0,
     body: { w: 1.35, h: 0.36, parts: 2 },
     icon: '<rect x="5" y="7.5" width="14" height="10.5" rx="3"/><path d="M9 3h6M12 3v4.5M5 13h14M8 21l1.5-3M16 21l-1.5-3"/>',
   },
   metro: {
-    name: 'U-Bahn', vehicle: 'U-Bahn', lineName: 'U-Bahn-Linie', none: 'Keine U-Bahn frei', no: 'keine U-Bahn', tier: 'metro',
-    speed: 2.8, cap: 6, dwell: 0.3, perPax: 0.12, maxStops: 99, maxLines: 3, startLines: 1, startVehicles: 1,
+    name: 'U-Bahn', vehicle: 'U-Bahn', lineName: 'U-Bahn-Linie', none: 'Keine U-Bahn frei', no: 'keine U-Bahn', gift: 'eine U-Bahn', tier: 'metro',
+    speed: 2.8, cap: 6, dwell: 0.3, perPax: 0.12, maxStops: 99, maxLines: 3, startLines: 1, startVehicles: 2,
     maxHop: 15, minHop: 0,
     body: { w: 1.0, h: 0.5, parts: 1 },
     icon: '<circle cx="12" cy="12" r="8.5"/><path d="M8.7 7.8v4.7a3.3 3.3 0 0 0 6.6 0V7.8"/>',
   },
   sbahn: {
-    name: 'S-Bahn', vehicle: 'S-Bahn', lineName: 'S-Bahn-Linie', none: 'Keine S-Bahn frei', no: 'keine S-Bahn', tier: 'rail',
+    name: 'S-Bahn', vehicle: 'S-Bahn', lineName: 'S-Bahn-Linie', none: 'Keine S-Bahn frei', no: 'keine S-Bahn', gift: 'eine S-Bahn', tier: 'rail',
     speed: 3.6, cap: 8, dwell: 0.6, perPax: 0.09, maxStops: 6, maxLines: 2, startLines: 1, startVehicles: 1, needsHub: true,
     maxHop: 99, minHop: 0,
     body: { w: 1.5, h: 0.46, parts: 2 },
     icon: '<circle cx="12" cy="12" r="8.5"/><path d="M15 8.6c-.8-.9-1.9-1.3-3.1-1.3-1.6 0-2.8.9-2.8 2.2 0 2.9 6.2 1.7 6.2 4.8 0 1.4-1.3 2.4-3.1 2.4-1.4 0-2.6-.5-3.4-1.5"/>',
   },
   rail: {
-    name: 'Zug', vehicle: 'Zug', lineName: 'Zugstrecke', none: 'Kein Zug frei', no: 'kein Zug', tier: 'rail',
+    name: 'Zug', vehicle: 'Zug', lineName: 'Zugstrecke', none: 'Kein Zug frei', no: 'kein Zug', gift: 'einen Zug', tier: 'rail',
     speed: 4.4, cap: 10, dwell: 0.9, perPax: 0.08, maxStops: 4, maxLines: 2, startLines: 1, startVehicles: 1, needsHub: true,
     maxHop: 99, minHop: 10,
     body: { w: 2.1, h: 0.46, parts: 3 },
@@ -139,9 +139,9 @@ const km = pts => pts.map(([x, y]) => [x / KM_PER_U, y / KM_PER_U]);
 
 const HANNOVER = {
   water: [
-    { name: 'Leine', width: 0.6, label: 6, pts: km([[1.2, 7.5], [0.9, 6.0], [0.4, 4.6], [-0.2, 3.6], [-0.35, 2.6], [-0.3, 1.6], [-0.55, 0.9], [-0.75, 0.3], [-1.2, -0.1], [-1.7, -0.4], [-2.4, -0.8], [-3.4, -1.1], [-3.9, -1.9], [-4.4, -2.9], [-5.4, -3.6], [-7.0, -4.6]]) },
+    { name: 'Leine', width: 0.6, label: 8, pts: km([[2.2, 10.5], [1.6, 9.0], [1.2, 7.5], [0.9, 6.0], [0.4, 4.6], [-0.2, 3.6], [-0.35, 2.6], [-0.3, 1.6], [-0.55, 0.9], [-0.75, 0.3], [-1.2, -0.1], [-1.7, -0.4], [-2.4, -0.8], [-3.4, -1.1], [-3.9, -1.9], [-4.4, -2.9], [-5.4, -3.6], [-7.0, -4.6], [-8.5, -5.6], [-10.5, -6.5]]) },
     { name: 'Ihme', width: 0.42, label: 2, pts: km([[-3.0, 5.5], [-2.6, 4.4], [-2.0, 3.2], [-1.7, 2.2], [-1.35, 1.3], [-1.3, 0.6], [-1.45, 0.0], [-1.7, -0.4]]) },
-    { name: 'Mittellandkanal', width: 0.45, label: 6, pts: km([[-9.0, -0.8], [-7.0, -1.7], [-5.6, -2.5], [-4.6, -3.4], [-3.2, -3.4], [-1.5, -3.6], [0.5, -3.4], [2.5, -3.0], [4.5, -2.4], [6.5, -1.6], [8.0, -1.2], [9.5, -0.2]]) },
+    { name: 'Mittellandkanal', width: 0.45, label: 8, pts: km([[-13.0, 1.0], [-11.0, 0.0], [-9.0, -0.8], [-7.0, -1.7], [-5.6, -2.5], [-4.6, -3.4], [-3.2, -3.4], [-1.5, -3.6], [0.5, -3.4], [2.5, -3.0], [4.5, -2.4], [6.5, -1.6], [8.0, -1.2], [9.5, -0.2], [11.5, 1.0], [13.5, 2.2]]) },
   ],
   lakes: [
     { name: 'Maschsee', pts: km([[0.25, 1.35], [0.55, 1.4], [0.65, 2.2], [0.6, 3.1], [0.4, 3.45], [0.2, 3.3], [0.15, 2.4]]) },
@@ -150,6 +150,11 @@ const HANNOVER = {
     { name: 'Eilenriede', pts: km([[1.9, -1.6], [2.6, -1.9], [3.3, -1.2], [3.6, -0.2], [3.4, 0.9], [3.0, 1.9], [2.5, 2.4], [2.1, 1.6], [2.2, 0.6], [1.9, -0.4]]) },
     { name: 'Herrenhäuser Gärten', pts: km([[-3.2, -1.8], [-2.6, -1.8], [-2.5, -1.2], [-3.1, -1.15]]) },
   ],
+  // Umland: Nachbarorte rund um Hannover (nur Beschriftung, grob)
+  towns: [
+    ['Langenhagen', 0.8, -8.5], ['Flughafen', -1.0, -11.0], ['Isernhagen', 6.5, -8.5], ['Garbsen', -10.5, -4.0],
+    ['Seelze', -11.5, 0.8], ['Ronnenberg', -7.5, 7.5], ['Hemmingen', -1.5, 8.8], ['Laatzen', 3.2, 9.0], ['Lehrte', 13.0, -1.5],
+  ].map(([name, x, y]) => ({ name, at: [x / KM_PER_U, y / KM_PER_U] })),
   pois: [
     { name: 'Rathaus', at: km([[-0.15, 1.05]])[0] },
     { name: 'Zoo', at: km([[2.25, -0.75]])[0] },
@@ -215,7 +220,7 @@ const CFG = {
   hubCapacity: 18,        // … am Hauptbahnhof
   hubR: 0.9,              // Radius des Hauptbahnhofs in U
   hubShare: 0.22,         // Anteil der Fahrgäste, die zum Hauptbahnhof wollen
-  overcrowdTime: 40,      // Sekunden Überfüllung bis Game Over
+  overcrowdTime: 50,      // Sekunden Überfüllung bis Game Over
   nodeBonus: 6,           // Umsteigeknoten: zusätzliche Plätze
   nodeBoarding: 0.4,      // Umsteigeknoten: Faktor für die Ein-/Aussteigezeit
   eventDays: 1.5,         // Dauer eines Ereignisses in Spieltagen
@@ -281,6 +286,7 @@ const best = {
 let G;
 
 function newGame() {
+  if (typeof cam !== 'undefined') cam.manual = false;
   G = {
     state: 'start',        // start | playing | upgrade | placeBig | placeTier | over
     placeTier: null,       // beim Ausbau: Ziel-Stationsart ('tram' | 'metro' | 'rail')
@@ -439,6 +445,36 @@ function removeTrain(tr) {
   G.inv[tr.line.mode].free++;
 }
 
+/**
+ * Welches Verkehrsmittel braucht am dringendsten ein Fahrzeug?
+ *   1. eines mit Linien ohne Fahrzeug (die meisten Wartenden zuerst)
+ *   2. sonst das mit den meisten Wartenden pro Fahrzeug
+ *   3. sonst der Bus
+ */
+function neededMode() {
+  const waitingOn = line => line.stations.reduce((a, id) => a + (stationById(id)?.queue.length || 0), 0);
+  const empty = G.lines.filter(l => vehiclesOn(l) === 0 && l.stations.length >= 2)
+    .sort((a, b) => waitingOn(b) - waitingOn(a));
+  if (empty.length) return empty[0].mode;
+  let best = 'bus', bestLoad = -1;
+  for (const m of MODE_ORDER) {
+    const ls = linesOf(m);
+    if (!ls.length) continue;
+    const load = ls.reduce((a, l) => a + waitingOn(l), 0) / Math.max(1, ls.reduce((a, l) => a + vehiclesOn(l), 0));
+    if (load > bestLoad) { bestLoad = load; best = m; }
+  }
+  return best;
+}
+
+/** Freie Fahrzeuge automatisch auf Linien setzen, auf denen noch keins fährt */
+function autoAssignVehicles() {
+  let placed = 0;
+  for (const line of G.lines) {
+    if (vehiclesOn(line) === 0 && G.inv[line.mode].free > 0 && addTrain(line)) placed++;
+  }
+  return placed;
+}
+
 /** Nach einer Änderung an der Linie: Züge auf gültige Abschnitte setzen. */
 function syncTrains(line) {
   const s = line.stations;
@@ -492,7 +528,7 @@ function spawnStation() {
     const d = near[Math.floor(Math.random() * near.length)];
     G.districtsLeft = G.districtsLeft.filter(n => n !== d.name);
     if (G.stations.some(s => dist(s.x, s.y, d.x, d.y) < 2.5)) continue;   // zu nah an einer anderen Station
-    addStation(pickShape(), d.x, d.y, d.name, tierOfDistrict(d.name));
+    notifyNewStation(addStation(pickShape(), d.x, d.y, d.name, tierOfDistrict(d.name)));
     rebuildRoutes();
     return;
   }
@@ -511,7 +547,7 @@ function spawnStation() {
       return distToSegment(x, y, a.x, a.y, b.x, b.y) < CFG.minLineDist;
     }));
     if (onLine) continue;
-    addStation(pickShape(), x, y, '', tier);
+    notifyNewStation(addStation(pickShape(), x, y, '', tier));
     rebuildRoutes();
     return;
   }
@@ -556,6 +592,15 @@ function updateEvent() {
   toast(`${ev.text} Ziel: ${st.name || 'die Station mit dem Fähnchen'}.`, 4200);
 }
 
+/** Bei eigener Kamera: Hinweis, wenn eine neue Station außerhalb des Bildes entsteht */
+function notifyNewStation(st) {
+  if (!cam.manual) return;
+  const [sx, sy] = toScreen(st.x, st.y);
+  if (sx < 0 || sy < 0 || sx > innerWidth || sy > innerHeight) {
+    toast(`Neue Station: ${st.name || 'außerhalb des Bildes'} – tippe rechts auf ◎, um alles zu sehen.`, 3200);
+  }
+}
+
 /** Zielform für einen neuen Fahrgast (nicht die eigene, häufige Formen öfter, oft der Hauptbahnhof). */
 function pickDestination(own, ignoreEvent = false) {
   if (!ignoreEvent && G.event && Math.random() < CFG.eventShare) {
@@ -587,7 +632,10 @@ function update(dt) {
   const week = Math.floor(G.t / (CFG.dayLength * 7)) + 1;
   if (week > G.week) {
     G.week = week;
-    G.inv.bus.free++;                 // jede Woche ein Bus geschenkt
+    // Jede Woche mindestens ein Fahrzeug – dort, wo es am meisten fehlt
+    G.gift = neededMode();
+    G.inv[G.gift].free++;
+    autoAssignVehicles();
     showUpgrade();
     return;
   }
@@ -602,7 +650,8 @@ function update(dt) {
   }
 
   // Neue Fahrgäste und Überfüllung
-  const rate = Math.min(0.35, 0.05 + 0.015 * G.week + G.t * 0.0004) * (G.event ? 1.4 : 1);
+  // Sanfter Einstieg, dann steigt der Andrang Woche für Woche
+  const rate = Math.min(0.35, 0.035 + 0.016 * G.week + G.t * 0.0003) * (G.event ? 1.4 : 1);
   for (const st of G.stations) {
     const stRate = st.shape === 'hub' ? rate * 1.6 : rate;    // am Hauptbahnhof ist mehr los
     if (G.t - st.born > 3 && Math.random() < stRate * dt) {
@@ -674,7 +723,9 @@ function arrive(tr) {
    Stiften unten ein und zoomt weich heraus, wenn die Stadt wächst.
    ===================================================================== */
 
-const cam = { s: 50, x: 0, y: 0, ready: false };
+const cam = { s: 50, x: 0, y: 0, ready: false, manual: false };
+const ZOOM_MIN = 6, ZOOM_MAX = 90;      // Pixel pro U
+const PAN_LIMIT = 55;                   // so weit darf man die Karte verschieben (U)
 let bottomInset = 96;     // Höhe der Leiste unten (kann im Hochformat zweizeilig sein)
 let coachInset = 0;       // zusätzlicher Platz für den Tutorial-Zettel
 
@@ -690,6 +741,13 @@ function view() {
  * Stadtbereich) – so wird die Fläche in Quer- und Hochformat gut genutzt.
  */
 function updateCamera(rdt) {
+  // Hat der Spieler selbst gezoomt/verschoben, bleibt die Kamera, wo sie ist
+  if (cam.manual && cam.ready) {
+    cam.s = clamp(cam.s, ZOOM_MIN, ZOOM_MAX);
+    cam.x = clamp(cam.x, -PAN_LIMIT, PAN_LIMIT);
+    cam.y = clamp(cam.y, -PAN_LIMIT, PAN_LIMIT);
+    return;
+  }
   const v = view();
   let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
   for (const s of G.stations) {
@@ -710,6 +768,23 @@ function updateCamera(rdt) {
   cam.x += (tx - cam.x) * k;
   cam.y += (ty - cam.y) * k;
 }
+
+/** Um einen Bildschirmpunkt zoomen (der Punkt bleibt unter dem Finger) */
+function zoomAt(sx, sy, factor) {
+  const v = view();
+  const [wx, wy] = toWorld(sx, sy);
+  cam.s = clamp(cam.s * factor, ZOOM_MIN, ZOOM_MAX);
+  cam.x = wx - (sx - v.cx) / cam.s;
+  cam.y = wy - (sy - v.cy) / cam.s;
+  cam.manual = true;
+}
+function panBy(dx, dy) {
+  cam.x -= dx / cam.s;
+  cam.y -= dy / cam.s;
+  cam.manual = true;
+}
+/** Zurück zur automatischen Kamera (ganze Stadt im Blick) */
+function fitCamera() { cam.manual = false; }
 
 /** Maß in U → Pixel, aber nie kleiner als minPx (bleibt lesbar, wenn die Stadt groß wird) */
 const px = (u, minPx) => Math.max(u * cam.s, minPx);
@@ -894,6 +969,11 @@ function drawMap() {
     ctx.fillStyle = MAP_COLORS.district;
     ctx.beginPath(); ctx.arc(sx, sy, 3, 0, Math.PI * 2); ctx.fill();
     mapText(p.name, sx, sy + fs * 0.95, MAP_COLORS.district, fs * 0.9);
+  }
+
+  // Umland: größer und ganz blass, in Großbuchstaben
+  for (const t of HANNOVER.towns) {
+    mapText(t.name.toUpperCase(), ...toScreen(t.at[0], t.at[1]), 'rgba(43, 43, 43, 0.22)', fs * 1.25, 0, 'bold');
   }
 
   // Noch nicht erschlossene Stadtteile ganz blass
@@ -1360,23 +1440,30 @@ function handleAt(x, y) {
   return bestH;
 }
 
+/**
+ * Tipp/Ziehen auf dem Spielfeld. Gibt true zurück, wenn die Berührung
+ * „verbraucht“ wurde (Linie ziehen, Station antippen) – sonst darf sie
+ * die Karte verschieben.
+ */
 function onDown(e) {
   closeLineMenu();
-  if (drag) return;
-  if (e.pointerType === 'touch' && penActive) return;
+  if (drag) return true;
+  if (e.pointerType === 'touch' && penActive) return true;
   const [x, y] = toWorld(e.clientX, e.clientY);
 
   if (G.state === 'placeBig') {
     const st = stationAt(x, y);
+    if (!st) return false;
     if (st && !st.big && st.shape !== 'hub') {
       st.big = true;
       G.state = 'playing';
       toast('Großer Bahnhof gebaut – hier passen jetzt 12 Fahrgäste hin.');
     }
-    return;
+    return true;
   }
   if (G.state === 'placeNode') {
     const st = stationAt(x, y);
+    if (!st) return false;
     if (st && !st.node) {
       st.node = true;
       st.flash = 0.35;
@@ -1385,10 +1472,11 @@ function onDown(e) {
     } else if (st) {
       toast('Das ist schon ein Umsteigeknoten – wähle eine andere Station.');
     }
-    return;
+    return true;
   }
   if (G.state === 'placeTier') {
     const st = stationAt(x, y);
+    if (!st) return false;
     if (st && st.shape !== 'hub' && tierRank(st.tier) < tierRank(G.placeTier)) {
       st.tier = G.placeTier;
       st.flash = 0.35;
@@ -1398,35 +1486,36 @@ function onDown(e) {
     } else if (st) {
       toast('Diese Station ist schon mindestens so groß – wähle eine andere.');
     }
-    return;
+    return true;
   }
-  if (G.state !== 'playing') return;
+  if (G.state !== 'playing') return false;
 
   const h = handleAt(x, y);
   if (h) {
     drag = { mode: 'extend', line: h.line, end: h.end, x, y, id: e.pointerId };
   } else {
     const st = stationAt(x, y);
-    if (!st) return;
+    if (!st) return false;                  // leere Fläche → Karte verschieben
     const lineMode = G.selectedMode;
     const M = MODES[lineMode];
     if (!canCreateLine(lineMode)) {
       toast(`Alle ${M.lineName}n sind vergeben. Wähle unten ein anderes Verkehrsmittel oder verlängere eine Linie.`, 3400);
-      return;
+      return true;
     }
     if (!servesMode(st, lineMode)) {
       toast(`${st.name || TIER_INFO[st.tier].name} ist ${TIER_INFO[st.tier].a} ${TIER_INFO[st.tier].name} – hier hält ${M.no}. Baue sie per Upgrade aus.`, 3400);
-      return;
+      return true;
     }
     if (M.needsHub && st.shape !== 'hub') {
       toast(`${M.name}-Linien starten immer am Hauptbahnhof – starte dort.`);
-      return;
+      return true;
     }
     drag = { mode: 'new', lineMode, stations: [st.id], color: freeColor(), x, y, id: e.pointerId };
   }
   if (e.pointerType === 'pen') penActive = true;
   try { canvas.setPointerCapture(e.pointerId); } catch { /* nicht kritisch */ }
   e.preventDefault();
+  return true;
 }
 
 function onMove(e) {
@@ -1514,10 +1603,88 @@ function onUp(e) {
   penActive = false;
 }
 
-canvas.addEventListener('pointerdown', onDown);
-canvas.addEventListener('pointermove', onMove);
-canvas.addEventListener('pointerup', onUp);
-canvas.addEventListener('pointercancel', onUp);
+/* ---------- Zoomen und Verschieben ----------
+   Zwei Finger: zoomen (auseinander/zusammen) und verschieben.
+   Ein Finger oder Stift auf leerer Fläche: Karte verschieben.
+   Auf Stationen und Linienenden wird wie gewohnt gezeichnet.          */
+
+const pointers = new Map();     // aktive Berührungen: id → { x, y, type }
+let gesture = null;             // { kind: 'pan', id, x, y } | { kind: 'pinch', a, b, dist, s0, wx, wy }
+
+/** Laufendes Linienziehen abbrechen (wenn ein zweiter Finger dazukommt) */
+function cancelDrag() {
+  if (!drag) return;
+  if (drag.mode === 'extend' && drag.line.stations.length < 2) deleteLine(drag.line);
+  drag = null;
+  penActive = false;
+}
+
+function pinchState() {
+  const [a, b] = [pointers.get(gesture.a), pointers.get(gesture.b)];
+  return { mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2, dist: Math.hypot(b.x - a.x, b.y - a.y) || 1 };
+}
+
+function onPointerDown(e) {
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, type: e.pointerType });
+  const touches = [...pointers.entries()].filter(([, p]) => p.type === 'touch');
+  if (touches.length >= 2 && !penActive && G.state !== 'start' && G.state !== 'over') {
+    cancelDrag();
+    gesture = { kind: 'pinch', a: touches[0][0], b: touches[1][0] };
+    const p = pinchState();
+    Object.assign(gesture, { dist: p.dist, s0: cam.s });
+    [gesture.wx, gesture.wy] = toWorld(p.mx, p.my);
+    e.preventDefault();
+    return;
+  }
+  if (gesture) return;
+  const used = onDown(e);
+  if (!used && !drag && pointers.size === 1 && G.state !== 'start' && G.state !== 'over') {
+    gesture = { kind: 'pan', id: e.pointerId, x: e.clientX, y: e.clientY };
+    try { canvas.setPointerCapture(e.pointerId); } catch { /* nicht kritisch */ }
+  }
+}
+
+function onPointerMove(e) {
+  const p = pointers.get(e.pointerId);
+  if (p) { p.x = e.clientX; p.y = e.clientY; }
+  if (gesture?.kind === 'pinch') {
+    if (!pointers.has(gesture.a) || !pointers.has(gesture.b)) return;
+    const q = pinchState(), v = view();
+    cam.s = clamp(gesture.s0 * (q.dist / gesture.dist), ZOOM_MIN, ZOOM_MAX);
+    cam.x = gesture.wx - (q.mx - v.cx) / cam.s;     // Punkt zwischen den Fingern bleibt fest
+    cam.y = gesture.wy - (q.my - v.cy) / cam.s;
+    cam.manual = true;
+    return;
+  }
+  if (gesture?.kind === 'pan' && e.pointerId === gesture.id) {
+    panBy(e.clientX - gesture.x, e.clientY - gesture.y);
+    gesture.x = e.clientX; gesture.y = e.clientY;
+    return;
+  }
+  onMove(e);
+}
+
+function onPointerUp(e) {
+  pointers.delete(e.pointerId);
+  if (gesture) {
+    if (gesture.kind === 'pan' ? gesture.id === e.pointerId : (gesture.a === e.pointerId || gesture.b === e.pointerId)) gesture = null;
+    return;
+  }
+  onUp(e);
+}
+
+canvas.addEventListener('pointerdown', onPointerDown);
+canvas.addEventListener('pointermove', onPointerMove);
+canvas.addEventListener('pointerup', onPointerUp);
+canvas.addEventListener('pointercancel', onPointerUp);
+// Trackpad / Mausrad (z. B. iPad mit Magic Keyboard)
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * 0.0015));
+}, { passive: false });
+$('#zoom-in').addEventListener('click', () => { const v = view(); zoomAt(v.cx, v.cy, 1.3); });
+$('#zoom-out').addEventListener('click', () => { const v = view(); zoomAt(v.cx, v.cy, 1 / 1.3); });
+$('#zoom-fit').addEventListener('click', fitCamera);
 for (const t of ['touchstart', 'touchmove']) canvas.addEventListener(t, e => e.preventDefault(), { passive: false });
 document.addEventListener('gesturestart', e => e.preventDefault());
 document.addEventListener('contextmenu', e => e.preventDefault());
@@ -1558,6 +1725,7 @@ function updateHud() {
     hint.textContent = 'Wähle unten ein Verkehrsmittel und zieh von Station zu Station.';
   }
   for (const b of document.querySelectorAll('[data-speed]')) b.classList.toggle('is-active', +b.dataset.speed === G.speed);
+  $('#zoom-fit').classList.toggle('is-active', !cam.manual);
 
   // Laufendes Ereignis
   const ev = G.event && EVENTS.find(e => e.key === G.event.key);
@@ -1672,7 +1840,7 @@ $('#lm-rename').addEventListener('click', () => {
   }
 });
 $('#lm-delete').addEventListener('click', () => {
-  if (menuLine) deleteLine(menuLine);
+  if (menuLine) { deleteLine(menuLine); autoAssignVehicles(); }
   closeLineMenu();
 });
 
@@ -1705,9 +1873,9 @@ const BUILD_ICON = '<path d="M4 20h16M6 20V10l6-5 6 5v10"/><path d="M10 20v-5h4v
 /** Alle möglichen Upgrades; pro Woche werden drei passende ausgelost. */
 const UPGRADES = [
   ...MODE_ORDER.map(mode => ({
-    key: 'line-' + mode, title: `Neue ${MODES[mode].lineName}`, text: MODE_TEXT[mode], icon: MODES[mode].icon,
+    key: 'line-' + mode, title: `Neue ${MODES[mode].lineName}`, text: `inkl. 1 Fahrzeug – ${MODE_TEXT[mode]}`, icon: MODES[mode].icon,
     ok: () => G.inv[mode].lines < MODES[mode].maxLines && totalLineSlots() < LINE_COLORS.length,
-    apply: () => { G.inv[mode].lines++; G.selectedMode = mode; },
+    apply: () => { G.inv[mode].lines++; G.inv[mode].free++; G.selectedMode = mode; },
   })),
   ...MODE_ORDER.map(mode => ({
     key: 'veh-' + mode, title: mode === 'bus' ? '2 Busse' : `Extra-${MODES[mode].vehicle}`,
@@ -1738,14 +1906,26 @@ const UPGRADES = [
   },
 ];
 
-/** Drei verschiedene Upgrades auslosen (fest pro Woche, damit Neuladen nichts ändert) */
+/**
+ * Vier Upgrades zur Auswahl. Zuerst die, die gerade wirklich helfen
+ * (Fahrzeug, wo eins fehlt; Platz an vollen Stationen; Linie, wenn Stationen
+ * ohne Anschluss sind und alle Linien belegt), der Rest wird ausgelost.
+ */
 function weeklyUpgrades() {
   const pool = UPGRADES.filter(u => u.ok());
-  return pool
-    .map((u, i) => ({ u, r: hash(G.week, i, G.stations.length) }))
-    .sort((a, b) => a.r - b.r)
-    .slice(0, 3)
-    .map(x => x.u);
+  const picks = [];
+  const add = key => { const u = pool.find(x => x.key === key); if (u && !picks.includes(u)) picks.push(u); };
+
+  add('veh-' + neededMode());
+  if (G.stations.some(s => s.over > 0 || s.queue.length >= capacityOf(s) * 0.7)) add(hash(G.week, 3) < 0.5 ? 'node' : 'big');
+  const connected = new Set(G.lines.flatMap(l => l.stations));
+  if (G.stations.some(s => !connected.has(s.id))) {
+    const full = MODE_ORDER.find(m => linesOf(m).length >= G.inv[m].lines && G.inv[m].lines < MODES[m].maxLines);
+    if (full) add('line-' + full);
+  }
+  const rest = pool.map((u, i) => ({ u, r: hash(G.week, i, G.stations.length) })).sort((a, b) => a.r - b.r);
+  for (const { u } of rest) if (picks.length < 4 && !picks.includes(u)) picks.push(u);
+  return picks.slice(0, 4);
 }
 
 function showUpgrade() {
@@ -1753,6 +1933,8 @@ function showUpgrade() {
   closeLineMenu();
   drag = null;
   $('#up-title').textContent = `Woche ${G.week - 1} geschafft!`;
+  const gift = MODES[G.gift || 'bus'];
+  $('#up-lead').textContent = `Du bekommst ${gift.gift} geschenkt. Wähle dazu ein Upgrade:`;
   const box = $('#up-cards');
   box.innerHTML = '';
   for (const up of weeklyUpgrades()) {
@@ -1763,6 +1945,7 @@ function showUpgrade() {
       $('#screen-upgrade').hidden = true;
       G.state = 'playing';
       up.apply();
+      if (autoAssignVehicles()) toast('Neue Fahrzeuge fahren schon auf deinen Linien ohne Fahrzeug.');
       saveGame();
     });
     box.appendChild(b);
@@ -1785,7 +1968,7 @@ function serialize() {
     v: SAVE_VERSION,
     savedAt: Date.now(),
     state: G.state,
-    t: G.t, week: G.week, score: G.score, nextId: G.nextId, placeTier: G.placeTier,
+    t: G.t, week: G.week, score: G.score, nextId: G.nextId, placeTier: G.placeTier, gift: G.gift,
     inv: G.inv, selectedMode: G.selectedMode, stationTimer: G.stationTimer,
     stations: G.stations.map(({ id, x, y, shape, name, tier, node, queue, over, big, born }) => ({ id, x, y, shape, name, tier, node, queue, over, big, born })),
     event: G.event, nextEventT: G.nextEventT,
@@ -1874,6 +2057,7 @@ function restoreGame(d) {
     t: d.t, week: d.week, score: d.score, nextId: d.nextId, stationTimer: d.stationTimer,
     selectedMode: MODES[d.selectedMode] ? d.selectedMode : 'bus',
     placeTier: TIERS.includes(d.placeTier) ? d.placeTier : null,
+    gift: MODES[d.gift] ? d.gift : 'bus',
     inv: Object.fromEntries(MODE_ORDER.map(m => [m, {
       lines: clamp(Math.round(d.inv[m].lines), 0, MODES[m].maxLines),
       free: Math.max(0, Math.round(d.inv[m].free)),
@@ -2376,6 +2560,7 @@ window.__metro = {
   tut,
   startTutorial,
   updateEvent,
+  get cam() { return cam; },
   HANNOVER,
   addStation,
   tierOfDistrict,

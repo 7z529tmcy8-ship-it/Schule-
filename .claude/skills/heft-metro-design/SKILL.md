@@ -107,6 +107,8 @@ Schriftgröße der Beschriftungen: 0,5 U, begrenzt auf 11–15 px. Kartendaten s
 - **Linienschild**: abgerundetes Rechteck in Linienfarbe mit weißer, fetter Systemschrift 11–14 px (z. B. „U1“), in der Mitte des ersten Abschnitts; derselbe Name weiß im Stift (ab 4 Zeichen kleiner).
 - **Umsteigeknoten**: gelbes rundes Abzeichen mit zwei Bleistift-Pfeilen (⇄) oben links an der Station.
 - **Ereignis**: rotes Fähnchen (`--danger`) über der Station, leicht wehend; Zettel-Chip oben links mit rotem Rand („96-Spiel · Südstadt“).
+- **Zoom-Knöpfe** (`.zoom-ctrl`): rechts mittig übereinander, drei `.icon-btn` (+, −, ◎). ◎ ist mit Textmarker hinterlegt, solange die automatische Kamera aktiv ist.
+- **Upgrade-Zettel** (`.note-wide`): bis 720 px breit, 4 Karten nebeneinander (ab 700 px Bildschirmbreite), darüber „Du bekommst … geschenkt“.
 - **Toast**: kleiner Zettel unten mittig, verschwindet nach 2,5 s.
 - Icons: einfache SVG-Striche (`stroke: currentColor; stroke-width: 2.2; stroke-linecap: round`), nie Emoji in Bedienelementen.
 
@@ -122,7 +124,7 @@ Schriftgröße der Beschriftungen: 0,5 U, begrenzt auf 11–15 px. Kartendaten s
 
 ## 7. Bewegung
 
-- Kamera richtet sich auf die vorhandenen Stationen aus (nicht auf den möglichen Stadtbereich) und zoomt/verschiebt weich (~1,5 s).
+- Kamera richtet sich automatisch auf die vorhandenen Stationen aus und zoomt/verschiebt weich (~1,5 s). Zoomt oder verschiebt der Spieler selbst (Pinch, Ein-Finger-Pan, Trackpad, Knöpfe), bleibt die Kamera, wo sie ist, bis ◎ getippt wird. Zoom 6–90 px pro U.
 - Neue Station „ploppt“ auf (Skalierung 0 → 1,15 → 1 in 0,35 s).
 - Zettel fallen leicht gedreht ein (0,25 s). Keine Effekte über 0,4 s außer dem Zoom.
 

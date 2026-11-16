@@ -45,6 +45,17 @@ Wählst du ein Verkehrsmittel, werden Stationen blass, an denen es nicht halten 
 
 Jede Woche werden drei Upgrades ausgelost: neue Linien, zusätzliche Fahrzeuge, Ausbau oder ein großer Bahnhof.
 
+## Karte zoomen und verschieben
+- **Zwei Finger** auseinander/zusammen: rein- und rauszoomen.
+- **Ein Finger auf leerer Fläche** (nicht auf einer Station): Karte verschieben.
+- Rechts am Rand: **+**, **−** und **◎** (zurück zur automatischen Ansicht, die immer die ganze Stadt zeigt).
+- Rausgezoomt siehst du ganz Hannover mit Umland (Langenhagen, Garbsen, Seelze, Laatzen, Hemmingen …).
+
+## Wochen-Belohnung
+- Jede Woche gibt es **mindestens ein Fahrzeug geschenkt** – und zwar für das Verkehrsmittel, das es gerade am dringendsten braucht (zuerst Linien ohne Fahrzeug, sonst die vollste Linie).
+- Dazu wählst du **eines von 4 Upgrades**. Das Spiel schlägt passende vor: ein Fahrzeug, wo eins fehlt, mehr Platz an vollen Stationen und eine neue Linie, wenn Stationen ohne Anschluss sind.
+- „Neue Linie“ bringt gleich ein Fahrzeug mit. Freie Fahrzeuge fahren automatisch auf Linien, auf denen noch keins fährt.
+
 ## Liniennamen, Umsteigeknoten und Ereignisse
 - **Liniennamen:** Jede Linie bekommt automatisch einen Namen wie in Hannover – Busse 100, 121, 128 …, Trams 10, 17, 11, U-Bahn U1–U3, S-Bahn S1/S5, Züge RE2/RE3. Der Name steht am Stift und als Schild an der Linie. Im Linien-Menü kannst du ihn mit **„Name ändern“** umbenennen (max. 6 Zeichen).
 - **Umsteigeknoten** (Upgrade, Abzeichen ⇄): Ein- und Umsteigen geht dort deutlich schneller, und es passen 6 Fahrgäste mehr hin.
