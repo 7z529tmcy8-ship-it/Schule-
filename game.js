@@ -59,7 +59,7 @@ const SHAPE_NAME = {
 const MODES = {
   bus: {
     name: 'Bus', vehicle: 'Bus', lineName: 'Buslinie', none: 'Kein Bus frei', no: 'kein Bus', gift: 'einen Bus', one: 'Ein Bus', the: 'den Bus', two: '2 Busse', style: 'dashed', tier: 'bus',
-    speed: 1.6, cap: 4, dwell: 0.25, perPax: 0.15, maxStops: 7, maxLines: 5, startLines: 3, startVehicles: 4,
+    speed: 1.6, cap: 4, dwell: 0.25, perPax: 0.15, maxStops: Infinity, maxLines: 5, startLines: 3, startVehicles: 4,
     maxHop: 9, minHop: 0,
     body: { w: 0.8, h: 0.46, parts: 1 },
     icon: '<rect x="4.5" y="4" width="15" height="13" rx="3"/><path d="M4.5 11h15M8 20.5v-3.5M16 20.5v-3.5"/>',
@@ -2364,7 +2364,7 @@ for (const b of document.querySelectorAll('[data-speed]')) {
 
 const totalLineSlots = () => MODE_ORDER.reduce((a, m) => a + G.inv[m].lines, 0);
 let MODE_TEXT = {
-  bus: 'großes Netz, kurze Wege, hält überall',
+  bus: 'großes Netz, kurze Wege, hält überall, beliebig viele Halte',
   tram: 'schnelles Einsteigen, max. 8 Halte',
   metro: 'schnell, nur an U-Bahn-Stationen',
   sbahn: 'weite Wege, nur Bahnhöfe, über den Hbf',

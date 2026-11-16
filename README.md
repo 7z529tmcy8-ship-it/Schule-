@@ -44,6 +44,7 @@ Die Lage ist aus dem Gedächtnis eingetragen und **nicht kartengenau** (1 Kästc
 - Wähle unten ein Verkehrsmittel und zieh mit Stift oder Finger von Station zu Station – so entsteht eine Linie.
 - Fahrgäste (kleine Formen) wollen zu einer Station mit ihrer Form. Umstiege – auch zwischen Bus, Tram, U-Bahn und Zug – passieren automatisch.
 - Am Linienende („Stiftkappe“) ziehst du die Linie weiter oder zurück.
+- **Buslinien** dürfen beliebig viele Haltestellen haben; die anderen Verkehrsmittel bleiben begrenzt.
 - Einfacher: An der **Endstation** einer Linie ansetzen und weiterziehen – das verlängert die Linie (am Hauptbahnhof nur, wenn keine neue Linie mehr frei ist).
 - **Station einfügen:** Mitten auf einen Linienabschnitt tippen und zu einer Station ziehen – sie wird zwischen den beiden Halten eingefügt.
 - **Ringlinien:** Zieh eine Linie zurück zu ihrer Startstation (beim Zeichnen oder Verlängern) – sie wird zum Ring und die Fahrzeuge fahren im Kreis. Über das Linien-Menü („Ring öffnen“) wird sie wieder normal.
