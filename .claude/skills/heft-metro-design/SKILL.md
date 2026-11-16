@@ -1,9 +1,9 @@
 ---
 name: heft-metro-design
-description: UI- und Design-System für „Heft-Metro“ (das Spiel in diesem Repository) – Schulheft-Look mit Karopapier, Filzstift-Linien, gekritzelten Formen und Zettel-UI, nur für iPad. Nutzen, bevor du im Spiel etwas gestaltest, eine neue UI-Komponente, einen Bildschirm, ein Icon oder eine Spielgrafik baust, und vor jeder Abgabe zum Prüfen.
+description: UI- und Design-System für „MetroRush“ (das Spiel in diesem Repository) – Schulheft-Look mit Karopapier, Filzstift-Linien, gekritzelten Formen und Zettel-UI, nur für iPad. Nutzen, bevor du im Spiel etwas gestaltest, eine neue UI-Komponente, einen Bildschirm, ein Icon oder eine Spielgrafik baust, und vor jeder Abgabe zum Prüfen.
 ---
 
-# Heft-Metro – UI & Design
+# MetroRush – UI & Design
 
 Das Spiel sieht aus, als hätte jemand ein Verkehrsnetz (Bus, Tram, U-Bahn, Zug rund um einen Hauptbahnhof) **mit Stiften in ein kariertes Schulheft** gezeichnet.
 Alles wirkt handgemacht, aber aufgeräumt: wenige Farben, klare Formen, viel Papier.
@@ -105,7 +105,7 @@ Schriftgröße der Beschriftungen: 0,5 U, begrenzt auf 11–15 px. Kartendaten s
 - **Leiste unten** (`.pens`): pro Verkehrsmittel eine Gruppe (`.mode-group`) aus Reiter (`.mode-tab`: Symbol, Name, Zahl freier Fahrzeuge) und Linien-Stiften (44 px). Benutzt = gefüllt in Linienfarbe; frei = gestrichelte Kontur. Die gewählte Gruppe ist ein Zettel mit Kringel-Rahmen, ihr Name ist mit Textmarker hinterlegt.
 - **Status** (oben): links Fahrgäste-Zähler, rechts Woche + Wochenuhr + Tempo (Pause / 1× / 2×).
 - **Tutorial-Zettel** (`.coach`): Zettel über der Leiste unten mit gelbem Rand links, „Anleitung x / 9“, Text in Handschrift 21 px, „Überspringen“ (leise) und „Weiter“ (Textmarker). Hervorhebung: auf dem Canvas gelber Textmarker-Kreis hinter dem Ziel und gestrichelter Bleistift-Pfeil mit wanderndem Stiftpunkt; in der Leiste pulsierender Textmarker-Rahmen (`.tut-focus`). Die Kamera hält die Stadt über dem Zettel.
-- **Ladebildschirm** (`.splash`): Karopapier per CSS, Zettel mit Klebestreifen und Randlinie, Logo = Bahnhofshaus mit „H“ (Bleistift 4 px) + „Heft-Metro“ (Handschrift 58 px, Textmarker unterlegt) + „Hannover“. Ladebalken = Bleistiftstrich, der sich zeichnet (2,1 s). Dahinter Canvas mit Strecken im Stil der Verkehrsmittel und fahrenden Fahrzeugen. Ausblenden nach 2,4 s oder beim Antippen (0,45 s Fade). `prefers-reduced-motion`: keine Bewegung, kürzer.
+- **Ladebildschirm** (`.splash`): Karopapier per CSS, Zettel mit Klebestreifen und Randlinie, Logo = Bahnhofshaus mit „H“ (Bleistift 4 px) + „MetroRush“ (Handschrift 58 px, Textmarker unterlegt) + „Hannover“. Ladebalken = Bleistiftstrich, der sich zeichnet (2,1 s). Dahinter Canvas mit Strecken im Stil der Verkehrsmittel und fahrenden Fahrzeugen. Ausblenden nach 2,4 s oder beim Antippen (0,45 s Fade). `prefers-reduced-motion`: keine Bewegung, kürzer.
 - **Linienschild**: abgerundetes Rechteck in Linienfarbe mit weißer, fetter Systemschrift 11–14 px (z. B. „U1“), in der Mitte des ersten Abschnitts; derselbe Name weiß im Stift (ab 4 Zeichen kleiner).
 - **Umsteigeknoten**: gelbes rundes Abzeichen mit zwei Bleistift-Pfeilen (⇄) oben links an der Station.
 - **Ereignis**: rotes Fähnchen (`--danger`) über der Station, leicht wehend; Zettel-Chip oben links mit rotem Rand („96-Spiel · Südstadt“).

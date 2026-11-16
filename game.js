@@ -1,5 +1,5 @@
 /* =====================================================================
-   Heft-Metro – game.js
+   MetroRush – game.js
    ---------------------------------------------------------------------
    Ein Verkehrs-Planungsspiel im Schulheft-Look, gemacht für das iPad:
    Vom Hauptbahnhof aus baust du Bus-, Tram-, U-Bahn- und Zugstrecken.
