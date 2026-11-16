@@ -58,35 +58,35 @@ const SHAPE_NAME = {
  */
 const MODES = {
   bus: {
-    name: 'Bus', vehicle: 'Bus', lineName: 'Buslinie', none: 'Kein Bus frei', no: 'kein Bus', gift: 'einen Bus', the: 'den Bus', two: '2 Busse', style: 'dashed', tier: 'bus',
+    name: 'Bus', vehicle: 'Bus', lineName: 'Buslinie', none: 'Kein Bus frei', no: 'kein Bus', gift: 'einen Bus', one: 'Ein Bus', the: 'den Bus', two: '2 Busse', style: 'dashed', tier: 'bus',
     speed: 1.6, cap: 4, dwell: 0.25, perPax: 0.15, maxStops: 7, maxLines: 5, startLines: 3, startVehicles: 4,
     maxHop: 9, minHop: 0,
     body: { w: 0.8, h: 0.46, parts: 1 },
     icon: '<rect x="4.5" y="4" width="15" height="13" rx="3"/><path d="M4.5 11h15M8 20.5v-3.5M16 20.5v-3.5"/>',
   },
   tram: {
-    name: 'Tram', vehicle: 'Tram', lineName: 'Tramlinie', none: 'Keine Tram frei', no: 'keine Tram', gift: 'eine Tram', the: 'die Tram', style: 'rails', tier: 'tram',
+    name: 'Tram', vehicle: 'Tram', lineName: 'Tramlinie', none: 'Keine Tram frei', no: 'keine Tram', gift: 'eine Tram', one: 'Eine Tram', the: 'die Tram', style: 'rails', tier: 'tram',
     speed: 2.2, cap: 6, dwell: 0.2, perPax: 0.07, maxStops: 8, maxLines: 3, startLines: 1, startVehicles: 2,
     maxHop: 11, minHop: 0,
     body: { w: 1.35, h: 0.36, parts: 2 },
     icon: '<rect x="5" y="7.5" width="14" height="10.5" rx="3"/><path d="M9 3h6M12 3v4.5M5 13h14M8 21l1.5-3M16 21l-1.5-3"/>',
   },
   metro: {
-    name: 'U-Bahn', vehicle: 'U-Bahn', lineName: 'U-Bahn-Linie', none: 'Keine U-Bahn frei', no: 'keine U-Bahn', gift: 'eine U-Bahn', the: 'die U-Bahn', style: 'solid', tier: 'metro',
+    name: 'U-Bahn', vehicle: 'U-Bahn', lineName: 'U-Bahn-Linie', none: 'Keine U-Bahn frei', no: 'keine U-Bahn', gift: 'eine U-Bahn', one: 'Eine U-Bahn', the: 'die U-Bahn', style: 'solid', tier: 'metro',
     speed: 2.8, cap: 6, dwell: 0.3, perPax: 0.12, maxStops: 99, maxLines: 3, startLines: 1, startVehicles: 2,
     maxHop: 15, minHop: 0,
     body: { w: 1.0, h: 0.5, parts: 1 },
     icon: '<circle cx="12" cy="12" r="8.5"/><path d="M8.7 7.8v4.7a3.3 3.3 0 0 0 6.6 0V7.8"/>',
   },
   sbahn: {
-    name: 'S-Bahn', vehicle: 'S-Bahn', lineName: 'S-Bahn-Linie', none: 'Keine S-Bahn frei', no: 'keine S-Bahn', gift: 'eine S-Bahn', the: 'die S-Bahn', style: 'sbahn', tier: 'rail',
+    name: 'S-Bahn', vehicle: 'S-Bahn', lineName: 'S-Bahn-Linie', none: 'Keine S-Bahn frei', no: 'keine S-Bahn', gift: 'eine S-Bahn', one: 'Eine S-Bahn', the: 'die S-Bahn', style: 'sbahn', tier: 'rail',
     speed: 3.6, cap: 8, dwell: 0.6, perPax: 0.09, maxStops: 6, maxLines: 2, startLines: 1, startVehicles: 1, needsHub: true,
     maxHop: 99, minHop: 0,
     body: { w: 1.5, h: 0.46, parts: 2 },
     icon: '<circle cx="12" cy="12" r="8.5"/><path d="M15 8.6c-.8-.9-1.9-1.3-3.1-1.3-1.6 0-2.8.9-2.8 2.2 0 2.9 6.2 1.7 6.2 4.8 0 1.4-1.3 2.4-3.1 2.4-1.4 0-2.6-.5-3.4-1.5"/>',
   },
   rail: {
-    name: 'Zug', vehicle: 'Zug', lineName: 'Zugstrecke', none: 'Kein Zug frei', no: 'kein Zug', gift: 'einen Zug', the: 'den Zug', style: 'track', tier: 'rail',
+    name: 'Zug', vehicle: 'Zug', lineName: 'Zugstrecke', none: 'Kein Zug frei', no: 'kein Zug', gift: 'einen Zug', one: 'Ein Zug', the: 'den Zug', style: 'track', tier: 'rail',
     speed: 4.4, cap: 10, dwell: 0.9, perPax: 0.08, maxStops: 4, maxLines: 2, startLines: 1, startVehicles: 1, needsHub: true,
     maxHop: 99, minHop: 10,
     body: { w: 2.1, h: 0.46, parts: 3 },
@@ -292,8 +292,21 @@ const best = {
 /** @type {any} Der komplette Zustand einer Runde */
 let G;
 
-function newGame(world = SC?.key || 'hannover') {
+/**
+ * Fokus zu Beginn: wie viele Linien man pro Verkehrsmittel am Start hat
+ * (Reihenfolge wie MODE_ORDER: Bus/Propeller, Tram/Regionaljet, U-Bahn/Mittelstrecke,
+ * S-Bahn/Großraumjet, Zug/Jumbo). Fahrzeuge kommen mit jeder Linie automatisch.
+ */
+const FOCUS_LINES = {
+  bus: [4, 1, 1, 0, 0],
+  city: [1, 2, 2, 1, 0],
+  rail: [1, 0, 1, 2, 2],
+  balanced: [2, 1, 1, 1, 1],
+};
+
+function newGame(world = SC?.key || 'hannover', focus = 'balanced') {
   applyScenario(world);
+  const startLines = FOCUS_LINES[focus] || FOCUS_LINES.balanced;
   if (typeof cam !== 'undefined') cam.manual = false;
   G = {
     state: 'start',        // start | playing | upgrade | placeBig | placeTier | over
@@ -309,8 +322,9 @@ function newGame(world = SC?.key || 'hannover') {
     lines: [],
     trains: [],
     // Pro Verkehrsmittel: freie Linien-Plätze und freie Fahrzeuge
-    inv: Object.fromEntries(MODE_ORDER.map(m => [m, { lines: MODES[m].startLines, free: MODES[m].startVehicles }])),
-    selectedMode: 'bus',   // womit neue Linien gezogen werden
+    inv: Object.fromEntries(MODE_ORDER.map((m, i) => [m, { lines: startLines[i], free: 0 }])),
+    focus,                 // gewählter Fokus (nur zur Info)
+    selectedMode: MODE_ORDER[startLines.indexOf(Math.max(...startLines))],   // womit neue Linien gezogen werden
     bounds: { hw: 9, hh: 6 },   // halbe Breite/Höhe der Stadt in U
     stationTimer: 10,
     dist: new Map(),       // Form → Map(Station-ID → Anzahl Haltestellen bis dorthin)
@@ -423,8 +437,8 @@ function createLine(stationIds, color, mode) {
   const line = { id: G.nextId++, color, mode, label: nextLineName(mode), stations: stationIds.slice() };
   G.lines.push(line);
   rebuildRoutes();
-  if (G.inv[mode].free > 0) addTrain(line);
-  else toast(`${MODES[mode].none} – die Linie wartet auf das nächste Fahrzeug.`);
+  if (G.inv[mode].free <= 0) G.inv[mode].free++;   // jede neue Linie bringt ihr Fahrzeug mit
+  addTrain(line);
   hideHint();
   return line;
 }
@@ -473,6 +487,21 @@ function neededMode() {
     if (load > bestLoad) { bestLoad = load; best = m; }
   }
   return best;
+}
+
+/**
+ * Wochengeschenk: ein Fahrzeug für das Verkehrsmittel mit dem größten Bedarf,
+ * direkt eingesetzt – zuerst auf Linien ohne Fahrzeug, sonst auf der vollsten Linie.
+ */
+function giveWeeklyVehicle() {
+  const mode = neededMode();
+  G.gift = mode;
+  G.giftLine = null;
+  G.inv[mode].free++;
+  if (autoAssignVehicles()) return;
+  const waiting = l => l.stations.reduce((a, id) => a + (stationById(id)?.queue.length || 0), 0) / (vehiclesOn(l) + 1);
+  const line = linesOf(mode).filter(l => l.stations.length >= 2).sort((a, b) => waiting(b) - waiting(a))[0];
+  if (line && addTrain(line)) G.giftLine = line.label;
 }
 
 /** Freie Fahrzeuge automatisch auf Linien setzen, auf denen noch keins fährt */
@@ -644,9 +673,7 @@ function update(dt) {
   if (week > G.week) {
     G.week = week;
     // Jede Woche mindestens ein Fahrzeug – dort, wo es am meisten fehlt
-    G.gift = neededMode();
-    G.inv[G.gift].free++;
-    autoAssignVehicles();
+    giveWeeklyVehicle();
     showUpgrade();
     return;
   }
@@ -1963,15 +1990,9 @@ const BUILD_ICON = '<path d="M4 20h16M6 20V10l6-5 6 5v10"/><path d="M10 20v-5h4v
 let UPGRADES = [];
 const buildUpgrades = () => [
   ...MODE_ORDER.map(mode => ({
-    key: 'line-' + mode, title: `Neue ${MODES[mode].lineName}`, text: `inkl. 1 Fahrzeug – ${MODE_TEXT[mode]}`, icon: MODES[mode].icon,
+    key: 'line-' + mode, title: `Neue ${MODES[mode].lineName}`, text: `mit Fahrzeug – ${MODE_TEXT[mode]}`, icon: MODES[mode].icon,
     ok: () => G.inv[mode].lines < MODES[mode].maxLines && totalLineSlots() < LINE_COLORS.length,
-    apply: () => { G.inv[mode].lines++; G.inv[mode].free++; G.selectedMode = mode; },
-  })),
-  ...MODE_ORDER.map(mode => ({
-    key: 'veh-' + mode, title: mode === 'bus' ? MODES.bus.two : `Extra-${MODES[mode].vehicle}`,
-    text: `Mehr Fahrzeuge für deine ${MODES[mode].lineName}n.`, icon: MODES[mode].icon,
-    ok: () => true,
-    apply: () => { G.inv[mode].free += mode === 'bus' ? 2 : 1; },
+    apply: () => { G.inv[mode].lines++; G.selectedMode = mode; },
   })),
   ...TIER_UPGRADES.map(u => ({
     key: 'tier-' + u.tier, title: u.title, text: u.text, icon: BUILD_ICON,
@@ -2003,19 +2024,18 @@ const buildUpgrades = () => [
  */
 function weeklyUpgrades() {
   const pool = UPGRADES.filter(u => u.ok());
-  const picks = [];
-  const add = key => { const u = pool.find(x => x.key === key); if (u && !picks.includes(u)) picks.push(u); };
-
-  add('veh-' + neededMode());
-  if (G.stations.some(s => s.over > 0 || s.queue.length >= capacityOf(s) * 0.7)) add(hash(G.week, 3) < 0.5 ? 'node' : 'big');
+  // Neue Linien: Verkehrsmittel zuerst, die Stationen ohne Anschluss bedienen könnten
   const connected = new Set(G.lines.flatMap(l => l.stations));
-  if (G.stations.some(s => !connected.has(s.id))) {
-    const full = MODE_ORDER.find(m => linesOf(m).length >= G.inv[m].lines && G.inv[m].lines < MODES[m].maxLines);
-    if (full) add('line-' + full);
-  }
-  const rest = pool.map((u, i) => ({ u, r: hash(G.week, i, G.stations.length) })).sort((a, b) => a.r - b.r);
-  for (const { u } of rest) if (picks.length < 4 && !picks.includes(u)) picks.push(u);
-  return picks.slice(0, 4);
+  const open = G.stations.filter(s => !connected.has(s.id));
+  const usefulness = m => open.filter(s => servesMode(s, m)).length * 10 - linesOf(m).length;
+  const lines = pool.filter(u => u.key.startsWith('line-'))
+    .sort((a, b) => usefulness(b.key.slice(5)) - usefulness(a.key.slice(5)));
+  // Dazu genau ein Ausbau: bei vollen Stationen Knoten/großer Bahnhof, sonst Stationsausbau
+  const crowded = G.stations.some(s => s.over > 0 || s.queue.length >= capacityOf(s) * 0.7);
+  const builds = pool.filter(u => !u.key.startsWith('line-'));
+  const build = (crowded && builds.find(u => u.key === (hash(G.week, 3) < 0.5 ? 'node' : 'big')))
+    || builds.map((u, i) => ({ u, r: hash(G.week, i, G.stations.length) })).sort((a, b) => a.r - b.r)[0]?.u;
+  return [...lines, build].filter(Boolean).slice(0, 6);
 }
 
 function showUpgrade() {
@@ -2024,7 +2044,9 @@ function showUpgrade() {
   drag = null;
   $('#up-title').textContent = `Woche ${G.week - 1} geschafft!`;
   const gift = MODES[G.gift || 'bus'];
-  $('#up-lead').textContent = `Du bekommst ${gift.gift} geschenkt. Wähle dazu ein Upgrade:`;
+  $('#up-lead').textContent = (G.giftLine
+    ? `${gift.one} ${SC.moveVerb} ab jetzt zusätzlich auf Linie ${G.giftLine}.`
+    : `${gift.one} steht bereit.`) + ' Wähle eine neue Linie oder einen Ausbau:';
   const box = $('#up-cards');
   box.innerHTML = '';
   for (const up of weeklyUpgrades()) {
@@ -2278,16 +2300,42 @@ function showStart(saved, canResume = !!saved) {
 
 $('#btn-continue').addEventListener('click', resumeGame);
 
+/** Zettel „Worauf setzt du?“: Fokus wählen, dann startet das neue Spiel */
+function showFocus(world) {
+  const sc = SCENARIOS[world];
+  $('#focus-title').textContent = `${sc.title}: Worauf setzt du?`;
+  const box = $('#focus-cards');
+  box.innerHTML = '';
+  for (const f of sc.focus) {
+    const counts = FOCUS_LINES[f.key];
+    const parts = MODE_ORDER.map((m, i) => counts[i] ? `${counts[i]}× ${(sc.modes[m] || HANNOVER_MODES[m]).name}` : '').filter(Boolean);
+    const icons = MODE_ORDER.filter((m, i) => counts[i] >= 2 || (f.key === 'balanced' && i % 2 === 0))
+      .map(m => `<svg class="ico" viewBox="0 0 24 24">${(sc.modes[m] || HANNOVER_MODES[m]).icon}</svg>`).join('');
+    const b = document.createElement('button');
+    b.className = 'card';
+    b.innerHTML = `<span class="card-icons">${icons}</span><b></b><small></small><small class="card-lines"></small>`;
+    b.querySelector('b').textContent = f.title;
+    b.querySelector('small').textContent = f.text;
+    b.querySelector('.card-lines').textContent = parts.join(' · ');
+    b.addEventListener('click', () => {
+      $('#screen-focus').hidden = true;
+      clearSave();
+      newGame(world, f.key);
+      cam.ready = false;
+      G.state = 'playing';
+      G.speed = 1;
+    });
+    box.appendChild(b);
+  }
+  $('#screen-focus').hidden = false;
+}
+
 $('#btn-start').addEventListener('click', () => {
   if (G.resumeState && !confirm('Neues Spiel starten? Dein gespeichertes Spiel wird dabei überschrieben.')) return;
   $('#screen-start').hidden = true;
   const world = worldPref.get();
   if (world === 'hannover' && !tutorialSeen()) { startTutorial(); return; }   // allererstes Spiel: mit Anleitung
-  clearSave();
-  newGame(world);
-  cam.ready = false;
-  G.state = 'playing';
-  G.speed = 1;
+  showFocus(world);
 });
 
 // Menü: sofort speichern und zum Startzettel
@@ -2303,10 +2351,7 @@ $('#btn-menu').addEventListener('click', () => {
 });
 $('#btn-again').addEventListener('click', () => {
   $('#screen-over').hidden = true;
-  newGame(G.world);
-  cam.ready = false;
-  G.state = 'playing';
-  G.speed = 1;
+  showFocus(G.world);
 });
 
 // App im Hintergrund → automatisch pausieren
@@ -2721,23 +2766,23 @@ const EUROPA_TIERS = {
 const PLANE = 'M3 12h18M14 12 9.5 4.5M14 12l-4.5 7.5M5.5 12 3.5 8.5M5.5 12l-2 3.5';
 const EUROPA_MODES = {
   bus: { name: 'Propeller', vehicle: 'Propellermaschine', lineName: 'Propellerlinie', none: 'Keine Propellermaschine frei',
-    no: 'keine Propellermaschine', gift: 'eine Propellermaschine', the: 'die Propellermaschine', two: '2 Propellermaschinen',
+    no: 'keine Propellermaschine', gift: 'eine Propellermaschine', one: 'Eine Propellermaschine', the: 'die Propellermaschine', two: '2 Propellermaschinen',
     speed: 3.2, dwell: 0.4, maxHop: 10, minHop: 0, maxStops: 6, style: 'dashed', plane: 0.9,
     icon: `<path d="${PLANE}"/><circle cx="11.5" cy="8.2" r="1.3"/><circle cx="11.5" cy="15.8" r="1.3"/>` },
   tram: { name: 'Regionaljet', vehicle: 'Regionaljet', lineName: 'Regionalroute', none: 'Kein Regionaljet frei',
-    no: 'kein Regionaljet', gift: 'einen Regionaljet', the: 'den Regionaljet',
+    no: 'kein Regionaljet', gift: 'einen Regionaljet', one: 'Ein Regionaljet', the: 'den Regionaljet',
     speed: 4.2, dwell: 0.35, maxHop: 18, minHop: 0, maxStops: 7, style: 'dotted', plane: 1.0,
     icon: `<path d="${PLANE}"/>` },
   metro: { name: 'Mittelstrecke', vehicle: 'Mittelstreckenjet', lineName: 'Mittelstreckenroute', none: 'Kein Mittelstreckenjet frei',
-    no: 'kein Mittelstreckenjet', gift: 'einen Mittelstreckenjet', the: 'den Mittelstreckenjet',
+    no: 'kein Mittelstreckenjet', gift: 'einen Mittelstreckenjet', one: 'Ein Mittelstreckenjet', the: 'den Mittelstreckenjet',
     speed: 5.5, dwell: 0.45, maxHop: 37, minHop: 0, maxStops: 99, style: 'solid', plane: 1.2,
     icon: `<path d="${PLANE}"/><path d="M11 8.5h2M11 15.5h2"/>` },
   sbahn: { name: 'Großraumjet', vehicle: 'Großraumjet', lineName: 'Großraumroute', none: 'Kein Großraumjet frei',
-    no: 'kein Großraumjet', gift: 'einen Großraumjet', the: 'den Großraumjet',
+    no: 'kein Großraumjet', gift: 'einen Großraumjet', one: 'Ein Großraumjet', the: 'den Großraumjet',
     speed: 6.5, dwell: 0.7, maxHop: 99, minHop: 0, maxStops: 6, style: 'sbahn', plane: 1.5,
     icon: `<path d="${PLANE}"/><path d="M10.5 7.5h2M11.8 6.2h2M10.5 16.5h2M11.8 17.8h2"/>` },
   rail: { name: 'Jumbo', vehicle: 'Jumbo', lineName: 'Jumbo-Route', none: 'Kein Jumbo frei',
-    no: 'kein Jumbo', gift: 'einen Jumbo', the: 'den Jumbo',
+    no: 'kein Jumbo', gift: 'einen Jumbo', one: 'Ein Jumbo', the: 'den Jumbo',
     speed: 8, dwell: 0.9, maxHop: 99, minHop: 25, maxStops: 4, style: 'jumbo', plane: 1.8,
     icon: `<path d="${PLANE}"/><path d="M15 10h4.5"/>` },
 };
@@ -2752,6 +2797,13 @@ const EUROPA = {
   hint: 'Wähle unten ein Flugzeug und zieh von Flughafen zu Flughafen.',
   atHub: 'in Frankfurt',
   stopVerb: 'landet',
+  moveVerb: 'fliegt',
+  focus: [
+    { key: 'bus', title: 'Kurzstrecke', text: 'Viele Propellerlinien – kleine Flughäfen, kurze Wege.' },
+    { key: 'city', title: 'Mittelstrecke', text: 'Regionaljets und Mittelstrecken quer durch Europa.' },
+    { key: 'rail', title: 'Langstrecke', text: 'Großraumjets und Jumbos – weit hinaus über Frankfurt.' },
+    { key: 'balanced', title: 'Ausgewogen', text: 'Von allem etwas.' },
+  ],
   kmPerU: EU_KM_PER_U,
   map: EUROPA_MAP,
   tiers: EUROPA_TIERS,
@@ -2806,6 +2858,13 @@ const SCENARIOS = {
     hint: 'Wähle unten ein Verkehrsmittel und zieh von Station zu Station.',
     atHub: 'am Hauptbahnhof',
     stopVerb: 'hält',
+    moveVerb: 'fährt',
+    focus: [
+      { key: 'bus', title: 'Busnetz', text: 'Viele Buslinien – halten überall, kurze Wege.' },
+      { key: 'city', title: 'Stadtbahn', text: 'Tram und U-Bahn – schnell durch die Stadt.' },
+      { key: 'rail', title: 'Schiene', text: 'S-Bahn und Zug – weite Strecken über den Hauptbahnhof.' },
+      { key: 'balanced', title: 'Ausgewogen', text: 'Von allem etwas.' },
+    ],
     kmPerU: KM_PER_U,
     map: HANNOVER,
     tiers: DISTRICT_TIER,
@@ -2889,6 +2948,7 @@ window.__metro = {
   loadSave,
   tut,
   startTutorial,
+  showFocus,
   updateEvent,
   get cam() { return cam; },
   get HANNOVER() { return HANNOVER; },

@@ -67,10 +67,19 @@ Jede Woche werden drei Upgrades ausgelost: neue Linien, zusätzliche Fahrzeuge, 
 - Rechts am Rand: **+**, **−** und **◎** (zurück zur automatischen Ansicht, die immer die ganze Stadt zeigt).
 - Rausgezoomt siehst du ganz Hannover mit Umland (Langenhagen, Garbsen, Seelze, Laatzen, Hemmingen …).
 
-## Wochen-Belohnung
-- Jede Woche gibt es **mindestens ein Fahrzeug geschenkt** – und zwar für das Verkehrsmittel, das es gerade am dringendsten braucht (zuerst Linien ohne Fahrzeug, sonst die vollste Linie).
-- Dazu wählst du **eines von 4 Upgrades**. Das Spiel schlägt passende vor: ein Fahrzeug, wo eins fehlt, mehr Platz an vollen Stationen und eine neue Linie, wenn Stationen ohne Anschluss sind.
-- „Neue Linie“ bringt gleich ein Fahrzeug mit. Freie Fahrzeuge fahren automatisch auf Linien, auf denen noch keins fährt.
+## Fokus zu Beginn
+Bei „Losfahren“ wählst du, worauf du setzt – davon hast du am Anfang mehr Linien:
+
+| Fokus (Hannover / Europa) | Linien am Start: Bus/Propeller · Tram/Regionaljet · U-Bahn/Mittelstrecke · S-Bahn/Großraumjet · Zug/Jumbo |
+|---|---|
+| Busnetz / Kurzstrecke | 4 · 1 · 1 · – · – |
+| Stadtbahn / Mittelstrecke | 1 · 2 · 2 · 1 · – |
+| Schiene / Langstrecke | 1 · – · 1 · 2 · 2 |
+| Ausgewogen | 2 · 1 · 1 · 1 · 1 |
+
+## Fahrzeuge und Wochen-Meilensteine
+- **Fahrzeuge kommen automatisch:** Jede neue Linie hat sofort ein Fahrzeug. Jede Woche kommt ein weiteres dazu und fährt direkt auf der Linie mit, die es am dringendsten braucht.
+- **Am Ende jeder Woche wählst du eine neue Linie** – für jedes Verkehrsmittel, das noch wachsen kann, gibt es eine Karte (bevorzugt die, mit denen du Stationen ohne Anschluss erreichst) – oder einen Ausbau (Station ausbauen, Umsteigeknoten, großer Bahnhof).
 
 ## Liniennamen, Umsteigeknoten und Ereignisse
 - **Liniennamen:** Jede Linie bekommt automatisch einen Namen wie in Hannover – Busse 100, 121, 128 …, Trams 10, 17, 11, U-Bahn U1–U3, S-Bahn S1/S5, Züge RE2/RE3. Der Name steht am Stift und als Schild an der Linie. Im Linien-Menü kannst du ihn mit **„Name ändern“** umbenennen (max. 6 Zeichen).

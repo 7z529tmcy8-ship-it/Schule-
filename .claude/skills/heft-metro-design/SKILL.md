@@ -110,7 +110,8 @@ Schriftgröße der Beschriftungen: 0,5 U, begrenzt auf 11–15 px. Kartendaten s
 - **Umsteigeknoten**: gelbes rundes Abzeichen mit zwei Bleistift-Pfeilen (⇄) oben links an der Station.
 - **Ereignis**: rotes Fähnchen (`--danger`) über der Station, leicht wehend; Zettel-Chip oben links mit rotem Rand („96-Spiel · Südstadt“).
 - **Zoom-Knöpfe** (`.zoom-ctrl`): rechts mittig übereinander, drei `.icon-btn` (+, −, ◎). ◎ ist mit Textmarker hinterlegt, solange die automatische Kamera aktiv ist.
-- **Upgrade-Zettel** (`.note-wide`): bis 720 px breit, 4 Karten nebeneinander (ab 700 px Bildschirmbreite), darüber „Du bekommst … geschenkt“.
+- **Upgrade-Zettel** (`.note-wide`): bis 720 px breit, bis zu 6 Karten in 3 Spalten (ab 700 px Bildschirmbreite), darüber die Wochen-Nachricht („Eine U-Bahn fährt ab jetzt zusätzlich auf Linie U1.“).
+- **Fokus-Zettel** (`#screen-focus`): 4 Karten nebeneinander mit Fahrzeug-Symbolen, Titel, kurzer Beschreibung und unten die Linien-Zahlen in kleiner Bleistiftschrift.
 - **Weltauswahl** (`.worlds`): zwei Kringel-Knöpfe nebeneinander auf dem Startzettel (Name in Handschrift 24 px + Untertitel 14 px); gewählte Welt mit Textmarker hinterlegt.
 - **Toast**: kleiner Zettel unten mittig, verschwindet nach 2,5 s.
 - Icons: einfache SVG-Striche (`stroke: currentColor; stroke-width: 2.2; stroke-linecap: round`), nie Emoji in Bedienelementen.
