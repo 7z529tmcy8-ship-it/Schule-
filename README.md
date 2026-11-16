@@ -108,3 +108,23 @@ Die App holt sich die neue Version beim nächsten Start mit Internet (eventuell 
 npx http-server -p 8080 .
 # dann http://localhost:8080 öffnen
 ```
+
+---
+
+# Heft-Metro 🚇 (Spiel, Ordner `spiel/`)
+
+Ein U-Bahn-Planungsspiel im Schulheft-Look, nur für das iPad. Inspiriert vom Spielprinzip von Mini Metro, aber mit eigener Grafik und eigenem Namen.
+
+**Adresse:** dieselbe wie die Handschrift-App plus `spiel/`, z. B. `https://DEIN-NAME.github.io/Schule-/spiel/`.
+Installieren wie oben: in Safari öffnen → Teilen → „Zum Home-Bildschirm“. Es läuft dann offline als eigene App.
+
+**So spielst du**
+- Zieh mit Stift oder Finger von Station zu Station – so entsteht eine Linie.
+- Fahrgäste (kleine Formen) wollen zu einer Station mit ihrer Form; Umstiege passieren automatisch.
+- Am Linienende („Stiftkappe“) ziehst du die Linie weiter oder zurück.
+- Unten auf einen bunten Stift tippen → Zug hinzufügen/abziehen oder Linie löschen.
+- Jede Woche gibt es einen Zug und eine Wahl: neue Linie, Extra-Zug oder großer Bahnhof.
+- Ist eine Station zu lange überfüllt (roter Kreis), ist Endstation.
+
+Das Design-System liegt als Skill in `.claude/skills/heft-metro-design/SKILL.md`.
+Nach Code-Änderungen in `spiel/sw.js` die `CACHE_VERSION` hochzählen.
