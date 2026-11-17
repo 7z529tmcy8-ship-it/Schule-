@@ -186,15 +186,25 @@ Der Werkzeugzettel links hat vier Reiter (mit „–“ einklappen). Oben steht 
 - Mehr Halte pro Linie: Tram 12, S-Bahn 9, Zug 6 (Europa entsprechend mehr). Man kann weiter herauszoomen und verschieben.
 
 ## Airline-Welt
-Die zweite Spielwelt heißt jetzt **Welt**: deine eigene Airline mit Sitz in Frankfurt.
-- **Weltkarte** mit allen Kontinenten (grob skizziert, nicht kartengenau) und rund 160 Flughäfen. Start: Frankfurt, London, Rom, New York.
-- **Regionale Grüppchen** für kurze Propeller- und Regionalrouten: Karibik, Hawaii, Japan/Korea, Neuseeland, Südost-Australien, Südostasien, Marokko/Kanaren, Mittelmeer-Inseln.
-- **Neue Flughäfen tauchen irgendwo auf der Welt auf** – die Vorschläge sind über die ganze Welt verteilt, nicht nur in der Nähe deines Netzes.
-- Reichweiten: Propeller ~800 km, Regionaljet ~1.500 km, Mittelstrecke ~4.500 km, Großraumjet weltweit, Jumbo ab ~3.000 km.
-- **Kein Game Over durch volle Flughäfen:** Überzählige Fluggäste springen ab (verlorener Umsatz, in der Wochenbilanz als „Verpasste Fluggäste“). **Vorbei ist es nur bei Pleite** (Konto unter 0 €).
-- **Firmenname:** Nach der Fokus-Wahl gibst du deiner Airline einen Namen (mit Ideen zum Antippen). Er steht oben am Kontostand, in der Bilanz und beim Game Over.
-- **Status:** Start-up → Regional-Airline (10.000 Fluggäste) → Nationale Airline (50.000) → Internationale Airline (150.000) → Globale Airline (400.000) → Weltmarke (1 Mio). Jede Stufe bringt einen Investoren-Bonus und mehr Buchungen.
-- **Echte Personenzahlen:** 1 Symbol = 50 Personen; Sitzplätze Propeller 100, Regionaljet 150, Mittelstrecke 200, Großraumjet 300, Jumbo 450.
-- **Ticketpreis per Regler** im Firmen-Shop (50–200 %). Normalpreise pro Person: 79 / 99 / 149 / 249 / 399 €. Am meisten Umsatz gibt es ungefähr bei 110 %.
-- Alte Europa-Spielstände passen nicht zur Weltkarte und werden nicht mehr geladen.
+Die zweite Spielwelt heißt **Welt**: deine eigene Airline mit Sitz in Frankfurt.
 
+**So einfach geht's:** Zieh von Flughafen zu Flughafen. **Das Flugzeug wird automatisch nach der Entfernung gewählt** – jeder Flughafen kann jedes Flugzeug empfangen, es gibt keine Flughafen-Arten und keine Pflicht über Frankfurt.
+
+| Flugzeug | längster Abschnitt | Sitze | Kauf | Leasing/Woche |
+|---|---|---|---|---|
+| Propellermaschine | bis 800 km | 100 | 25.000 € | 5.000 € |
+| Regionaljet | bis 1.500 km | 150 | 45.000 € | 7.000 € |
+| Mittelstreckenjet | bis 4.500 km | 200 | 110.000 € | 14.000 € |
+| Großraumjet | bis 10.500 km | 300 | 290.000 € | 30.000 € |
+| Jumbo | darüber | 450 | 600.000 € | 60.000 € |
+
+- Wird eine Route länger (verlängern, Ring, Flughafen einfügen), steigt sie automatisch auf ein größeres Flugzeug um – und wieder zurück, wenn sie kürzer wird.
+- Unten gibt es nur noch eine Gruppe **„Routen“** (z. B. 3/4). Route antippen → **„+ Flugzeug“ kaufen** oder **„− Flugzeug“ verkaufen** (halber Preis zurück).
+- Start ohne Fokus-Zettel: Name eingeben, 4 Routen-Lizenzen, los. Weitere Routen im Firmen-Shop (jede etwas teurer).
+- Der Firmen-Shop zeigt eine **Flotten-Übersicht**: welches Flugzeug für welche Entfernung und wie viele davon fliegen.
+- **Weltkarte** mit rund 160 Flughäfen (grob skizziert, nicht kartengenau); kleine Regional-Grüppchen für Propeller (Karibik, Hawaii, Japan/Korea, Neuseeland, Ost-Australien, Südostasien, Marokko/Kanaren, Mittelmeer).
+- Neue Flughäfen tauchen **irgendwo auf der Welt** auf.
+- **Kein Game Over durch volle Flughäfen** – nur verpasste Fluggäste. **Vorbei ist es nur bei Pleite** (Konto unter 0 €).
+- **Firmenname** und **Status**: Start-up → Regional-Airline (10.000 Fluggäste) → Nationale Airline (50.000) → Internationale Airline (150.000) → Globale Airline (400.000) → Weltmarke (1 Mio). Jede Stufe: Investoren-Bonus und mehr Buchungen.
+- **Börsengang** (ab „Internationale Airline“, im Firmen-Shop): bringt einmalig mindestens 1 Mio €. Danach gibt es eine Aktie (Start 10,00 €), deren Kurs jede Woche mit deinem Gewinn steigt oder fällt; in Gewinnwochen gehen 15 % als Dividende an die Aktionäre.
+- **Ticketpreis per Regler** (50–200 %); 1 Symbol = 50 Personen.

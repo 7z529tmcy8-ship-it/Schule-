@@ -128,7 +128,7 @@ const TIER_INFO = {
 };
 const tierRank = t => TIERS.indexOf(t);
 /** Darf dieses Verkehrsmittel an der Station halten? */
-const servesMode = (st, mode) => st.shape === 'hub' || tierRank(st.tier || 'metro') >= tierRank(MODES[mode].tier);
+const servesMode = (st, mode) => SC?.autoPlane || st.shape === 'hub' || tierRank(st.tier || 'metro') >= tierRank(MODES[mode].tier);
 
 /* ---------- Karte von Hannover ----------
    Grobe Skizze aus dem Gedächtnis – nicht kartengenau! Angaben in km
@@ -355,6 +355,8 @@ function newGame(world = SC?.key || 'hannover', focus = 'balanced') {
     company: '',           // Name der Airline
     statusIdx: 0,          // Status der Airline (siehe STATUS)
     weekLost: 0,           // diese Woche verpasste Fluggäste (volle Flughäfen)
+    routeSlots: 4,         // Airline: Routen-Lizenzen (für alle Flugzeugtypen gemeinsam)
+    ipo: null,             // Börsengang: { price, last, start, week, div }
     sandbox: false,        // Sandbox: frei bauen, kein Game Over
     tool: 'lines',         // Sandbox-Werkzeug: lines | build | tier | shape | move | remove
     sbShape: 'circle', sbTier: 'auto', sbDemand: 1, sbTab: 'build', sbEvent: null, sbMin: false,
@@ -464,7 +466,33 @@ function freeColor() {
 }
 
 /** Ist für dieses Verkehrsmittel noch ein Linien-Platz frei? */
-const canCreateLine = mode => linesOf(mode).length < G.inv[mode].lines && freeColor() >= 0;
+const canCreateLine = mode => (SC.autoPlane ? G.lines.length < G.routeSlots : linesOf(mode).length < G.inv[mode].lines) && freeColor() >= 0;
+
+/* ---------- Airline: Flugzeug wird automatisch gewählt ----------
+   Jede Route bekommt das kleinste Flugzeug, das ihren längsten Abschnitt schafft:
+   Propeller → Regionaljet → Mittelstrecke → Großraumjet → Jumbo. Jeder Flughafen
+   kann jedes Flugzeug empfangen – man zieht einfach von Flughafen zu Flughafen. */
+const buysPlanes = () => SC.autoPlane && !G.sandbox;
+function longestHop(ids, loop) {
+  let d = 0;
+  const n = ids.length;
+  for (let i = 0; i < n - 1 + (loop && n >= 3 ? 1 : 0); i++) {
+    const a = stationById(ids[i]), b = stationById(ids[(i + 1) % n]);
+    if (a && b) d = Math.max(d, dist(a.x, a.y, b.x, b.y));
+  }
+  return d;
+}
+const modeForStations = (ids, loop) => MODE_ORDER.find(m => MODES[m].maxHop >= longestHop(ids, loop)) || 'rail';
+const seatsOf = mode => MODES[mode].cap * paxOf(1);
+/** Nach einer Änderung an der Route: passt das Flugzeug noch? Sonst automatisch tauschen. */
+function refitLine(line) {
+  if (!SC.autoPlane || line.stations.length < 2) return;
+  const m = modeForStations(line.stations, line.loop);
+  if (m === line.mode) return;
+  const bigger = MODE_ORDER.indexOf(m) > MODE_ORDER.indexOf(line.mode);
+  line.mode = m;
+  toast(`${line.label} fliegt jetzt mit ${MODES[m].vehicle} (${seatsOf(m)} Sitze)${bigger ? ' – die Strecke ist länger geworden' : ''}.`, 3000);
+}
 
 /** Nächster freier Liniennamen für ein Verkehrsmittel (z. B. „U2“) */
 function nextLineName(mode) {
@@ -841,8 +869,8 @@ function checkStatus() {
   G.statusIdx = k;
   const st = STATUS[k];
   G.money += bonus;
-  G.weekRev += bonus;
-  toast(`${G.company || 'Deine Airline'} ist jetzt ${st.name}! Investoren-Bonus: +${fmtMoney(bonus)}, ${Math.round((st.demand - 1) * 100)} % mehr Buchungen.`, 4800);
+  toast(`${G.company || 'Deine Airline'} ist jetzt ${st.name}! Investoren-Bonus: +${fmtMoney(bonus)}, ${Math.round((st.demand - 1) * 100)} % mehr Buchungen.` +
+    (k >= IPO_STATUS && !G.ipo ? ' Jetzt ist auch der Börsengang im Firmen-Shop möglich!' : ''), 5200);
 }
 
 /** Preis-Regler (1 = Normalpreis) und die Nachfrage, die er auslöst:
@@ -900,6 +928,7 @@ function closeWeekBalance() {
   if (G.history.length > 8) G.history.shift();
   G.weekRev = 0;
   G.weekCost = 0;
+  updateStock(G.lastWeek);
 }
 
 /** Alle Fahrzeuge ein Stück weiterbewegen */
@@ -1615,7 +1644,7 @@ function activeMode() {
 /** Abzeichen der Stationsart: T (Tram), U (blau, U-Bahn), S (grün, Bahnhof) */
 function drawTierBadge(st, sx, sy, r) {
   const badge = TIER_INFO[st.tier]?.badge;
-  if (!badge || st.shape === 'hub') return;
+  if (!badge || st.shape === 'hub' || SC.autoPlane) return;
   const size = Math.max(15, 0.46 * cam.s);
   const bx = sx + r * 0.9, by = sy - r * 0.9;
   ctx.save();
@@ -2017,10 +2046,12 @@ function onDown(e) {
   } else {
     const st = st0;
     if (!st) return false;                  // leere Fläche → Karte verschieben
-    const lineMode = G.selectedMode;
+    const lineMode = SC.autoPlane ? 'bus' : G.selectedMode;
     const M = MODES[lineMode];
     if (!canCreateLine(lineMode)) {
-      toast(`Alle ${M.lineName}n sind vergeben. Wähle unten ein anderes Verkehrsmittel oder verlängere eine Linie.`, 3400);
+      toast(SC.autoPlane
+        ? 'Alle Routen sind vergeben. Eine neue Routen-Lizenz gibt es im Firmen-Shop – oder verlängere eine Route.'
+        : `Alle ${M.lineName}n sind vergeben. Wähle unten ein anderes Verkehrsmittel oder verlängere eine Linie.`, 3400);
       return true;
     }
     if (!servesMode(st, lineMode)) {
@@ -2057,6 +2088,7 @@ function onMove(e) {
     }
     if (s[s.length - 2] === st.id) s.pop();                 // zurückgezogen
     else if (!s.includes(st.id) && !tooManyStops(drag.lineMode, s.length) && canLink(drag.lineMode, s[s.length - 1], st)) s.push(st.id);
+    if (SC.autoPlane) drag.lineMode = modeForStations(s, false);   // Vorschau zeigt gleich das passende Flugzeug
     return;
   }
 
@@ -2073,6 +2105,7 @@ function onMove(e) {
     if (s.length >= 3 && canLink(line.mode, endId, st)) {
       line.loop = true;
       drag.closed = true;
+      refitLine(line);
       rebuildRoutes();
       syncTrains(line);
       st.flash = 0.35;
@@ -2091,6 +2124,7 @@ function onMove(e) {
   } else {
     return;
   }
+  refitLine(line);
   rebuildRoutes();
   syncTrains(line);
 }
@@ -2107,6 +2141,7 @@ function canInsert(line, i, st) {
 function insertStation(line, i, id) {
   const [a, b] = [line.stations[i], line.stations[(i + 1) % line.stations.length]];
   line.stations.splice(i + 1, 0, id);
+  refitLine(line);
   for (const tr of G.trains) {
     if (tr.line !== line) continue;
     if (tr.a === a && tr.b === b) { tr.b = id; tr.t = Math.min(tr.t, 0.5); }
@@ -2129,6 +2164,11 @@ function warnOnce(key, msg) {
  * Züge nur lange (weite Entfernungen).
  */
 function canLink(mode, fromId, st) {
+  if (SC.autoPlane) {
+    const from = stationById(fromId);
+    if (dist(from.x, from.y, st.x, st.y) > MODES.rail.maxHop) { warnOnce('far', 'So weit fliegt kein Flugzeug.'); return false; }
+    return true;
+  }
   const M = MODES[mode];
   if (!servesMode(st, mode)) {
     warnOnce('tier' + st.id, `${st.name || TIER_INFO[st.tier].name} ist ${TIER_INFO[st.tier].a} ${TIER_INFO[st.tier].name} – hier ${SC.stopVerb} ${M.no}.`);
@@ -2165,8 +2205,11 @@ function onUp(e) {
     const line = createLine(drag.stations, drag.color, drag.lineMode);
     if (drag.loop) {
       line.loop = true;
+      refitLine(line);
       rebuildRoutes();
       toast(`${line.label} fährt als Ringlinie im Kreis.`);
+    } else if (SC.autoPlane) {
+      toast(`${line.label}: ${MODES[line.mode].vehicle} mit ${seatsOf(line.mode)} Sitzen – passt zur Strecke.`, 2600);
     }
   } else if (drag.mode === 'extend' && drag.line.stations.length < 2) {
     deleteLine(drag.line);
@@ -2287,7 +2330,7 @@ function updateHud() {
   if (hudCache.biz !== biz) { hudCache.biz = biz; $('#money-chip').hidden = !biz; $('#btn-shop').hidden = !biz; }
   if (biz) {
     setText('#money', fmtMoney(G.money));
-    setText('#company-label', `${G.company || 'Airline'} · ${STATUS[G.statusIdx || 0].name}`);
+    setText('#company-label', `${G.company || 'Airline'} · ${STATUS[G.statusIdx || 0].name}` + (G.ipo ? ` · Aktie ${fmtStock(G.ipo.price)}` : ''));
     const chip = $('#money-chip');
     chip.classList.toggle('negative', G.money < 0);
     chip.classList.toggle('ad', G.t < G.marketingUntil);
@@ -2303,7 +2346,7 @@ function updateHud() {
   if (hudCache.pie !== pie) { hudCache.pie = pie; $('#clock-pie').setAttribute('d', pie); }
 
   // Leiste unten (nur neu bauen, wenn sich etwas geändert hat)
-  const key = G.lines.map(l => `${l.mode}${l.color}${l.label}:${vehiclesOn(l)}`).join(',') + '|' + JSON.stringify(G.inv) + '|' + G.selectedMode;
+  const key = G.lines.map(l => `${l.mode}${l.color}${l.label}:${vehiclesOn(l)}`).join(',') + '|' + JSON.stringify(G.inv) + '|' + G.selectedMode + '|' + G.routeSlots;
   if (hudCache.pens !== key) { hudCache.pens = key; renderPens(); }
 
   // Hinweis am Anfang
@@ -2352,6 +2395,7 @@ function selectMode(mode) {
 function renderPens() {
   const box = $('#pens');
   box.innerHTML = '';
+  if (SC.autoPlane) { renderRoutePens(box); return; }
   for (const mode of MODE_ORDER) {
     const M = MODES[mode];
     const group = document.createElement('div');
@@ -2390,6 +2434,40 @@ function renderPens() {
   $('#hint').style.bottom = `${bottomInset + 6}px`;      // Hinweis immer über der Leiste
 }
 
+/** Airline: eine Gruppe „Routen“ – jede Route zeigt ihr Flugzeug */
+function renderRoutePens(box) {
+  const group = document.createElement('div');
+  group.className = 'mode-group selected';
+  const help = () => toast('Zieh einfach von Flughafen zu Flughafen – das passende Flugzeug wird automatisch nach der Entfernung gewählt.', 3600);
+  const tab = document.createElement('button');
+  tab.className = 'mode-tab';
+  tab.setAttribute('aria-label', `Routen: ${G.lines.length} von ${G.routeSlots}`);
+  tab.innerHTML = `${modeIcon('metro')}<span class="mode-name">Routen</span><span class="pen-trains">${G.lines.length}/${G.routeSlots}</span>`;
+  tab.addEventListener('click', help);
+  group.appendChild(tab);
+  for (const line of G.lines) {
+    const b = document.createElement('button');
+    b.className = 'pen used';
+    b.style.setProperty('--c', LINE_COLORS[line.color]);
+    b.setAttribute('aria-label', `Route ${line.label}, ${MODES[line.mode].vehicle}`);
+    b.innerHTML = `<span class="pen-label"></span><span class="pen-trains">${vehiclesOn(line)}</span>`;
+    b.firstChild.textContent = line.label;
+    b.title = MODES[line.mode].vehicle;
+    b.addEventListener('click', () => openLineMenu(line, b));
+    group.appendChild(b);
+  }
+  for (let k = G.lines.length; k < G.routeSlots; k++) {
+    const b = document.createElement('button');
+    b.className = 'pen';
+    b.setAttribute('aria-label', 'Freie Route');
+    b.addEventListener('click', help);
+    group.appendChild(b);
+  }
+  box.appendChild(group);
+  bottomInset = ($('.hud-bottom').offsetHeight || 80) + 10;
+  $('#hint').style.bottom = `${bottomInset + 6}px`;
+}
+
 let menuLine = null;
 function openLineMenu(line, anchor) {
   if (menuLine === line) { closeLineMenu(); return; }
@@ -2398,9 +2476,16 @@ function openLineMenu(line, anchor) {
   const m = $('#line-menu');
   const M = MODES[line.mode];
   const free = G.inv[line.mode].free;
-  $('#lm-add').textContent = `+ ${M.vehicle} (${free} frei)`;
-  $('#lm-remove').textContent = `− ${M.vehicle}`;
-  $('#lm-add').disabled = free <= 0;
+  if (buysPlanes()) {
+    const price = SC.business.planePrice[line.mode];
+    $('#lm-add').textContent = `+ ${M.vehicle} (${fmtMoney(price)})`;
+    $('#lm-remove').textContent = `− ${M.vehicle} (+${fmtMoney(price / 2)})`;
+    $('#lm-add').disabled = G.money < price;
+  } else {
+    $('#lm-add').textContent = `+ ${M.vehicle} (${free} frei)`;
+    $('#lm-remove').textContent = `− ${M.vehicle}`;
+    $('#lm-add').disabled = free <= 0;
+  }
   $('#lm-remove').disabled = vehiclesOn(line) === 0;
   $('#lm-ring').hidden = !line.loop;
   m.hidden = false;
@@ -2417,12 +2502,28 @@ function closeLineMenu() {
 }
 
 $('#lm-add').addEventListener('click', () => {
-  if (menuLine && addTrain(menuLine)) toast(`${MODES[menuLine.mode].vehicle} eingesetzt.`);
+  if (menuLine && buysPlanes()) {
+    const price = SC.business.planePrice[menuLine.mode];
+    if (G.money >= price) {
+      G.money -= price; G.weekCost += price;
+      G.inv[menuLine.mode].free++;
+      addTrain(menuLine);
+      toast(`${MODES[menuLine.mode].vehicle} gekauft und auf ${menuLine.label} eingesetzt.`);
+    }
+  } else if (menuLine && addTrain(menuLine)) toast(`${MODES[menuLine.mode].vehicle} eingesetzt.`);
   closeLineMenu();
 });
 $('#lm-remove').addEventListener('click', () => {
   const tr = G.trains.filter(t => t.line === menuLine).pop();
-  if (tr) removeTrain(tr);
+  if (tr) {
+    removeTrain(tr);
+    if (buysPlanes()) {                     // Airline: Flugzeug wird verkauft, nicht geparkt
+      G.inv[menuLine.mode].free = 0;
+      const back = SC.business.planePrice[menuLine.mode] / 2;
+      G.money += back;
+      toast(`${MODES[menuLine.mode].vehicle} verkauft: +${fmtMoney(back)}.`);
+    }
+  }
   closeLineMenu();
 });
 $('#lm-rename').addEventListener('click', () => {
@@ -2445,7 +2546,13 @@ $('#lm-ring').addEventListener('click', () => {
   toast(`${line.label} ist wieder eine normale Linie mit zwei Enden.`);
 });
 $('#lm-delete').addEventListener('click', () => {
-  if (menuLine) { deleteLine(menuLine); autoAssignVehicles(); }
+  if (menuLine && buysPlanes()) {
+    const back = vehiclesOn(menuLine) * SC.business.planePrice[menuLine.mode] / 2;
+    deleteLine(menuLine);
+    for (const m of MODE_ORDER) G.inv[m].free = 0;
+    G.money += back;
+    if (back) toast(`Route aufgegeben, Flugzeuge verkauft: +${fmtMoney(back)}.`);
+  } else if (menuLine) { deleteLine(menuLine); autoAssignVehicles(); }
   closeLineMenu();
 });
 
@@ -2578,7 +2685,7 @@ function serialize() {
     weekRev: G.weekRev, weekCost: G.weekCost, history: G.history, lastWeek: G.lastWeek,
     districtsLeft: G.districtsLeft,
     sandbox: G.sandbox, sbDemand: G.sbDemand,
-    company: G.company, statusIdx: G.statusIdx, weekLost: G.weekLost, mapV: SC.mapV || 1,
+    company: G.company, statusIdx: G.statusIdx, weekLost: G.weekLost, mapV: SC.mapV || 1, routeSlots: G.routeSlots, ipo: G.ipo,
     lines: G.lines.map(({ id, color, mode, label, stations, loop, riders }) => ({ id, color, mode, label, stations, loop: !!loop, riders: riders || 0 })),
     trains: G.trains.map(({ id, line, a, b, t, dwell, pax }) => ({ id, line: line.id, a, b, t, dwell, pax })),
   };
@@ -2686,6 +2793,8 @@ function restoreGame(d) {
   G.company = typeof d.company === 'string' ? d.company.slice(0, 24) : '';
   G.statusIdx = clamp(Math.round(+d.statusIdx || 0), 0, STATUS.length - 1);
   G.weekLost = +d.weekLost || 0;
+  G.routeSlots = clamp(Math.round(+d.routeSlots || 4), 1, LINE_COLORS.length);
+  G.ipo = d.ipo && Number.isFinite(d.ipo.price) ? d.ipo : null;
   G.sbDemand = [0, 0.5, 1, 2].includes(d.sbDemand) ? d.sbDemand : 1;
   G.lines = [];
   for (const l of d.lines) {
@@ -2771,6 +2880,13 @@ function showBalance() {
   $('#bal-status').textContent = next
     ? `Status: ${STATUS[k].name} · nächste Stufe „${next.name}“ ab ${next.min.toLocaleString('de-DE')} Fluggästen (jetzt ${fmtPax(G.score)})`
     : `Status: ${STATUS[k].name} – höher geht es nicht!`;
+  if (G.ipo) {
+    const ch = (G.ipo.price / G.ipo.last - 1) * 100;
+    $('#bal-status').textContent += ` · Aktie ${fmtStock(G.ipo.price)} (${ch >= 0 ? '▲' : '▼'} ${Math.abs(ch).toFixed(1)} %)` +
+      (G.ipo.div ? ` · Dividende ${fmtMoney(G.ipo.div)}` : '');
+  } else if (k >= IPO_STATUS) {
+    $('#bal-status').textContent += ' · Börsengang im Firmen-Shop möglich!';
+  }
   $('#bal-rev').textContent = fmtMoney(w.rev);
   $('#bal-cost').textContent = fmtMoney(-w.cost);
   const p = $('#bal-profit');
@@ -2839,6 +2955,66 @@ function shopItem(icon, title, text, price, enabled, buy) {
   return b;
 }
 
+/** Preis der nächsten Routen-Lizenz: wird mit jeder Route etwas teurer */
+const routePriceNow = () => Math.round(40e3 * Math.pow(1.35, Math.max(0, G.routeSlots - 4)) / 5e3) * 5e3;
+
+/** Übersicht: welches Flugzeug für welche Entfernung – und wie viele davon fliegen */
+function renderFleetTable(box) {
+  const b = SC.business;
+  const rows = MODE_ORDER.map((m, i) => {
+    const prev = i ? MODES[MODE_ORDER[i - 1]].maxHop : 0;
+    const range = m === 'rail' ? `über ${fmtKm(prev)}` : `${i ? fmtKm(prev) + ' – ' : 'bis '}${fmtKm(MODES[m].maxHop)}`;
+    const n = G.trains.filter(t => t.line.mode === m).length;
+    return `<tr><td><svg class="ico" viewBox="0 0 24 24">${MODES[m].icon}</svg> ${MODES[m].vehicle}</td><td>${range}</td>` +
+      `<td>${seatsOf(m)}</td><td>${fmtMoney(b.planePrice[m])}</td><td>${fmtMoney(b.lease[m])}</td><td><b>${n}</b></td></tr>`;
+  }).join('');
+  box.innerHTML = `<table class="fleet"><thead><tr><th>Flugzeug</th><th>Abschnitt</th><th>Sitze</th><th>Kauf</th><th>Leasing/Woche</th><th>im Einsatz</th></tr></thead><tbody>${rows}</tbody></table>
+    <p class="fleet-tip">Mehr Flugzeuge auf einer Route: unten auf die Route tippen → „+ Flugzeug“.</p>`;
+}
+
+/* ---------- Börsengang ----------
+   Ab Status „Internationale Airline“ einmalig möglich: bringt viel Geld.
+   Danach gibt es eine Aktie: Gewinn lässt den Kurs steigen, Verlust fallen,
+   und jede Gewinnwoche gehen 15 % als Dividende an die Aktionäre.          */
+const IPO_STATUS = 3;
+const ipoCash = () => Math.round((1e6 + 10 * Math.max(0, G.lastWeek?.rev || 0)) / 1e4) * 1e4;
+const fmtStock = v => `${v.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+
+function renderIpoItem(box) {
+  const icon = '<path d="M4 19h16M6 16l4-5 3 3 5-7"/><path d="M15 7h3v3"/>';
+  if (G.ipo) {
+    const ch = G.ipo.last ? (G.ipo.price / G.ipo.last - 1) * 100 : 0;
+    const el = shopItem(icon, 'An der Börse', `Aktie ${fmtStock(G.ipo.price)} (${ch >= 0 ? '▲' : '▼'} ${Math.abs(ch).toFixed(1)} %) · 15 % Dividende auf Gewinn`, 0, false, () => {});
+    el.querySelector('.price').textContent = fmtStock(G.ipo.price);
+    box.appendChild(el);
+    return;
+  }
+  const ready = (G.statusIdx || 0) >= IPO_STATUS;
+  const el = shopItem(icon, 'Börsengang',
+    ready ? `Aktien ausgeben: bringt sofort ca. ${fmtMoney(ipoCash())}. Danach wollen Aktionäre Gewinn sehen.`
+      : `Ab Status „${STATUS[IPO_STATUS].name}“ möglich.`,
+    0, ready, () => {
+      const cash = ipoCash();
+      G.money += cash;
+      G.ipo = { price: 10, last: 10, start: 10, week: G.week, div: 0 };
+      toast(`Börsengang! ${G.company || 'Deine Airline'} ist an der Börse – +${fmtMoney(cash)}. Erster Kurs: 10,00 €.`, 4800);
+    });
+  el.querySelector('.price').textContent = ready ? `+${fmtMoney(ipoCash())}` : 'gesperrt';
+  box.appendChild(el);
+}
+
+/** Wochenende: Aktienkurs nach Gewinn bewegen, Dividende zahlen */
+function updateStock(w) {
+  if (!G.ipo) return;
+  const margin = w.rev > 0 ? w.profit / w.rev : -0.5;
+  const change = clamp(margin * 0.5 + (Math.random() - 0.5) * 0.04, -0.2, 0.25);
+  G.ipo.last = G.ipo.price;
+  G.ipo.price = Math.max(0.5, Math.round(G.ipo.price * (1 + change) * 100) / 100);
+  const div = w.profit > 0 ? Math.round(w.profit * 0.15) : 0;
+  G.ipo.div = div;
+  G.money -= div;
+}
+
 /**
  * Ticketpreis-Regler: 50–200 %. Zeigt echte Preise pro Person und
  * die erwartete Nachfrage, damit man den Effekt sieht.
@@ -2875,7 +3051,21 @@ function renderShop() {
 
   const planes = $('#shop-planes'); planes.innerHTML = '';
   const routes = $('#shop-routes'); routes.innerHTML = '';
-  for (const mode of MODE_ORDER) {
+  $('#shop-h-planes').textContent = SC.autoPlane ? 'Deine Flugzeuge (werden automatisch gewählt)' : 'Flugzeuge kaufen';
+  $('#shop-h-routes').textContent = SC.autoPlane ? 'Routen' : 'Routen-Lizenzen';
+  if (SC.autoPlane) {
+    renderFleetTable(planes);
+    const price = routePriceNow();
+    const ok = G.routeSlots < LINE_COLORS.length;
+    routes.appendChild(shopItem(MODES.metro.icon, 'Neue Route',
+      ok ? `Lizenz Nr. ${G.routeSlots + 1} – mit erstem Flugzeug. Danach ${fmtMoney(b.routeFee)}/Woche Gebühr.` : 'Höchstzahl erreicht',
+      price, ok, () => {
+        G.routeSlots++;
+        hudCache.pens = null;
+        toast('Neue Route: zieh sie jetzt auf der Karte von Flughafen zu Flughafen.');
+      }));
+  }
+  for (const mode of SC.autoPlane ? [] : MODE_ORDER) {
     const M = MODES[mode];
     planes.appendChild(shopItem(M.icon, M.vehicle, `Leasing ${fmtMoney(b.lease[mode])}/Woche · ${G.inv[mode].free} frei`,
       b.planePrice[mode], true, () => {
@@ -2892,7 +3082,8 @@ function renderShop() {
   }
 
   const build = $('#shop-build'); build.innerHTML = '';
-  for (const u of TIER_UPGRADES) {
+  if (SC.autoPlane) renderIpoItem(build);
+  for (const u of SC.autoPlane ? [] : TIER_UPGRADES) {
     const ok = G.stations.some(st => st.shape !== 'hub' && tierRank(st.tier) < tierRank(u.tier));
     build.appendChild(shopItem(BUILD_ICON, u.title, u.text, b.tierPrice[u.tier], ok, () => {
       closeShop('placeTier');
@@ -3064,6 +3255,7 @@ $('#btn-start').addEventListener('click', () => {
   $('#screen-start').hidden = true;
   const world = worldPref.get();
   if (world === 'hannover' && !tutorialSeen()) { startTutorial(); return; }   // allererstes Spiel: mit Anleitung
+  if (SCENARIOS[world].autoPlane) { startAirline(world); return; }
   showFocus(world);
 });
 
@@ -3080,8 +3272,20 @@ $('#btn-menu').addEventListener('click', () => {
 });
 $('#btn-again').addEventListener('click', () => {
   $('#screen-over').hidden = true;
+  if (SCENARIOS[G.world].autoPlane) { startAirline(G.world); return; }
   showFocus(G.world);
 });
+/** Airline: ohne Fokus-Zettel – Name eingeben und los (4 Routen-Lizenzen) */
+function startAirline(world) {
+  clearSave();
+  newGame(world, 'balanced');
+  for (const m of MODE_ORDER) G.inv[m] = { lines: 0, free: 0 };
+  G.routeSlots = 4;
+  cam.ready = false;
+  G.speed = 1;
+  hudCache.pens = null;
+  askCompany();
+}
 
 // App im Hintergrund → automatisch pausieren
 document.addEventListener('visibilitychange', () => {
@@ -3605,23 +3809,23 @@ const PLANE = 'M3 12h18M14 12 9.5 4.5M14 12l-4.5 7.5M5.5 12 3.5 8.5M5.5 12l-2 3.
 const EUROPA_MODES = {
   bus: { name: 'Propeller', vehicle: 'Propellermaschine', lineName: 'Propellerlinie', none: 'Keine Propellermaschine frei',
     no: 'keine Propellermaschine', gift: 'eine Propellermaschine', one: 'Eine Propellermaschine', the: 'die Propellermaschine', two: '2 Propellermaschinen',
-    cap: 2, speed: 2.2, dwell: 0.4, maxHop: 5.4, minHop: 0, maxStops: 9, style: 'dashed', plane: 0.9,
+    cap: 2, speed: 2.2, dwell: 0.4, maxHop: 5.4, minHop: 0, maxStops: 8, needsHub: false, style: 'dashed', plane: 0.9,
     icon: `<path d="${PLANE}"/><circle cx="11.5" cy="8.2" r="1.3"/><circle cx="11.5" cy="15.8" r="1.3"/>` },
   tram: { name: 'Regionaljet', vehicle: 'Regionaljet', lineName: 'Regionalroute', none: 'Kein Regionaljet frei',
     no: 'kein Regionaljet', gift: 'einen Regionaljet', one: 'Ein Regionaljet', the: 'den Regionaljet',
-    cap: 3, speed: 3, dwell: 0.35, maxHop: 10, minHop: 0, maxStops: 10, style: 'dotted', plane: 1.0,
+    cap: 3, speed: 3, dwell: 0.35, maxHop: 10, minHop: 0, maxStops: 8, needsHub: false, style: 'dotted', plane: 1.0,
     icon: `<path d="${PLANE}"/>` },
   metro: { name: 'Mittelstrecke', vehicle: 'Mittelstreckenjet', lineName: 'Mittelstreckenroute', none: 'Kein Mittelstreckenjet frei',
     no: 'kein Mittelstreckenjet', gift: 'einen Mittelstreckenjet', one: 'Ein Mittelstreckenjet', the: 'den Mittelstreckenjet',
-    cap: 4, speed: 4.5, dwell: 0.45, maxHop: 30, minHop: 0, maxStops: 99, style: 'solid', plane: 1.2,
+    cap: 4, speed: 4.5, dwell: 0.45, maxHop: 30, minHop: 0, maxStops: 8, needsHub: false, style: 'solid', plane: 1.2,
     icon: `<path d="${PLANE}"/><path d="M11 8.5h2M11 15.5h2"/>` },
   sbahn: { name: 'Großraumjet', vehicle: 'Großraumjet', lineName: 'Großraumroute', none: 'Kein Großraumjet frei',
     no: 'kein Großraumjet', gift: 'einen Großraumjet', one: 'Ein Großraumjet', the: 'den Großraumjet',
-    cap: 6, speed: 7, dwell: 0.7, maxHop: 200, minHop: 0, maxStops: 9, style: 'sbahn', plane: 1.5,
+    cap: 6, speed: 7, dwell: 0.7, maxHop: 70, minHop: 0, maxStops: 8, needsHub: false, style: 'sbahn', plane: 1.5,
     icon: `<path d="${PLANE}"/><path d="M10.5 7.5h2M11.8 6.2h2M10.5 16.5h2M11.8 17.8h2"/>` },
   rail: { name: 'Jumbo', vehicle: 'Jumbo', lineName: 'Jumbo-Route', none: 'Kein Jumbo frei',
     no: 'kein Jumbo', gift: 'einen Jumbo', one: 'Ein Jumbo', the: 'den Jumbo',
-    cap: 9, speed: 9, dwell: 0.9, maxHop: 200, minHop: 20, maxStops: 6, style: 'jumbo', plane: 1.8,
+    cap: 9, speed: 9, dwell: 0.9, maxHop: 200, minHop: 0, maxStops: 8, needsHub: false, style: 'jumbo', plane: 1.8,
     icon: `<path d="${PLANE}"/><path d="M15 10h4.5"/>` },
 };
 
@@ -3632,6 +3836,7 @@ const EUROPA = {
   spawnAnywhere: true,                              // neue Flughäfen irgendwo auf der Welt, nicht nur in der Nähe
   minGap: 1.2,                                      // Mindestabstand zweier Flughäfen (U)
   noCrowdOver: true,
+  autoPlane: true,                                  // Flugzeug wird nach Entfernung gewählt, jeder Flughafen nimmt jedes Flugzeug
   eventReach: 0.6,                                  // Ereignis nur, wenn genau dieser Flughafen im Netz ist                                // volle Flughäfen: Fluggäste gehen verloren, aber kein Game Over
   mapV: 2,
   dayLength: 16,                                    // längere Wochen
@@ -3658,7 +3863,7 @@ const EUROPA = {
   hubName: 'Frankfurt',
   hubTitle: 'Der Flughafen Frankfurt',
   dragHint: 'Zieh von Flughafen zu Flughafen.',
-  hint: 'Wähle unten ein Flugzeug und zieh von Flughafen zu Flughafen.',
+  hint: 'Zieh von Flughafen zu Flughafen – das passende Flugzeug wird automatisch gewählt.',
   atHub: 'in Frankfurt',
   stopVerb: 'landet',
   moveVerb: 'fliegt',
@@ -3678,7 +3883,8 @@ const EUROPA = {
     metro: { name: 'Flughafen', a: 'ein', badge: 'F' },
     rail: { name: 'Großflughafen', a: 'ein', badge: 'G' },
   },
-  lineNames: { bus: ['P1', 'P2', 'P3', 'P4', 'P5'], tram: ['RJ1', 'RJ2', 'RJ3'], metro: ['M1', 'M2', 'M3'], sbahn: ['G1', 'G2'], rail: ['J1', 'J2'] },
+  // Routennamen gelten für alle Flugzeugtypen (das Flugzeug kann wechseln)
+  lineNames: Object.fromEntries(['bus', 'tram', 'metro', 'sbahn', 'rail'].map(m => [m, Array.from({ length: 14 }, (_, i) => `R${i + 1}`)])),
   events: [
     { key: 'okt', name: 'Oktoberfest', place: 'München', text: 'Oktoberfest – die halbe Welt will nach München!' },
     { key: 'rio', name: 'Karneval in Rio', place: 'Rio de Janeiro', text: 'Karneval in Rio – alle wollen tanzen!' },
@@ -3689,11 +3895,11 @@ const EUROPA = {
   ],
 
   modeText: {
-    bus: '100 Sitze, Regionalflüge bis ~800 km, landet überall',
-    tram: '150 Sitze, bis ~1.500 km, ab Regionalflughafen',
-    metro: '200 Sitze, bis ~4.500 km, nur Flughäfen',
-    sbahn: '300 Sitze, weltweit, nur Großflughäfen, über Frankfurt',
-    rail: '450 Sitze, Langstrecke ab ~3.000 km, ab Frankfurt',
+    bus: '100 Sitze, Abschnitte bis ~800 km',
+    tram: '150 Sitze, bis ~1.500 km',
+    metro: '200 Sitze, bis ~4.500 km',
+    sbahn: '300 Sitze, bis ~10.500 km',
+    rail: '450 Sitze, für die allerlängsten Strecken',
   },
   tierUpgrades: [
     { tier: 'tram', title: 'Landebahn verlängern', text: 'Ein Flugplatz wird Regionalflughafen.' },
@@ -3703,8 +3909,8 @@ const EUROPA = {
   bigTitle: 'Großes Terminal',
   lead: 'Gründe deine eigene Airline in Frankfurt – mit 400.000 € Startkapital. Kleine Regionalrouten, große Langstrecken: Baue ein weltweites Netz und werde vom Start-up zur Weltmarke.',
   howto: [
-    'Wähle unten ein Flugzeug und zieh von Flughafen zu Flughafen – jede Route least automatisch ein Flugzeug. Neue Flughäfen tauchen überall auf der Welt auf.',
-    'Fluggäste bringen Umsatz, Flugzeuge und Routen kosten laufend Geld. Im Firmen-Shop (Aktenkoffer) kaufst du Flugzeuge, Routen und Ausbauten.',
+    'Zieh von Flughafen zu Flughafen. Das Flugzeug wird automatisch passend zur Entfernung gewählt – vom Propeller bis zum Jumbo.',
+    'Tippe unten auf eine Route, um Flugzeuge zu kaufen oder zu verkaufen. Im Firmen-Shop (Aktenkoffer) gibt es neue Routen, Terminals, Werbung – und später den Börsengang.',
     'Volle Flughäfen kosten nur Fluggäste. Vorbei ist es erst, wenn das Konto unter 0 € rutscht. Den Ticketpreis stellst du im Shop per Regler ein.',
   ],
 };
@@ -3829,6 +4035,7 @@ function startSandbox(world) {
   G.stations = G.stations.filter(s => s.shape === 'hub');
   G.districtsLeft = HANNOVER.districts.map(d => d.name);
   for (const m of MODE_ORDER) G.inv[m] = { lines: MODES[m].maxLines, free: 30 };
+  G.routeSlots = LINE_COLORS.length;
   rebuildRoutes();
   cam.ready = false;
   G.state = 'playing';

@@ -687,3 +687,12 @@ button { font: inherit; color: inherit; }
 }
 .company-form input:focus { outline: 3px solid var(--marker); outline-offset: 1px; }
 .bal-status { margin: 8px 0 0; font-size: 15px; padding: 6px 10px; background: rgba(255, 232, 61, .35); border-radius: 8px; }
+
+/* ===== Airline: Flotten-Übersicht ===== */
+.fleet { width: 100%; border-collapse: collapse; font-size: 14px; }
+.fleet th { text-align: left; font-weight: 400; color: var(--pencil-soft); font-size: 12px; padding: 2px 6px; border-bottom: 1.5px solid var(--pencil); }
+.fleet td { padding: 5px 6px; border-bottom: 1px dashed rgba(43,43,43,.25); white-space: nowrap; }
+.fleet td:first-child { white-space: normal; }
+.fleet .ico { width: 18px; height: 18px; vertical-align: -4px; }
+.fleet-tip { font-size: 13px; color: var(--pencil-soft); margin: 6px 0 0; }
+#shop-planes:has(.fleet) { display: block; overflow-x: auto; }
