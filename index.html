@@ -31,7 +31,7 @@
     <!-- Kontostand der Airline (nur Europa) -->
     <div class="money note-chip" id="money-chip" hidden>
       <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M15 8.5a4 4 0 1 0 0 7M7.5 11h6M7.5 13.5h6"/></svg>
-      <span id="money">0 €</span>
+      <span class="money-col"><small id="company-label"></small><span id="money">0 €</span></span>
     </div>
     <div class="hud-right">
       <div class="week note-chip">
@@ -179,7 +179,7 @@
       <h1>MetroRush</h1>
       <div class="worlds" role="radiogroup" aria-label="Spielwelt">
         <button class="world" data-world="hannover"><b>Hannover</b><small>Bus, Tram, U-Bahn, S-Bahn, Zug</small></button>
-        <button class="world" data-world="europa"><b>Europa</b><small>Fluglinien</small></button>
+        <button class="world" data-world="europa"><b>Welt</b><small>Deine Airline</small></button>
       </div>
       <p class="lead" id="start-lead"></p>
       <ol class="howto">
@@ -207,7 +207,7 @@
       <p class="lead">Einmal freischalten – für immer spielen.</p>
       <ul class="pay-list">
         <li>Hannover mit Bus, Tram, U-Bahn, S-Bahn &amp; Zug</li>
-        <li>Europa als eigene Airline</li>
+        <li>Weltweite Airline mit eigenem Namen</li>
         <li>Ringlinien, Ausbau, Ereignisse &amp; Speicherstand</li>
         <li>Keine Werbung, kein Abo</li>
       </ul>
@@ -232,6 +232,20 @@
     </div>
   </div>
 
+  <!-- ===== Zettel: Firmenname (Airline) ===== -->
+  <div class="overlay" id="screen-company" hidden>
+    <div class="note note-big">
+      <h2>Wie heißt deine Airline?</h2>
+      <p class="lead">Der Name steht oben neben dem Kontostand, in jeder Wochenbilanz – und ganz groß, wenn du zur Weltmarke wirst.</p>
+      <form class="company-form" id="company-form" autocomplete="off">
+        <input id="company-input" type="text" maxlength="24" spellcheck="false" aria-label="Name der Airline">
+        <button class="pen-btn primary" type="submit">Gründen</button>
+      </form>
+      <span class="sb-label">Ideen</span>
+      <div class="sb-row" id="company-ideas"></div>
+    </div>
+  </div>
+
   <!-- ===== Zettel: Wochen-Upgrade ===== -->
   <div class="overlay" id="screen-upgrade" hidden>
     <div class="note note-big note-wide">
@@ -250,7 +264,9 @@
         <span>Kosten &amp; Investitionen</span><b id="bal-cost"></b>
         <span>Gewinn</span><b id="bal-profit"></b>
         <span>Kontostand</span><b id="bal-money"></b>
+        <span>Verpasste Fluggäste</span><b id="bal-lost"></b>
       </div>
+      <p class="bal-status" id="bal-status"></p>
       <svg class="bal-chart" id="bal-chart" viewBox="0 0 400 110" aria-label="Gewinn der letzten Wochen"></svg>
       <p class="lead bal-tip" id="bal-tip"></p>
       <div class="start-actions">
@@ -300,7 +316,7 @@
         <path d="M24 30 V48 M40 30 V48 M24 39 H40"/>
       </svg>
       <h1 class="splash-title">MetroRush</h1>
-      <p class="splash-sub">Hannover · Europa</p>
+      <p class="splash-sub">Hannover · Welt</p>
       <div class="splash-bar" aria-hidden="true"><span></span></div>
       <p class="splash-hint">Tippen zum Überspringen</p>
     </div>

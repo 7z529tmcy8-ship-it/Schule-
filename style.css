@@ -675,3 +675,15 @@ button { font: inherit; color: inherit; }
 .price-list { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 15px; }
 .price-list span { display: inline-flex; align-items: center; gap: 4px; }
 .price-list .ico { width: 20px; height: 20px; }
+
+/* ===== Airline: Firmenname, Status ===== */
+.money-col { display: flex; flex-direction: column; line-height: 1.05; }
+.money-col small { font: 12px var(--sans, -apple-system, Arial, sans-serif); color: var(--pencil-soft); max-width: 210px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.company-form { display: flex; gap: 10px; margin: 6px 0 4px; }
+.company-form input {
+  flex: 1; min-width: 0; min-height: 50px; padding: 0 14px;
+  font: 22px var(--hand); background: #fff; color: var(--pencil);
+  border: 2px solid var(--pencil); border-radius: var(--scribble);
+}
+.company-form input:focus { outline: 3px solid var(--marker); outline-offset: 1px; }
+.bal-status { margin: 8px 0 0; font-size: 15px; padding: 6px 10px; background: rgba(255, 232, 61, .35); border-radius: 8px; }

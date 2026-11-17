@@ -352,6 +352,9 @@ function newGame(world = SC?.key || 'hannover', focus = 'balanced') {
     world: SC.key,         // Spielwelt: 'hannover' | 'europa'
     districtsLeft: HANNOVER.districts.map(d => d.name),   // noch nicht erschlossene Stadtteile
     buildChoice: null,     // Vorschläge für die nächste Station: { opts: [...], until }
+    company: '',           // Name der Airline
+    statusIdx: 0,          // Status der Airline (siehe STATUS)
+    weekLost: 0,           // diese Woche verpasste Fluggäste (volle Flughäfen)
     sandbox: false,        // Sandbox: frei bauen, kein Game Over
     tool: 'lines',         // Sandbox-Werkzeug: lines | build | tier | shape | move | remove
     sbShape: 'circle', sbTier: 'auto', sbDemand: 1, sbTab: 'build', sbEvent: null, sbMin: false,
@@ -596,12 +599,12 @@ function spawnStation() {
     const near = G.districtsLeft
       .map(name => HANNOVER.districts.find(d => d.name === name))
       .filter(Boolean)
-      .sort((a, b) => Math.hypot(a.x, a.y) - Math.hypot(b.x, b.y))
+      .sort((a, b) => SC.spawnAnywhere ? Math.random() - 0.5 : Math.hypot(a.x, a.y) - Math.hypot(b.x, b.y))
       .slice(0, 4);
     if (!near.length) { G.districtsLeft = []; break; }
     const d = near[Math.floor(Math.random() * near.length)];
     G.districtsLeft = G.districtsLeft.filter(n => n !== d.name);
-    if (G.stations.some(s => dist(s.x, s.y, d.x, d.y) < 2.5)) continue;   // zu nah an einer anderen Station
+    if (G.stations.some(s => dist(s.x, s.y, d.x, d.y) < (SC.minGap || 2.5))) continue;   // zu nah an einer anderen Station
     notifyNewStation(addStation(pickShape(), d.x, d.y, d.name, tierOfDistrict(d.name)));
     rebuildRoutes();
     return;
@@ -636,10 +639,13 @@ const CHOICE_COUNT = 5;
 function offerBuildChoice(time) {
   const near = d => Math.min(...G.stations.map(s => dist(s.x, s.y, d.x, d.y)));
   const ds = G.districtsLeft.map(n => HANNOVER.districts.find(d => d.name === n)).filter(Boolean);
-  const tooClose = ds.filter(d => near(d) < 2.5).map(d => d.name);
+  const tooClose = ds.filter(d => near(d) < (SC.minGap || 2.5)).map(d => d.name);
   G.districtsLeft = G.districtsLeft.filter(n => !tooClose.includes(n));
   const opts = ds.filter(d => !tooClose.includes(d.name))
-    .sort((a, b) => near(a) - near(b))
+    // Airline: Vorschläge aus der ganzen Welt; Hannover: am Rand des Netzes
+    .map(d => [d, SC.spawnAnywhere ? Math.random() : near(d)])
+    .sort((a, b) => a[1] - b[1])
+    .map(([d]) => d)
     .slice(0, CHOICE_COUNT)
     .map(d => ({ name: d.name, x: d.x, y: d.y, tier: tierOfDistrict(d.name), shape: pickShape() }));
   if (opts.length < 2) return false;
@@ -707,7 +713,7 @@ function updateEvent() {
     const st = G.stations.filter(s => s.shape !== 'hub')
       .map(s => ({ s, d: dist(s.x, s.y, at[0], at[1]) }))
       .sort((a, b) => a.d - b.d)[0];
-    return st && st.d < 8 ? { ev, st: st.s } : null;
+    return st && st.d < (SC.eventReach || 8) ? { ev, st: st.s } : null;
   }).filter(Boolean);
   if (!options.length) { G.nextEventT = G.t + dayLen() * 2; return; }
   const { ev, st } = options[Math.floor(Math.random() * options.length)];
@@ -785,8 +791,15 @@ function update(dt) {
       const dest = pickDestination(st.shape);
       if (dest) st.queue.push(dest);
     }
-    if (G.sandbox) {                      // Sandbox: Überzählige gehen zu Fuß, kein Game Over
-      if (st.queue.length > capacityOf(st)) st.queue.length = capacityOf(st);
+    if (G.sandbox || SC.noCrowdOver) {    // Sandbox/Airline: Überzählige gehen verloren, kein Game Over
+      const cap = capacityOf(st);
+      if (st.queue.length > cap) {
+        const lost = st.queue.length - cap;
+        st.queue.length = cap;
+        if (!G.sandbox) { G.weekLost = (G.weekLost || 0) + lost; st.lostFlash = 1; }
+      }
+      // roter Bogen nur als Warnung: so voll ist der Flughafen
+      st.over = G.sandbox ? 0 : clamp((st.queue.length - cap * 0.5) / (cap * 0.5), 0, 1) * 0.95;
       st.flash = Math.max(0, st.flash - dt);
       continue;
     }
@@ -795,7 +808,7 @@ function update(dt) {
     st.flash = Math.max(0, st.flash - dt);
     if (st.over >= 1) { gameOver(st); return; }
   }
-  if (SC.business && !G.sandbox && payRunningCosts(dt)) return;
+  if (SC.business && !G.sandbox) { checkStatus(); if (payRunningCosts(dt)) return; }
   updateVehicles(dt);
   for (const f of G.floaters) f.t += dt;
   G.floaters = G.floaters.filter(f => f.t < 1.4);
@@ -805,6 +818,32 @@ function update(dt) {
    Fluggäste bringen Ticketumsatz, Flugzeuge kosten Leasing, Routen Gebühren.
    Kosten werden laufend abgebucht (pro Spielsekunde), damit der Kontostand
    lebendig mitläuft. Unter dem Kreditrahmen ist die Airline pleite.          */
+
+/**
+ * Status der Airline – steigt mit beförderten Personen.
+ * Jede Stufe: etwas mehr Nachfrage (bekannter Name) und ein Investoren-Bonus.
+ */
+const STATUS = [
+  { min: 0, name: 'Start-up', demand: 1, bonus: 0 },
+  { min: 10000, name: 'Regional-Airline', demand: 1.05, bonus: 50e3 },
+  { min: 50000, name: 'Nationale Airline', demand: 1.1, bonus: 150e3 },
+  { min: 150000, name: 'Internationale Airline', demand: 1.15, bonus: 400e3 },
+  { min: 400000, name: 'Globale Airline', demand: 1.2, bonus: 1e6 },
+  { min: 1000000, name: 'Weltmarke', demand: 1.3, bonus: 2.5e6 },
+];
+const statusIdx = () => { let k = 0; STATUS.forEach((st, i) => { if (paxOf(G.score) >= st.min) k = i; }); return k; };
+/** Neuen Status erreicht? → Bonus und Meldung */
+function checkStatus() {
+  const k = statusIdx();
+  if (k <= (G.statusIdx || 0)) return;
+  // übersprungene Stufen bringen ihren Bonus mit
+  const bonus = STATUS.slice((G.statusIdx || 0) + 1, k + 1).reduce((sum, q) => sum + q.bonus, 0);
+  G.statusIdx = k;
+  const st = STATUS[k];
+  G.money += bonus;
+  G.weekRev += bonus;
+  toast(`${G.company || 'Deine Airline'} ist jetzt ${st.name}! Investoren-Bonus: +${fmtMoney(bonus)}, ${Math.round((st.demand - 1) * 100)} % mehr Buchungen.`, 4800);
+}
 
 /** Preis-Regler (1 = Normalpreis) und die Nachfrage, die er auslöst:
     teurer → weniger Fluggäste (am meisten Umsatz bringt etwa 110 %). */
@@ -816,7 +855,7 @@ const fmtPax = n => paxOf(n).toLocaleString('de-DE');
 /** Nachfrage-Faktor: Spielwelt, Ticketpreis und Werbekampagne */
 function demandFactor() {
   if (!SC.business || G.sandbox) return SC.demand || 1;
-  return (SC.demand || 1) * priceDemand(priceMul()) * (G.t < G.marketingUntil ? 1.4 : 1);
+  return (SC.demand || 1) * priceDemand(priceMul()) * STATUS[G.statusIdx || 0].demand * (G.t < G.marketingUntil ? 1.4 : 1);
 }
 
 /** Wochenkosten bei aktuellem Netz: Leasing aller Flugzeuge + Routengebühren */
@@ -855,7 +894,8 @@ function fmtMoney(v) {
 
 /** Woche abschließen: Zahlen merken, Zähler zurücksetzen */
 function closeWeekBalance() {
-  G.lastWeek = { week: G.week - 1, rev: G.weekRev, cost: G.weekCost, profit: G.weekRev - G.weekCost };
+  G.lastWeek = { week: G.week - 1, rev: G.weekRev, cost: G.weekCost, profit: G.weekRev - G.weekCost, lost: G.weekLost || 0 };
+  G.weekLost = 0;
   G.history.push(G.lastWeek.profit);
   if (G.history.length > 8) G.history.shift();
   G.weekRev = 0;
@@ -2247,6 +2287,7 @@ function updateHud() {
   if (hudCache.biz !== biz) { hudCache.biz = biz; $('#money-chip').hidden = !biz; $('#btn-shop').hidden = !biz; }
   if (biz) {
     setText('#money', fmtMoney(G.money));
+    setText('#company-label', `${G.company || 'Airline'} · ${STATUS[G.statusIdx || 0].name}`);
     const chip = $('#money-chip');
     chip.classList.toggle('negative', G.money < 0);
     chip.classList.toggle('ad', G.t < G.marketingUntil);
@@ -2537,6 +2578,7 @@ function serialize() {
     weekRev: G.weekRev, weekCost: G.weekCost, history: G.history, lastWeek: G.lastWeek,
     districtsLeft: G.districtsLeft,
     sandbox: G.sandbox, sbDemand: G.sbDemand,
+    company: G.company, statusIdx: G.statusIdx, weekLost: G.weekLost, mapV: SC.mapV || 1,
     lines: G.lines.map(({ id, color, mode, label, stations, loop, riders }) => ({ id, color, mode, label, stations, loop: !!loop, riders: riders || 0 })),
     trains: G.trains.map(({ id, line, a, b, t, dwell, pax }) => ({ id, line: line.id, a, b, t, dwell, pax })),
   };
@@ -2569,6 +2611,7 @@ function isValidSave(d) {
   if (![d.t, d.week, d.score, d.nextId, d.stationTimer].every(num)) return false;
   if (!d.inv || !MODE_ORDER.every(m => num(d.inv[m]?.lines) && num(d.inv[m]?.free))) return false;
   if (!d.stations.some(st => st.shape === 'hub')) return false;
+  if (d.world === 'europa' && d.mapV !== 2) return false;      // alter Europa-Stand passt nicht zur Weltkarte
   const ids = new Set();
   for (const st of d.stations) {
     if (!num(st.id) || !num(st.x) || !num(st.y) || !shapes.includes(st.shape) || !Array.isArray(st.queue)) return false;
@@ -2640,6 +2683,9 @@ function restoreGame(d) {
     ? d.districtsLeft.filter(n => known.has(n) && !used.has(n))
     : HANNOVER.districts.map(x => x.name).filter(n => !used.has(n));
   G.sandbox = !!d.sandbox;
+  G.company = typeof d.company === 'string' ? d.company.slice(0, 24) : '';
+  G.statusIdx = clamp(Math.round(+d.statusIdx || 0), 0, STATUS.length - 1);
+  G.weekLost = +d.weekLost || 0;
   G.sbDemand = [0, 0.5, 1, 2].includes(d.sbDemand) ? d.sbDemand : 1;
   G.lines = [];
   for (const l of d.lines) {
@@ -2719,7 +2765,12 @@ function showBalance() {
   closeLineMenu();
   drag = null;
   const w = G.lastWeek || { week: G.week - 1, rev: 0, cost: 0, profit: 0 };
-  $('#bal-title').textContent = `Wochenbilanz – Woche ${w.week}`;
+  $('#bal-title').textContent = `${G.company || 'Wochenbilanz'} – Woche ${w.week}`;
+  $('#bal-lost').textContent = w.lost ? `${fmtPax(w.lost)} Personen` : 'keine';
+  const k = G.statusIdx || 0, next = STATUS[k + 1];
+  $('#bal-status').textContent = next
+    ? `Status: ${STATUS[k].name} · nächste Stufe „${next.name}“ ab ${next.min.toLocaleString('de-DE')} Fluggästen (jetzt ${fmtPax(G.score)})`
+    : `Status: ${STATUS[k].name} – höher geht es nicht!`;
   $('#bal-rev').textContent = fmtMoney(w.rev);
   $('#bal-cost').textContent = fmtMoney(-w.cost);
   const p = $('#bal-profit');
@@ -2750,6 +2801,7 @@ function showBalance() {
   $('#bal-tip').textContent =
     G.money < SC.business.start * 0.2 ? `Achtung: Das Konto wird knapp. Unter 0 € ist die Airline pleite – teure Flugzeuge abgeben oder den Ticketpreis anpassen.`
     : w.profit < 0 ? 'Verlust diese Woche: Prüfe, ob teure Großraumjets und Jumbos genug Fluggäste haben.'
+    : w.lost > 6 ? `${fmtPax(w.lost)} Fluggäste sind abgesprungen, weil Flughäfen voll waren – das ist verlorener Umsatz. Mehr Flugzeuge oder ein großes Terminal helfen.`
     : crowded.length ? `${crowded[0].name} wird voll – mehr Flugzeuge oder ein Terminal-Ausbau helfen.`
     : open.length ? `${open.length === 1 ? '1 Flughafen wartet' : `${open.length} Flughäfen warten`} noch auf eine Route – im Shop gibt es Lizenzen.`
     : 'Läuft! Mit einer Werbekampagne bekommst du noch mehr Fluggäste.';
@@ -2896,7 +2948,7 @@ function gameOver(st, reason = 'crowded') {
   const isNew = !G.sandbox && G.score > rec;
   if (isNew) best.set(G.score);
   $('#over-reason').textContent = reason === 'bankrupt'
-    ? 'Deine Airline ist pleite – das Konto ist ins Minus gerutscht.'
+    ? `${G.company || 'Deine Airline'} ist pleite – das Konto ist ins Minus gerutscht.`
     : st.shape === 'hub'
     ? `${SC.hubTitle} war zu lange überfüllt.`
     : st.name
@@ -2967,12 +3019,44 @@ function showFocus(world) {
       clearSave();
       newGame(world, f.key);
       cam.ready = false;
-      G.state = 'playing';
       G.speed = 1;
+      if (SC.business) { askCompany(); return; }
+      G.state = 'playing';
     });
     box.appendChild(b);
   }
   $('#screen-focus').hidden = false;
+}
+
+/* ---------- Firmenname (Airline) ---------- */
+const COMPANY_IDEAS = ['Heft Air', 'Kranich Express', 'SkyRush', 'Blauer Bleistift Airways', 'Karopapier Air', 'Wolkenflitzer',
+  'Nordstern Airlines', 'Federleicht Air', 'Globetrotter Air', 'Papierflieger AG', 'Rotstift Airlines', 'Horizon Heft'];
+
+function askCompany() {
+  G.state = 'start';
+  const scr = $('#screen-company'), input = $('#company-input'), ideas = $('#company-ideas');
+  const picks = [...COMPANY_IDEAS].sort(() => Math.random() - 0.5).slice(0, 4);
+  input.value = '';
+  input.placeholder = picks[0];
+  ideas.innerHTML = '';
+  for (const name of picks) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'sb-chip wide';
+    b.textContent = name;
+    b.addEventListener('click', () => { input.value = name; input.focus(); });
+    ideas.appendChild(b);
+  }
+  scr.hidden = false;
+  $('#company-form').onsubmit = e => {
+    e.preventDefault();
+    G.company = (input.value.trim() || picks[0]).slice(0, 24);
+    input.blur();
+    scr.hidden = true;
+    G.state = 'playing';
+    hudCache['#company-label'] = null;
+    toast(`${G.company} ist gegründet – willkommen in Frankfurt! Status: ${STATUS[0].name}.`, 3600);
+  };
 }
 
 $('#btn-start').addEventListener('click', () => {
@@ -3327,14 +3411,15 @@ function runSplash() {
 /* ---------- Spielwelt Europa (Fluglinien) ----------
    Grobe Skizze aus dem Gedächtnis – nicht kartengenau! Koordinaten als
    [Längengrad, Breitengrad], umgerechnet um Frankfurt herum: 1 U ≈ 60 km.  */
-const EU_KM_PER_U = 60;
-const eu = ([lon, lat]) => [((lon - 8.68) * 71.3) / EU_KM_PER_U, (-(lat - 50.04) * 111) / EU_KM_PER_U];
+const EU_KM_PER_U = 150;
+const eu = ([lon, lat]) => [((lon - 8.68) * 80) / EU_KM_PER_U, (-(lat - 50.04) * 111) / EU_KM_PER_U];
 const euPoly = pts => pts.map(eu);
 
 const EUROPA_MAP = {
-  // Landflächen (das Meer ist alles andere); innere Meere werden wieder zu Wasser
+  // Landflächen (das Meer ist alles andere); grob aus dem Gedächtnis skizziert, nicht kartengenau
   land: [
-    euPoly([[60, 72], [45, 72], [33, 69.5], [28, 71.0], [23.5, 70.8], [18.9, 69.7], [15.0, 68.5], [12.5, 66.0], [10.4, 63.4], [5.3, 62.5],
+    // Eurasien: Europa, Nahost, Süd- und Ostasien, Sibirien
+    euPoly([[33, 69.5], [28, 71.0], [23.5, 70.8], [18.9, 69.7], [15.0, 68.5], [12.5, 66.0], [10.4, 63.4], [5.3, 62.5],
       [5.0, 60.4], [5.6, 58.9], [7.0, 58.0], [9.5, 59.0], [10.7, 59.9], [11.0, 59.0], [11.9, 57.7], [12.9, 55.6], [14.3, 55.6],
       [16.4, 56.6], [16.5, 57.8], [18.1, 59.3], [17.3, 60.7], [17.3, 62.5], [21.0, 64.0], [22.1, 65.6], [25.4, 65.0], [24.5, 64.0],
       [21.5, 61.5], [21.5, 60.5], [24.9, 60.2], [28.0, 60.5], [30.3, 59.9], [28.0, 59.5], [24.0, 59.4], [23.5, 58.3], [24.1, 57.0],
@@ -3348,7 +3433,76 @@ const EUROPA_MAP = {
       [16.6, 38.9], [17.1, 39.4], [16.5, 40.2], [18.5, 40.1], [16.9, 41.1], [15.6, 41.9], [14.0, 42.6], [13.6, 43.6], [12.3, 44.5],
       [12.3, 45.4], [13.7, 45.6], [14.5, 45.2], [15.3, 44.2], [16.4, 43.5], [18.1, 42.6], [19.4, 41.9], [19.4, 40.5], [20.2, 39.6],
       [21.2, 38.3], [21.7, 36.8], [22.9, 36.4], [23.7, 37.9], [24.0, 38.5], [22.9, 40.6], [24.4, 40.9], [26.0, 40.8], [26.5, 40.3],
-      [26.2, 39.5], [27.0, 38.4], [27.3, 37.0], [28.5, 36.6], [30.7, 36.9], [33.0, 36.1], [36.0, 36.5], [45, 36], [60, 36]]),
+      [26.2, 39.5], [27.0, 38.4], [27.3, 37.0], [28.5, 36.6], [30.7, 36.9], [33.0, 36.1], [36.0, 36.5],
+      [35.9, 35.4], [35.0, 33.0], [34.3, 31.3], [34.9, 29.5], [36.5, 27.5], [39, 22], [42.6, 16.5], [43.4, 12.7], [45, 12.8],
+      [49, 14], [52.2, 15.7], [55, 17.5], [57.8, 19], [59.8, 22.5], [56.3, 26.3], [54.2, 24.2], [51.6, 25.0], [50.2, 26.6], [48, 30],
+      [50, 30.2], [51.5, 27.8], [54.5, 26.6], [57.3, 25.8], [61.6, 25.2], [66.6, 25.4], [68.5, 23.5], [70, 21], [72.8, 19], [73.5, 16],
+      [75, 12], [76.5, 8.5], [77.5, 8], [78.2, 8.9], [79.9, 10.3], [80.2, 13], [80.3, 15.5], [82.3, 17], [86, 20], [87, 21.5], [90, 22],
+      [92, 21.5], [92.3, 20.7], [94, 18], [94.5, 16], [97.6, 16.5], [98.5, 13], [99, 10], [100.5, 7.5], [101.3, 2.8], [103.5, 1.3],
+      [104.2, 1.4], [103.4, 4.5], [102.3, 6.2], [100.6, 13.3], [101.5, 12.7], [103, 11], [105, 8.6], [106.6, 10.4], [109, 11.8],
+      [109.3, 13.5], [108.8, 15.3], [106.5, 18], [105.7, 19], [107, 21], [108.5, 21.7], [110.5, 20.4], [111.5, 21.5], [114, 22.3],
+      [117, 23.5], [119.5, 25.5], [120.7, 28], [122, 30], [121, 32], [120.2, 34.4], [119.2, 35], [120.3, 36.1], [122.5, 37], [119, 37.2],
+      [118, 38.5], [117.7, 39], [119.5, 39.9], [121, 40.8], [122.2, 40.5], [121.2, 38.8], [124.2, 39.9], [125.2, 37.8], [126.5, 37],
+      [126.3, 34.5], [129.4, 35.2], [129.4, 36.8], [128.4, 38.5], [127.5, 39.8], [129.7, 41], [131, 42.6], [133, 42.8], [135.5, 43.9],
+      [138.5, 47], [140.5, 50], [140.7, 53.5], [137, 54], [135.2, 54.7], [139, 56], [143, 59.3], [151, 59], [155, 59.3], [160, 61.5],
+      [163.5, 62.3], [163, 60], [160.5, 57], [158, 51.5], [156.6, 51], [155.6, 55.4], [156.5, 57.6], [163, 59.8], [166, 60.4],
+      [172.5, 61], [178, 62.5], [180, 65], [180, 68.8], [175, 69.8], [170, 70], [160, 69.6], [150, 71], [140, 72.5], [130, 71],
+      [120, 73], [113, 73.6], [105, 77.7], [100, 76], [90, 75.5], [80, 73.5], [72, 72.8], [68.5, 72.8], [66, 69.5], [60, 69.8],
+      [55, 68.4], [45, 68.4], [44, 66.5], [40, 66.5], [41, 67.7], [38, 69]]),
+    // Afrika
+    euPoly([[-17.1, 15], [-17.1, 20.8], [-16.2, 23.9], [-14.5, 26.1], [-12.9, 27.9], [-11.0, 28.7], [-9.8, 29.9], [-9.6, 30.4],
+      [-9.8, 31.5], [-8.5, 33.3], [-6.8, 34.0], [-5.9, 35.8], [-2.0, 35.1], [3.0, 36.7], [10.2, 37.2], [11.1, 36.9],
+      [10.0, 34.0], [15.0, 32.4], [20.0, 32.0], [25.0, 31.7], [29.9, 31.2], [32.3, 31.2], [34.3, 31.3], [34.9, 29.5], [32.6, 29.9],
+      [33.5, 27.5], [35.5, 24], [37.3, 21], [38.5, 18], [39.7, 15.2], [41.5, 13.5], [43.3, 11.6], [44.5, 10.4], [51.2, 11.8], [51, 10.4],
+      [49, 6], [47.5, 4.5], [44, 1.5], [41.5, -1.7], [39.2, -4.7], [39.3, -8], [40.5, -10.5], [40.6, -15], [37, -17.5], [35, -20],
+      [35.5, -23.8], [33, -25.8], [32.8, -28.6], [31, -29.8], [28, -33], [25.5, -34], [22.5, -33.9], [20, -34.8], [18.4, -34.2],
+      [18.2, -32], [16.5, -28.6], [15.2, -27], [14.5, -22.5], [11.8, -17.2], [12.3, -13.5], [13.5, -11], [12.2, -6], [11.8, -3],
+      [9.5, -0.5], [9.5, 1.5], [9.7, 3.8], [8.5, 4.5], [6, 4.3], [4, 6.4], [1.3, 6.1], [-2, 4.8], [-4, 5.2], [-7.5, 4.4], [-9.3, 5.5],
+      [-11.5, 6.9], [-13.3, 8.6], [-15, 10.9], [-16.7, 12.4], [-17.1, 14.7]]),
+    euPoly([[49.3, -12], [50.5, -15.5], [49.4, -17.5], [47, -25], [45, -25.5], [43.5, -22], [44, -17], [46.5, -15.7]]),   // Madagaskar
+    // Nordamerika
+    euPoly([[-168, 66], [-162, 70], [-140, 70], [-125, 70], [-110, 73], [-95, 72], [-85, 70], [-80, 73], [-65, 62], [-60, 55], [-55, 52],
+      [-66, 45], [-70, 42], [-74, 40], [-76, 35], [-81, 31], [-80, 25.5], [-82, 27], [-84, 30], [-90, 29.5], [-97, 27], [-97, 22],
+      [-94, 18.5], [-90, 21], [-87, 21.5], [-88, 16], [-84, 15], [-83, 10], [-79.5, 9], [-77.5, 8], [-80, 7.5], [-85, 10], [-88, 13],
+      [-92, 14.5], [-96, 15.7], [-105, 19.5], [-110, 23.5], [-112.5, 29], [-114.8, 31.7], [-117, 32.5], [-120.5, 34.5], [-122.5, 37.5],
+      [-124, 40], [-124.5, 46], [-123, 49], [-128, 51], [-133, 55], [-140, 59.5], [-150, 61], [-153, 58], [-158, 57], [-164, 54.5],
+      [-160, 59], [-165, 61], [-166, 64]]),
+    euPoly([[-73, 78], [-60, 82], [-30, 83], [-20, 80], [-20, 72], [-30, 68], [-42, 60], [-50, 64], [-55, 70], [-60, 76]]),   // Grönland
+    euPoly([[-59.4, 47.6], [-55.5, 51.6], [-53, 47.6], [-56, 47.2]]),   // Neufundland
+    // Karibik und Hawaii
+    euPoly([[-85, 21.9], [-82, 23.1], [-77, 22.2], [-74.1, 20.2], [-77.7, 19.9], [-80.5, 21.5]]),
+    euPoly([[-74.4, 18.4], [-72.7, 19.9], [-70, 19.7], [-68.3, 18.5], [-71, 18.1], [-73.4, 18]]),
+    euPoly([[-78.3, 18.4], [-76.2, 18], [-77, 17.7]]),
+    euPoly([[-67.2, 18.5], [-65.6, 18.3], [-66.1, 17.9]]),
+    euPoly([[-155.9, 20.2], [-154.8, 19.5], [-155.6, 18.9], [-156, 19.7]]),
+    euPoly([[-158.3, 21.6], [-157.6, 21.3], [-158.1, 21.25]]),
+    // Südamerika
+    euPoly([[-77.5, 8], [-72, 12], [-63, 10.5], [-60, 8.5], [-52, 5], [-50, 0], [-44, -2.5], [-35, -5], [-35, -9], [-39, -13], [-41, -22],
+      [-48, -26], [-53, -34], [-58, -38], [-62, -39], [-65, -42], [-68, -50], [-69, -55], [-73, -52], [-75, -46], [-73.5, -40],
+      [-71.5, -30], [-70.3, -18], [-75.5, -15], [-81, -6], [-80, -1], [-79, 1.5], [-77.5, 4]]),
+    // Australien und Ozeanien
+    euPoly([[113.5, -22], [114, -26.5], [115, -34], [118, -35], [123.5, -33.9], [126, -32.3], [131, -31.5], [135, -34.7], [138, -35.6],
+      [139.5, -37.8], [141.5, -38.4], [146.3, -39], [150, -37.5], [151, -34], [153.6, -28.5], [153, -25], [149.5, -21], [146.5, -19],
+      [145.3, -15], [143.5, -14], [142.5, -10.8], [141.5, -13], [141.6, -17], [139.5, -17.5], [136, -15.5], [136.8, -12.2], [132.5, -11.5],
+      [130, -13], [128, -15], [125, -14.5], [122.2, -17], [121, -19.5], [117, -20.6]]),
+    euPoly([[144.6, -40.7], [148.3, -40.9], [148, -43.2], [146, -43.6]]),
+    euPoly([[172.7, -34.4], [175, -36.8], [178.5, -37.7], [177, -39.3], [176, -41.3], [174.7, -41.3], [175, -39.5], [173.8, -39.2], [174.5, -37]]),
+    euPoly([[172.7, -40.5], [174.3, -41.6], [173, -43.8], [171.2, -44.4], [169, -46.6], [166.5, -46], [168.3, -44], [171.5, -41.8]]),
+    euPoly([[131, -1.4], [134, -0.9], [138, -1.6], [141, -2.6], [145.7, -5.3], [147.6, -6.1], [147.9, -10.1], [146, -8.5], [143.5, -9],
+      [141, -9.1], [138, -8.3], [137.6, -5], [135, -4.3], [132, -2.8]]),
+    // Ostasien und Südostasien: Inseln
+    euPoly([[130, 31.3], [131.4, 31.4], [132, 33.8], [135.3, 33.6], [136.9, 34.3], [138.8, 34.6], [140.9, 35.7], [140.6, 37], [141.1, 38.3],
+      [142, 39.6], [141.4, 41.4], [139.9, 40.6], [140, 39], [139.4, 38], [138.5, 37.4], [136.7, 37], [136, 35.7], [133, 35.5],
+      [131.1, 34.3], [129.8, 33.5]]),
+    euPoly([[140, 41.6], [141.4, 41.6], [143.3, 42], [145.6, 43.3], [144.9, 44], [141.7, 45.4], [141.4, 43.4], [140.4, 43.2]]),
+    euPoly([[120.1, 23], [121, 25.2], [122, 25], [121, 22], [120.7, 22]]),
+    euPoly([[120, 16.5], [120.6, 18.5], [122.3, 18.4], [122, 16], [124, 13], [121.7, 12.6], [120.6, 14.3]]),
+    euPoly([[122, 7], [125.4, 9.8], [126.6, 7.2], [125.5, 5.6], [123.6, 7.8]]),
+    euPoly([[95.3, 5.6], [98, 4], [103.8, -1], [106, -3], [106, -5.9], [104.5, -5.9], [101, -2.5], [98.7, 1.6]]),
+    euPoly([[105.2, -6.8], [106.1, -5.95], [110.4, -6.9], [114.5, -7.7], [114.4, -8.7], [110, -8.2], [106, -7.4]]),
+    euPoly([[109, 1.7], [110, -1], [110.5, -3], [114.5, -4], [116.5, -2], [118.8, 1], [117.7, 4.2], [119.2, 5.3], [116.7, 7], [114.8, 4.8],
+      [113, 3.1], [111, 1.7]]),
+    euPoly([[79.8, 7], [80.1, 9.8], [81.9, 7.3], [81.4, 6.1], [80.2, 6]]),   // Sri Lanka
     // Großbritannien, Irland, Island
     euPoly([[-5.7, 50.1], [-3.0, 50.6], [-1.0, 50.8], [1.4, 51.1], [1.7, 52.6], [0.3, 53.5], [-0.1, 54.5], [-1.6, 55.6], [-2.0, 57.1],
       [-3.0, 58.6], [-5.0, 58.6], [-6.2, 56.6], [-5.6, 55.4], [-4.9, 54.8], [-3.2, 54.5], [-3.1, 53.4], [-4.6, 53.3], [-4.2, 52.2],
@@ -3363,90 +3517,123 @@ const EUROPA_MAP = {
     euPoly([[32.3, 35.0], [34.6, 35.6], [33.9, 34.9], [32.6, 34.7]]),
     euPoly([[2.4, 39.6], [3.4, 39.8], [3.2, 39.3]]),
     euPoly([[10.9, 55.7], [12.6, 56.0], [12.6, 55.3], [11.8, 55.0], [11.0, 55.2]]),
-    // Nordafrika und Levante (unten am Rand)
-    euPoly([[-17.1, 15], [-17.1, 20.8], [-16.2, 23.9], [-14.5, 26.1], [-12.9, 27.9], [-11.0, 28.7], [-9.8, 29.9], [-9.6, 30.4],
-      [-9.8, 31.5], [-8.5, 33.3], [-6.8, 34.0], [-5.9, 35.8], [-2.0, 35.1], [3.0, 36.7], [10.2, 37.2], [11.1, 36.9],
-      [10.0, 34.0], [15.0, 32.4], [20.0, 32.0], [25.0, 31.7], [29.9, 31.2], [32.3, 31.2], [34.9, 32.8], [35.6, 34.6], [45, 34.6],
-      [48.0, 30.0], [50.2, 26.6], [51.6, 25.0], [54.2, 24.2], [56.3, 26.3], [57.2, 23.9], [60, 22.5], [60, 15]]),
     // Kanarische Inseln
     euPoly([[-17.0, 28.5], [-15.6, 28.2], [-13.5, 29.3], [-13.8, 28.0], [-15.4, 27.7], [-16.9, 27.9]]),
   ],
   innerSeas: [
     { name: 'Schwarzes Meer', pts: euPoly([[29.1, 41.2], [28.0, 41.9], [27.9, 43.2], [28.7, 44.2], [29.7, 45.2], [30.7, 46.5], [32.5, 46.1],
       [33.5, 44.5], [36.6, 45.3], [37.8, 44.7], [39.7, 43.6], [41.6, 41.6], [37.5, 41.0], [34.0, 42.0], [31.5, 41.3]]) },
+    { name: 'Kaspisches Meer', pts: euPoly([[47, 44.6], [49, 46.5], [51.5, 47], [53.2, 45], [51.3, 43], [53, 41.5], [54, 40], [53.8, 37.4],
+      [51, 36.8], [49, 37.6], [49.4, 40.2], [47.7, 42.6]]) },
   ],
   seaLabels: [
-    { name: 'Nordsee', at: eu([3, 56]) }, { name: 'Ostsee', at: eu([19, 57.6]) }, { name: 'Mittelmeer', at: eu([5.5, 39.5]) },
-    { name: 'Mittelmeer', at: eu([19, 35.3]) }, { name: 'Atlantik', at: eu([-14, 47]) }, { name: 'Schwarzes Meer', at: eu([34, 43.5]) },
-    { name: 'Nordatlantik', at: eu([-12, 61]) }, { name: 'Persischer Golf', at: eu([51.5, 27.6]) },
+    { name: 'Nordatlantik', at: eu([-38, 45]) }, { name: 'Südatlantik', at: eu([-20, -25]) }, { name: 'Mittelmeer', at: eu([18, 35]) },
+    { name: 'Pazifik', at: eu([-140, 20]) }, { name: 'Pazifik', at: eu([170, 10]) }, { name: 'Indischer Ozean', at: eu([80, -20]) },
+    { name: 'Karibik', at: eu([-75, 15]) }, { name: 'Nordsee', at: eu([3, 56]) }, { name: 'Arabisches Meer', at: eu([63, 15]) },
+    { name: 'Tasmansee', at: eu([160, -38]) }, { name: 'Südchinesisches Meer', at: eu([114, 13]) },
   ],
   water: [], lakes: [], green: [], pois: [],
-  // Länder: groß und blass (wie das Umland in Hannover)
+  // Länder und Kontinente: groß und blass
   towns: [
-    ['Deutschland', 10.5, 51.3], ['Frankreich', 2.0, 46.8], ['Spanien', -4.5, 39.2], ['Italien', 12.8, 43.2], ['Polen', 19.5, 52.2],
-    ['Großbritannien', -2.3, 52.6], ['Skandinavien', 15, 63.5], ['Türkei', 33, 39], ['Griechenland', 22, 39.6], ['Rumänien', 25, 46],
-    ['Ukraine', 31, 49], ['Russland', 38, 58], ['Marokko', -6.5, 31.6], ['Algerien', 3, 31], ['Tunesien', 9.4, 33.8],
-    ['Ägypten', 29.5, 27], ['Arabien', 46, 26.5], ['Iran', 54, 32],
+    ['Europa', 14, 50], ['Russland', 70, 62], ['China', 104, 34], ['Indien', 79, 22], ['Afrika', 20, 5], ['Arabien', 46, 22],
+    ['USA', -100, 39], ['Kanada', -105, 58], ['Mexiko', -102, 23.5], ['Brasilien', -52, -10], ['Argentinien', -66, -36],
+    ['Australien', 134, -25], ['Japan', 138, 38.5], ['Indonesien', 113, 0], ['Sahara', 8, 24], ['Südafrika', 24, -30],
   ].map(([name, lon, lat]) => ({ name, at: eu([lon, lat]) })),
-  // Flughäfen: die ersten drei sind die Startstationen
+  // Flughäfen: die ersten drei sind die Startstationen. Regionale Grüppchen (Karibik, Hawaii,
+  // Japan, Neuseeland, Südostasien …) eignen sich für kurze Propeller- und Regionalrouten.
   districts: [
-    ['Amsterdam', 4.76, 52.31], ['München', 11.79, 48.35], ['Berlin', 13.5, 52.37],
-    ['Düsseldorf', 6.77, 51.29], ['Hannover', 9.68, 52.46], ['Zürich', 8.55, 47.46], ['Brüssel', 4.48, 50.9], ['Prag', 14.26, 50.1],
-    ['Paris', 2.55, 49.01], ['Hamburg', 9.99, 53.63], ['Mailand', 8.72, 45.63], ['Wien', 16.57, 48.11], ['Lyon', 5.08, 45.73],
-    ['London', -0.45, 51.47], ['Kopenhagen', 12.65, 55.62], ['Venedig', 12.35, 45.5], ['Warschau', 20.97, 52.17], ['Krakau', 19.8, 50.08],
-    ['Budapest', 19.26, 47.43], ['Manchester', -2.27, 53.35], ['Marseille', 5.21, 43.44], ['Nizza', 7.21, 43.66], ['Danzig', 18.47, 54.38],
-    ['Toulouse', 1.37, 43.63], ['Rom', 12.25, 41.8], ['Oslo', 11.1, 60.19], ['Barcelona', 2.08, 41.3], ['Dublin', -6.27, 53.42],
-    ['Edinburgh', -3.37, 55.95], ['Split', 16.3, 43.54], ['Stockholm', 17.92, 59.65], ['Belgrad', 20.31, 44.82], ['Bilbao', -2.91, 43.3],
-    ['Neapel', 14.29, 40.88], ['Vilnius', 25.29, 54.63], ['Riga', 23.97, 56.92], ['Palma', 2.74, 39.55], ['Cork', -8.49, 51.84],
-    ['Madrid', -3.57, 40.49], ['Bergen', 5.22, 60.29], ['Valencia', -0.48, 39.49], ['Bukarest', 26.08, 44.57], ['Sofia', 23.41, 42.7],
-    ['Helsinki', 24.96, 60.32], ['Thessaloniki', 22.97, 40.52], ['Catania', 15.07, 37.47], ['Malta', 14.48, 35.86], ['Porto', -8.68, 41.24],
-    ['Sevilla', -5.9, 37.42], ['Lissabon', -9.13, 38.77], ['Málaga', -4.5, 36.67], ['Athen', 23.94, 37.94], ['Istanbul', 28.75, 41.26],
-    ['Heraklion', 25.18, 35.34], ['Antalya', 30.8, 36.9], ['Moskau', 37.4, 55.97], ['Larnaka', 33.62, 34.87], ['Tromsø', 18.92, 69.68],
-    ['Reykjavík', -22.6, 63.98],
-    // Nordafrika, Kanaren und Nahost
-    ['Tanger', -5.9, 35.73], ['Fès', -4.98, 33.93], ['Casablanca', -7.59, 33.37], ['Marrakesch', -8.03, 31.6], ['Agadir', -9.41, 30.33],
-    ['Gran Canaria', -15.39, 27.93], ['Teneriffa', -16.57, 28.04], ['Algier', 3.21, 36.69], ['Tunis', 10.22, 36.85],
-    ['Tel Aviv', 34.89, 32.0], ['Kairo', 31.41, 30.11], ['Hurghada', 33.8, 27.18], ['Dubai', 55.36, 25.25],
-  ].map(([name, lon, lat]) => { const [x, y] = eu([lon, lat]); return { name, x: Math.round(x), y: Math.round(y) }; }),
+    ['London', -0.45, 51.47], ['Rom', 12.25, 41.8], ['New York', -73.78, 40.64],
+    // Europa
+    ['Paris', 2.55, 49.01], ['Amsterdam', 4.76, 52.31], ['München', 11.79, 48.35], ['Berlin', 13.5, 52.37], ['Zürich', 8.55, 47.46],
+    ['Wien', 16.57, 48.11], ['Kopenhagen', 12.65, 55.62], ['Madrid', -3.57, 40.49], ['Barcelona', 2.08, 41.3], ['Lissabon', -9.13, 38.77],
+    ['Mailand', 8.72, 45.63], ['Prag', 14.26, 50.1], ['Warschau', 20.97, 52.17], ['Budapest', 19.26, 47.43], ['Athen', 23.94, 37.94],
+    ['Istanbul', 28.75, 41.26], ['Stockholm', 17.92, 59.65], ['Oslo', 11.1, 60.19], ['Helsinki', 24.96, 60.32], ['Dublin', -6.27, 53.42],
+    ['Edinburgh', -3.37, 55.95], ['Moskau', 37.4, 55.97], ['Palma', 2.74, 39.55], ['Nizza', 7.21, 43.66], ['Málaga', -4.5, 36.67],
+    ['Heraklion', 25.18, 35.34], ['Malta', 14.48, 35.86], ['Larnaka', 33.62, 34.87], ['Bergen', 5.22, 60.29], ['Tromsø', 18.92, 69.68],
+    ['Reykjavík', -22.6, 63.98], ['Bukarest', 26.08, 44.57], ['Kiew', 30.89, 50.34], ['Antalya', 30.8, 36.9],
+    // Afrika und Nahost
+    ['Kairo', 31.41, 30.11], ['Casablanca', -7.59, 33.37], ['Marrakesch', -8.03, 31.6], ['Agadir', -9.41, 30.33],
+    ['Gran Canaria', -15.39, 27.93], ['Algier', 3.21, 36.69], ['Tunis', 10.22, 36.85], ['Hurghada', 33.8, 27.18], ['Tel Aviv', 34.89, 32.0],
+    ['Dubai', 55.36, 25.25], ['Doha', 51.61, 25.27], ['Riad', 46.7, 24.96], ['Dschidda', 39.16, 21.68], ['Maskat', 58.28, 23.59],
+    ['Teheran', 51.15, 35.42], ['Lagos', 3.32, 6.58], ['Accra', -0.17, 5.6], ['Dakar', -17.49, 14.74], ['Addis Abeba', 38.8, 8.98],
+    ['Nairobi', 36.93, -1.32], ['Sansibar', 39.22, -6.22], ['Kinshasa', 15.44, -4.39], ['Johannesburg', 28.24, -26.13],
+    ['Kapstadt', 18.6, -33.97], ['Durban', 31.12, -29.61], ['Windhuk', 17.47, -22.48], ['Mauritius', 57.68, -20.43],
+    ['Antananarivo', 47.48, -18.8], ['Seychellen', 55.52, -4.67], ['Luanda', 13.23, -8.86],
+    // Asien
+    ['Delhi', 77.1, 28.56], ['Mumbai', 72.87, 19.09], ['Bangalore', 77.71, 13.2], ['Kolkata', 88.45, 22.65], ['Colombo', 79.88, 7.18],
+    ['Malé', 73.53, 4.19], ['Kathmandu', 85.36, 27.7], ['Karachi', 67.16, 24.91], ['Bangkok', 100.75, 13.69], ['Phuket', 98.32, 8.11],
+    ['Hanoi', 105.8, 21.22], ['Ho-Chi-Minh-Stadt', 106.66, 10.82], ['Singapur', 103.99, 1.36], ['Kuala Lumpur', 101.71, 2.75],
+    ['Jakarta', 106.66, -6.13], ['Bali', 115.17, -8.75], ['Manila', 121.02, 14.51], ['Cebu', 123.98, 10.31], ['Hongkong', 113.92, 22.31],
+    ['Taipeh', 121.23, 25.08], ['Shanghai', 121.81, 31.14], ['Peking', 116.6, 40.08], ['Seoul', 126.45, 37.46], ['Busan', 128.94, 35.18],
+    ['Tokio', 139.78, 35.55], ['Osaka', 135.24, 34.43], ['Sapporo', 141.69, 42.78], ['Okinawa', 127.65, 26.2], ['Chengdu', 103.95, 30.58],
+    ['Ulaanbaatar', 106.77, 47.84], ['Almaty', 77.04, 43.35], ['Taschkent', 69.28, 41.26], ['Nowosibirsk', 82.65, 55.01],
+    ['Wladiwostok', 132.15, 43.4], ['Jekaterinburg', 60.8, 56.74],
+    // Ozeanien
+    ['Sydney', 151.18, -33.94], ['Melbourne', 144.84, -37.67], ['Brisbane', 153.12, -27.38], ['Perth', 115.97, -31.94],
+    ['Adelaide', 138.53, -34.95], ['Cairns', 145.75, -16.88], ['Darwin', 130.88, -12.41], ['Hobart', 147.51, -42.84],
+    ['Auckland', 174.79, -37.01], ['Wellington', 174.8, -41.33], ['Christchurch', 172.53, -43.49], ['Queenstown', 168.74, -45.02],
+    ['Fidschi', 177.44, -17.76], ['Tahiti', -149.61, -17.55], ['Guam', 144.8, 13.48],
+    // Nord- und Mittelamerika, Karibik, Hawaii
+    ['Boston', -71.01, 42.37], ['Washington', -77.46, 38.95], ['Chicago', -87.9, 41.98], ['Atlanta', -84.43, 33.64], ['Miami', -80.29, 25.8],
+    ['Toronto', -79.63, 43.68], ['Montreal', -73.74, 45.47], ['Dallas', -97.04, 32.9], ['Houston', -95.34, 29.98], ['Denver', -104.67, 39.86],
+    ['Los Angeles', -118.41, 33.94], ['San Francisco', -122.38, 37.62], ['Seattle', -122.31, 47.45], ['Vancouver', -123.18, 49.19],
+    ['Las Vegas', -115.15, 36.08], ['Calgary', -114.01, 51.13], ['Anchorage', -149.99, 61.17], ['Mexiko-Stadt', -99.07, 19.44],
+    ['Cancún', -86.88, 21.04], ['Honolulu', -157.92, 21.32], ['Hilo', -155.05, 19.72], ['Havanna', -82.41, 22.99],
+    ['Kingston', -76.79, 17.94], ['Santo Domingo', -69.67, 18.43], ['San Juan', -66.0, 18.44], ['Nassau', -77.47, 25.04],
+    ['Panama-Stadt', -79.38, 9.07],
+    // Südamerika
+    ['Bogotá', -74.15, 4.7], ['Caracas', -66.99, 10.6], ['Quito', -78.36, -0.13], ['Lima', -77.11, -12.02], ['São Paulo', -46.47, -23.43],
+    ['Rio de Janeiro', -43.25, -22.81], ['Brasília', -47.92, -15.87], ['Salvador', -38.33, -12.91], ['Recife', -34.92, -8.13],
+    ['Manaus', -60.05, -3.04], ['Buenos Aires', -58.54, -34.82], ['Santiago', -70.79, -33.39], ['Ushuaia', -68.3, -54.84],
+  ].map(([name, lon, lat]) => { const [x, y] = eu([lon, lat]); return { name, x: Math.round(x * 2) / 2, y: Math.round(y * 2) / 2 }; }),
 };
 
 const EUROPA_TIERS = {
-  rail: ['London', 'Paris', 'Amsterdam', 'Madrid', 'Rom', 'Istanbul', 'München', 'Barcelona', 'Moskau', 'Dubai', 'Kairo'],
-  metro: ['Berlin', 'Zürich', 'Wien', 'Kopenhagen', 'Stockholm', 'Oslo', 'Helsinki', 'Dublin', 'Lissabon', 'Brüssel', 'Mailand',
-    'Athen', 'Warschau', 'Prag', 'Düsseldorf', 'Hamburg', 'Manchester', 'Palma', 'Budapest', 'Edinburgh', 'Nizza',
-    'Casablanca', 'Marrakesch', 'Tel Aviv', 'Algier', 'Tunis', 'Gran Canaria'],
-  tram: ['Hannover', 'Lyon', 'Venedig', 'Neapel', 'Krakau', 'Bukarest', 'Sofia', 'Riga', 'Belgrad', 'Toulouse', 'Porto',
-    'Agadir', 'Tanger', 'Hurghada', 'Teneriffa'],
+  rail: ['London', 'Paris', 'New York', 'Dubai', 'Tokio', 'Singapur', 'Los Angeles', 'Hongkong', 'Istanbul', 'Peking', 'Sydney',
+    'São Paulo', 'Johannesburg', 'Chicago', 'Atlanta', 'Delhi', 'Bangkok', 'Doha', 'Madrid', 'Kairo', 'Shanghai', 'Seoul', 'Moskau', 'Mumbai'],
+  metro: ['Amsterdam', 'Rom', 'München', 'Berlin', 'Zürich', 'Wien', 'Kopenhagen', 'Barcelona', 'Lissabon', 'Mailand', 'Warschau',
+    'Athen', 'Stockholm', 'Dublin', 'Boston', 'Washington', 'Miami', 'Toronto', 'Dallas', 'Houston', 'Denver', 'San Francisco', 'Seattle',
+    'Mexiko-Stadt', 'Bogotá', 'Lima', 'Rio de Janeiro', 'Buenos Aires', 'Santiago', 'Casablanca', 'Tel Aviv', 'Teheran', 'Lagos',
+    'Addis Abeba', 'Nairobi', 'Kapstadt', 'Bangalore', 'Ho-Chi-Minh-Stadt', 'Kuala Lumpur', 'Jakarta', 'Manila', 'Taipeh', 'Osaka',
+    'Chengdu', 'Melbourne', 'Brisbane', 'Perth', 'Auckland', 'Riad'],
+  tram: ['Prag', 'Budapest', 'Oslo', 'Helsinki', 'Edinburgh', 'Palma', 'Nizza', 'Málaga', 'Bukarest', 'Kiew', 'Antalya', 'Marrakesch',
+    'Gran Canaria', 'Algier', 'Tunis', 'Dschidda', 'Accra', 'Dakar', 'Kinshasa', 'Kolkata', 'Colombo', 'Karachi', 'Hanoi', 'Bali',
+    'Montreal', 'Vancouver', 'Las Vegas', 'Cancún', 'Honolulu', 'Havanna', 'Santo Domingo', 'Panama-Stadt', 'Caracas', 'Quito',
+    'Brasília', 'Salvador', 'Adelaide', 'Christchurch', 'Almaty', 'Taschkent', 'Sapporo'],
 };
-
 const PLANE = 'M3 12h18M14 12 9.5 4.5M14 12l-4.5 7.5M5.5 12 3.5 8.5M5.5 12l-2 3.5';
 const EUROPA_MODES = {
   bus: { name: 'Propeller', vehicle: 'Propellermaschine', lineName: 'Propellerlinie', none: 'Keine Propellermaschine frei',
     no: 'keine Propellermaschine', gift: 'eine Propellermaschine', one: 'Eine Propellermaschine', the: 'die Propellermaschine', two: '2 Propellermaschinen',
-    cap: 2, speed: 3.2, dwell: 0.4, maxHop: 13, minHop: 0, maxStops: 9, style: 'dashed', plane: 0.9,
+    cap: 2, speed: 2.2, dwell: 0.4, maxHop: 5.4, minHop: 0, maxStops: 9, style: 'dashed', plane: 0.9,
     icon: `<path d="${PLANE}"/><circle cx="11.5" cy="8.2" r="1.3"/><circle cx="11.5" cy="15.8" r="1.3"/>` },
   tram: { name: 'Regionaljet', vehicle: 'Regionaljet', lineName: 'Regionalroute', none: 'Kein Regionaljet frei',
     no: 'kein Regionaljet', gift: 'einen Regionaljet', one: 'Ein Regionaljet', the: 'den Regionaljet',
-    cap: 3, speed: 4.2, dwell: 0.35, maxHop: 22, minHop: 0, maxStops: 10, style: 'dotted', plane: 1.0,
+    cap: 3, speed: 3, dwell: 0.35, maxHop: 10, minHop: 0, maxStops: 10, style: 'dotted', plane: 1.0,
     icon: `<path d="${PLANE}"/>` },
   metro: { name: 'Mittelstrecke', vehicle: 'Mittelstreckenjet', lineName: 'Mittelstreckenroute', none: 'Kein Mittelstreckenjet frei',
     no: 'kein Mittelstreckenjet', gift: 'einen Mittelstreckenjet', one: 'Ein Mittelstreckenjet', the: 'den Mittelstreckenjet',
-    cap: 4, speed: 5.5, dwell: 0.45, maxHop: 37, minHop: 0, maxStops: 99, style: 'solid', plane: 1.2,
+    cap: 4, speed: 4.5, dwell: 0.45, maxHop: 30, minHop: 0, maxStops: 99, style: 'solid', plane: 1.2,
     icon: `<path d="${PLANE}"/><path d="M11 8.5h2M11 15.5h2"/>` },
   sbahn: { name: 'Großraumjet', vehicle: 'Großraumjet', lineName: 'Großraumroute', none: 'Kein Großraumjet frei',
     no: 'kein Großraumjet', gift: 'einen Großraumjet', one: 'Ein Großraumjet', the: 'den Großraumjet',
-    cap: 6, speed: 6.5, dwell: 0.7, maxHop: 99, minHop: 0, maxStops: 9, style: 'sbahn', plane: 1.5,
+    cap: 6, speed: 7, dwell: 0.7, maxHop: 200, minHop: 0, maxStops: 9, style: 'sbahn', plane: 1.5,
     icon: `<path d="${PLANE}"/><path d="M10.5 7.5h2M11.8 6.2h2M10.5 16.5h2M11.8 17.8h2"/>` },
   rail: { name: 'Jumbo', vehicle: 'Jumbo', lineName: 'Jumbo-Route', none: 'Kein Jumbo frei',
     no: 'kein Jumbo', gift: 'einen Jumbo', one: 'Ein Jumbo', the: 'den Jumbo',
-    cap: 9, speed: 8, dwell: 0.9, maxHop: 99, minHop: 25, maxStops: 6, style: 'jumbo', plane: 1.8,
+    cap: 9, speed: 9, dwell: 0.9, maxHop: 200, minHop: 20, maxStops: 6, style: 'jumbo', plane: 1.8,
     icon: `<path d="${PLANE}"/><path d="M15 10h4.5"/>` },
 };
 
 const EUROPA = {
   key: 'europa',
-  title: 'Europa',
+  title: 'Welt',
   sub: 'Deine eigene Airline',
+  spawnAnywhere: true,                              // neue Flughäfen irgendwo auf der Welt, nicht nur in der Nähe
+  minGap: 1.2,                                      // Mindestabstand zweier Flughäfen (U)
+  noCrowdOver: true,
+  eventReach: 0.6,                                  // Ereignis nur, wenn genau dieser Flughafen im Netz ist                                // volle Flughäfen: Fluggäste gehen verloren, aber kein Game Over
+  mapV: 2,
   dayLength: 16,                                    // längere Wochen
   demand: 0.75,                                     // weniger Andrang am Anfang
   spawnInterval: week => Math.max(18, 32 - week),   // neue Städte seltener
@@ -3477,8 +3664,8 @@ const EUROPA = {
   moveVerb: 'fliegt',
   focus: [
     { key: 'bus', title: 'Kurzstrecke', text: 'Viele Propellerlinien – kleine Flughäfen, kurze Wege.' },
-    { key: 'city', title: 'Mittelstrecke', text: 'Regionaljets und Mittelstrecken quer durch Europa.' },
-    { key: 'rail', title: 'Langstrecke', text: 'Großraumjets und Jumbos – weit hinaus über Frankfurt.' },
+    { key: 'city', title: 'Mittelstrecke', text: 'Regionaljets und Mittelstrecken quer durch Europa und Nahost.' },
+    { key: 'rail', title: 'Langstrecke', text: 'Großraumjets und Jumbos – von Frankfurt in die ganze Welt.' },
     { key: 'balanced', title: 'Ausgewogen', text: 'Von allem etwas.' },
   ],
   kmPerU: EU_KM_PER_U,
@@ -3493,18 +3680,20 @@ const EUROPA = {
   },
   lineNames: { bus: ['P1', 'P2', 'P3', 'P4', 'P5'], tram: ['RJ1', 'RJ2', 'RJ3'], metro: ['M1', 'M2', 'M3'], sbahn: ['G1', 'G2'], rail: ['J1', 'J2'] },
   events: [
-    { key: 'okt', name: 'Oktoberfest', place: 'München', text: 'Oktoberfest – ganz Europa will nach München!' },
-    { key: 'ferien', name: 'Sommerferien', place: 'Palma', text: 'Sommerferien – alle wollen auf die Insel!' },
+    { key: 'okt', name: 'Oktoberfest', place: 'München', text: 'Oktoberfest – die halbe Welt will nach München!' },
+    { key: 'rio', name: 'Karneval in Rio', place: 'Rio de Janeiro', text: 'Karneval in Rio – alle wollen tanzen!' },
+    { key: 'sakura', name: 'Kirschblüte', place: 'Tokio', text: 'Kirschblüte in Japan – Tokio ist ausgebucht!' },
+    { key: 'nye', name: 'Silvester in Sydney', place: 'Sydney', text: 'Silvester-Feuerwerk in Sydney!' },
     { key: 'cl', name: 'Champions-League-Finale', place: 'London', text: 'Champions-League-Finale in London!' },
-    { key: 'messe', name: 'Hannover Messe', place: 'Hannover', text: 'Hannover Messe – Geschäftsreisende aus ganz Europa!' },
-    { key: 'karneval', name: 'Karneval', place: 'Venedig', text: 'Karneval in Venedig – Masken überall!' },
+    { key: 'ferien', name: 'Sommerferien', place: 'Palma', text: 'Sommerferien – alle wollen ans Meer!' },
   ],
+
   modeText: {
-    bus: '100 Sitze, bis ~800 km, landet überall',
-    tram: '150 Sitze, bis ~1.300 km, ab Regionalflughafen',
-    metro: '200 Sitze, bis ~2.200 km, nur Flughäfen',
-    sbahn: '300 Sitze, nur Großflughäfen, über Frankfurt',
-    rail: '450 Sitze, nur Langstrecken ab ~1.500 km, ab Frankfurt',
+    bus: '100 Sitze, Regionalflüge bis ~800 km, landet überall',
+    tram: '150 Sitze, bis ~1.500 km, ab Regionalflughafen',
+    metro: '200 Sitze, bis ~4.500 km, nur Flughäfen',
+    sbahn: '300 Sitze, weltweit, nur Großflughäfen, über Frankfurt',
+    rail: '450 Sitze, Langstrecke ab ~3.000 km, ab Frankfurt',
   },
   tierUpgrades: [
     { tier: 'tram', title: 'Landebahn verlängern', text: 'Ein Flugplatz wird Regionalflughafen.' },
@@ -3512,11 +3701,11 @@ const EUROPA = {
     { tier: 'rail', title: 'Großflughafen', text: 'Hier landen auch Großraumjets und Jumbos.' },
   ],
   bigTitle: 'Großes Terminal',
-  lead: 'Gründe deine Airline in Frankfurt – mit 400.000 € Startkapital. Verdiene an jedem Ticket, zahle Leasing und Gebühren und fliege bis nach Marrakesch, Kairo und Dubai.',
+  lead: 'Gründe deine eigene Airline in Frankfurt – mit 400.000 € Startkapital. Kleine Regionalrouten, große Langstrecken: Baue ein weltweites Netz und werde vom Start-up zur Weltmarke.',
   howto: [
-    'Wähle unten ein Flugzeug und zieh von Flughafen zu Flughafen – jede Route least automatisch ein Flugzeug.',
+    'Wähle unten ein Flugzeug und zieh von Flughafen zu Flughafen – jede Route least automatisch ein Flugzeug. Neue Flughäfen tauchen überall auf der Welt auf.',
     'Fluggäste bringen Umsatz, Flugzeuge und Routen kosten laufend Geld. Im Firmen-Shop (Aktenkoffer) kaufst du Flugzeuge, Routen und Ausbauten.',
-    'Den Ticketpreis stellst du im Shop per Regler ein. Achtung: Rutscht das Konto unter 0 €, ist die Airline pleite.',
+    'Volle Flughäfen kosten nur Fluggäste. Vorbei ist es erst, wenn das Konto unter 0 € rutscht. Den Ticketpreis stellst du im Shop per Regler ein.',
   ],
 };
 
@@ -3695,7 +3884,7 @@ function networkKm() {
 
 const SB_ACTIONS = {
   inner() {
-    const n = buildDistricts((SC.key === 'europa' ? 900 : 4) / SC.kmPerU);
+    const n = buildDistricts((SC.key === 'europa' ? 1800 : 4) / SC.kmPerU);
     toast(n ? `${n} Stationen gebaut.` : 'Hier ist schon alles gebaut.');
   },
   all() {
@@ -3745,7 +3934,7 @@ function syncSandboxUi() {
   $('#sandbox').classList.toggle('min', !!G.sbMin);
   $('#sb-min').textContent = G.sbMin ? '+' : '–';
   $('#sb-status-text').textContent = TOOL_HELP[G.tool] || '';
-  document.querySelector('[data-act="inner"]').textContent = SC.key === 'europa' ? 'Mitteleuropa' : 'Innenstadt';
+  document.querySelector('[data-act="inner"]').textContent = SC.key === 'europa' ? 'Europa' : 'Innenstadt';
   $('#sb-back').hidden = G.tool === 'lines';
   for (const b of document.querySelectorAll('.sb-tab')) b.classList.toggle('is-active', b.dataset.tab === G.sbTab);
   for (const p of document.querySelectorAll('.sb-pane')) p.hidden = p.dataset.pane !== G.sbTab;
