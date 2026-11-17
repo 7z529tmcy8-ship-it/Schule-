@@ -2,7 +2,7 @@
    Service Worker von MetroRush – macht das Spiel offline spielbar.
    Nach Änderungen am Code CACHE_VERSION hochzählen.
    ===================================================================== */
-const CACHE_VERSION = 'heftmetro-v21';
+const CACHE_VERSION = 'heftmetro-v22';
 
 const ASSETS = [
   './',

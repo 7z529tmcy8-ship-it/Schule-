@@ -184,3 +184,10 @@ Der Werkzeugzettel links hat vier Reiter (mit „–“ einklappen). Oben steht 
 - Umland-Orte sind jetzt echte Stationen: Langenhagen, Flughafen, Messe, Laatzen, Hemmingen, Garbsen, Isernhagen, Seelze, Ronnenberg, Lehrte, Sarstedt, Wunstorf, Burgdorf – ideal für lange S-Bahn- und Zugstrecken.
 - Größere Reichweite: Bus 3,6 km, Tram 4,5 km, U-Bahn 6,6 km zwischen zwei Halten.
 - Mehr Halte pro Linie: Tram 12, S-Bahn 9, Zug 6 (Europa entsprechend mehr). Man kann weiter herauszoomen und verschieben.
+
+## Airline (Europa): Karte, Personen, Preise
+- Die Karte reicht jetzt bis **Marokko** (Tanger, Fès, Casablanca, Marrakesch, Agadir), zu den **Kanaren** (Gran Canaria, Teneriffa), nach Algier, Tunis, Kairo, Hurghada, Tel Aviv und **Dubai**. Die Küsten sind grob skizziert, nicht kartengenau.
+- **Echte Personenzahlen:** Ein Fahrgast-Symbol steht für 50 Personen. Flughäfen zeigen die Wartenden als Zahl (z. B. „150 P.“), der Zähler oben zählt Personen. Sitzplätze: Propeller 100, Regionaljet 150, Mittelstrecke 200, Großraumjet 300, Jumbo 450.
+- **Ticketpreis per Regler** im Firmen-Shop (50–200 %). Normalpreise pro Person: 79 / 99 / 149 / 249 / 399 €. Teurer heißt weniger Fluggäste; am meisten Umsatz gibt es ungefähr bei 110 %.
+- **Pleite bei Minus:** Rutscht das Konto unter 0 €, ist das Spiel vorbei. Unter 10 % des Startkapitals kommt eine Warnung. Startkapital: 400.000 €.
+

@@ -335,7 +335,7 @@ function newGame(world = SC?.key || 'hannover', focus = 'balanced') {
     focus,                 // gewählter Fokus (nur zur Info)
     // Unternehmer-Modus (Europa)
     money: SC.business ? SC.business.start : 0,
-    price: 'normal',       // Ticketpreis: cheap | normal | premium
+    priceMul: 1,           // Preis-Regler: 1 = Normalpreis
     marketingUntil: 0,     // Werbekampagne läuft bis zu dieser Spielzeit
     weekRev: 0,            // Umsatz der laufenden Woche
     weekCost: 0,           // Kosten der laufenden Woche
@@ -806,11 +806,17 @@ function update(dt) {
    Kosten werden laufend abgebucht (pro Spielsekunde), damit der Kontostand
    lebendig mitläuft. Unter dem Kreditrahmen ist die Airline pleite.          */
 
-const priceLevel = () => SC.business?.prices[G.price] || { fare: 1, demand: 1 };
+/** Preis-Regler (1 = Normalpreis) und die Nachfrage, die er auslöst:
+    teurer → weniger Fluggäste (am meisten Umsatz bringt etwa 110 %). */
+const priceMul = () => G.priceMul || 1;
+const priceDemand = m => Math.exp(-0.9 * (m - 1));
+/** Personen statt Symbole (Europa: 1 Symbol = 50 Fluggäste) */
+const paxOf = n => n * (SC.paxPerUnit || 1);
+const fmtPax = n => paxOf(n).toLocaleString('de-DE');
 /** Nachfrage-Faktor: Spielwelt, Ticketpreis und Werbekampagne */
 function demandFactor() {
-  if (!SC.business) return SC.demand || 1;
-  return (SC.demand || 1) * priceLevel().demand * (G.t < G.marketingUntil ? 1.4 : 1);
+  if (!SC.business || G.sandbox) return SC.demand || 1;
+  return (SC.demand || 1) * priceDemand(priceMul()) * (G.t < G.marketingUntil ? 1.4 : 1);
 }
 
 /** Wochenkosten bei aktuellem Netz: Leasing aller Flugzeuge + Routengebühren */
@@ -824,13 +830,17 @@ function payRunningCosts(dt) {
   const cost = (weeklyCosts() / (dayLen() * 7)) * dt;
   G.money -= cost;
   G.weekCost += cost;
-  if (G.money < -SC.business.credit) { gameOver(null, 'bankrupt'); return true; }
+  if (G.money < 0) { gameOver(null, 'bankrupt'); return true; }
+  if (G.money < SC.business.start * 0.1 && G.lowWarnWeek !== G.week) {
+    G.lowWarnWeek = G.week;
+    toast(`Achtung: Nur noch ${fmtMoney(G.money)} auf dem Konto – unter 0 € ist die Airline pleite!`, 3800);
+  }
   return false;
 }
 
 /** Ticketumsatz für einen angekommenen Fahrgast-Block, mit aufsteigender Zahl an der Station */
 function earnFare(st, mode) {
-  const amount = Math.round(SC.business.fare[mode] * priceLevel().fare);
+  const amount = Math.round(SC.business.ticket[mode] * paxOf(1) * priceMul());
   G.money += amount;
   G.weekRev += amount;
   G.floaters.push({ x: st.x, y: st.y, text: `+${fmtMoney(amount)}`, t: 0 });
@@ -916,7 +926,7 @@ function arrive(tr) {
 
 const cam = { s: 50, x: 0, y: 0, ready: false, manual: false };
 const ZOOM_MIN = 4, ZOOM_MAX = 90;      // Pixel pro U
-const PAN_LIMIT = 80;                   // so weit darf man die Karte verschieben (U)
+const PAN_LIMIT = 100;                   // so weit darf man die Karte verschieben (U)
 let bottomInset = 96;     // Höhe der Leiste unten (kann im Hochformat zweizeilig sein)
 let coachInset = 0;       // zusätzlicher Platz für den Tutorial-Zettel
 
@@ -1695,6 +1705,17 @@ function drawStations() {
       shapePath(p, sx + R + gap + col * gap, sy - gap * 0.7 + row * gap, pr);
       ctx.fill();
     });
+    // Europa: echte Personenzahl über den Symbolen
+    if (SC.paxPerUnit && st.queue.length) {
+      const fs = Math.max(10, labelSize() * 0.85);
+      ctx.save();
+      ctx.font = `700 ${fs}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'bottom';
+      ctx.fillStyle = st.queue.length > capacityOf(st) * 0.7 ? COLORS.danger : COLORS.pencil;
+      ctx.fillText(`${fmtPax(st.queue.length)} P.`, sx + R + gap * 0.6, sy - gap * 1.2);
+      ctx.restore();
+    }
   }
   ctx.globalAlpha = 1;
 }
@@ -2221,7 +2242,7 @@ function setText(id, text) {
 }
 
 function updateHud() {
-  setText('#score', String(G.score));
+  setText('#score', fmtPax(G.score));
   const biz = !!SC.business && !G.sandbox;
   if (hudCache.biz !== biz) { hudCache.biz = biz; $('#money-chip').hidden = !biz; $('#btn-shop').hidden = !biz; }
   if (biz) {
@@ -2512,7 +2533,7 @@ function serialize() {
     inv: G.inv, selectedMode: G.selectedMode, stationTimer: G.stationTimer,
     stations: G.stations.map(({ id, x, y, shape, name, tier, node, queue, over, big, born }) => ({ id, x, y, shape, name, tier, node, queue, over, big, born })),
     event: G.event, nextEventT: G.nextEventT,
-    money: G.money, price: G.price, marketingUntil: G.marketingUntil,
+    money: G.money, priceMul: G.priceMul, marketingUntil: G.marketingUntil,
     weekRev: G.weekRev, weekCost: G.weekCost, history: G.history, lastWeek: G.lastWeek,
     districtsLeft: G.districtsLeft,
     sandbox: G.sandbox, sbDemand: G.sbDemand,
@@ -2633,7 +2654,8 @@ function restoreGame(d) {
   if (SC.business) {
     const num = (v, def) => (Number.isFinite(v) ? v : def);
     G.money = num(d.money, SC.business.start);
-    G.price = SC.business.prices[d.price] ? d.price : 'normal';
+    const oldPrice = { cheap: 0.7, normal: 1, premium: 1.4 }[d.price];
+    G.priceMul = clamp(num(d.priceMul, oldPrice || 1), SC.business.priceMin, SC.business.priceMax);
     G.marketingUntil = num(d.marketingUntil, 0);
     G.weekRev = num(d.weekRev, 0);
     G.weekCost = num(d.weekCost, 0);
@@ -2726,7 +2748,7 @@ function showBalance() {
   const connected = new Set(G.lines.flatMap(l => l.stations));
   const open = G.stations.filter(s => !connected.has(s.id));
   $('#bal-tip').textContent =
-    G.money < 0 ? `Achtung: Du bist im Minus. Ab ${fmtMoney(-SC.business.credit)} ist die Airline pleite – teure Flugzeuge abgeben oder Preise anpassen.`
+    G.money < SC.business.start * 0.2 ? `Achtung: Das Konto wird knapp. Unter 0 € ist die Airline pleite – teure Flugzeuge abgeben oder den Ticketpreis anpassen.`
     : w.profit < 0 ? 'Verlust diese Woche: Prüfe, ob teure Großraumjets und Jumbos genug Fluggäste haben.'
     : crowded.length ? `${crowded[0].name} wird voll – mehr Flugzeuge oder ein Terminal-Ausbau helfen.`
     : open.length ? `${open.length === 1 ? '1 Flughafen wartet' : `${open.length} Flughäfen warten`} noch auf eine Route – im Shop gibt es Lizenzen.`
@@ -2765,22 +2787,39 @@ function shopItem(icon, title, text, price, enabled, buy) {
   return b;
 }
 
+/**
+ * Ticketpreis-Regler: 50–200 %. Zeigt echte Preise pro Person und
+ * die erwartete Nachfrage, damit man den Effekt sieht.
+ */
+function renderPriceSlider(box) {
+  const b = SC.business;
+  box.innerHTML = `
+    <input type="range" class="price-range" min="${b.priceMin * 100}" max="${b.priceMax * 100}" step="5" aria-label="Ticketpreis in Prozent">
+    <div class="price-info"><b class="price-pct"></b><span class="price-demand"></span></div>
+    <div class="price-list"></div>`;
+  const range = box.querySelector('.price-range');
+  range.value = Math.round(priceMul() * 100);
+  const show = () => {
+    const m = +range.value / 100;
+    box.querySelector('.price-pct').textContent = `${Math.round(m * 100)} %`;
+    const d = priceDemand(m);
+    box.querySelector('.price-demand').textContent =
+      `Nachfrage ${Math.round(d * 100)} % · Umsatz ≈ ${Math.round(m * d * 100)} %`;
+    box.querySelector('.price-list').innerHTML = MODE_ORDER.map(mode =>
+      `<span><svg class="ico" viewBox="0 0 24 24">${MODES[mode].icon}</svg>${MODES[mode].name} <b>${Math.round(b.ticket[mode] * m)} €</b></span>`).join('');
+    range.style.setProperty('--p', `${((m - b.priceMin) / (b.priceMax - b.priceMin)) * 100}%`);
+  };
+  range.addEventListener('input', () => { G.priceMul = +range.value / 100; show(); });
+  range.addEventListener('change', () => saveGame());
+  show();
+}
+
 function renderShop() {
   const b = SC.business;
   $('#shop-money').textContent = fmtMoney(G.money);
   $('#shop-costs').textContent = fmtMoney(weeklyCosts());
 
-  const price = $('#shop-price');
-  price.innerHTML = '';
-  for (const [key, lvl] of Object.entries(b.prices)) {
-    const btn = document.createElement('button');
-    btn.innerHTML = `<span></span><small></small>`;
-    btn.firstChild.textContent = lvl.name;
-    btn.lastChild.textContent = lvl.text;
-    btn.classList.toggle('is-active', G.price === key);
-    btn.addEventListener('click', () => { G.price = key; renderShop(); });
-    price.appendChild(btn);
-  }
+  renderPriceSlider($('#shop-price'));
 
   const planes = $('#shop-planes'); planes.innerHTML = '';
   const routes = $('#shop-routes'); routes.innerHTML = '';
@@ -2857,16 +2896,16 @@ function gameOver(st, reason = 'crowded') {
   const isNew = !G.sandbox && G.score > rec;
   if (isNew) best.set(G.score);
   $('#over-reason').textContent = reason === 'bankrupt'
-    ? `Deine Airline ist pleite – der Kreditrahmen von ${fmtMoney(SC.business.credit)} ist aufgebraucht.`
+    ? 'Deine Airline ist pleite – das Konto ist ins Minus gerutscht.'
     : st.shape === 'hub'
     ? `${SC.hubTitle} war zu lange überfüllt.`
     : st.name
       ? `Die Station ${st.name} war zu lange überfüllt.`
       : `Die ${SHAPE_NAME[st.shape]}-Station war zu lange überfüllt.`;
   if (SC.business && reason !== 'bankrupt') $('#over-reason').textContent += ` Kontostand am Ende: ${fmtMoney(G.money)}.`;
-  $('#over-score').textContent = G.score;
+  $('#over-score').textContent = fmtPax(G.score);
   $('#over-weeks').textContent = G.week;
-  $('#over-record').textContent = isNew ? 'Neuer Rekord!' : rec ? `Rekord: ${rec} Fahrgäste` : '';
+  $('#over-record').textContent = isNew ? 'Neuer Rekord!' : rec ? `Rekord: ${fmtPax(rec)} Fahrgäste` : '';
   // Kurz zeigen, welche Station es war, dann den Zettel
   setTimeout(() => { $('#screen-over').hidden = false; }, 900);
 }
@@ -2879,7 +2918,7 @@ function renderWorldPick(w) {
   $('#start-lead').textContent = sc.lead;
   sc.howto.forEach((t, i) => { $(`#how-${i}`).textContent = t; });
   const rec = best.get(w);
-  $('#start-record').textContent = rec ? `Dein Rekord in ${sc.title}: ${rec} Fahrgäste` : '';
+  $('#start-record').textContent = rec ? `Dein Rekord in ${sc.title}: ${(rec * (sc.paxPerUnit || 1)).toLocaleString('de-DE')} Fahrgäste` : '';
 }
 
 /** Spielwelt auf dem Startzettel wählen. Ohne Spielstand wechselt auch die Karte dahinter. */
@@ -2899,7 +2938,7 @@ function showStart(saved, canResume = !!saved) {
   start.textContent = canResume ? 'Neues Spiel' : 'Losfahren';
   start.classList.toggle('primary', !canResume);
   if (saved) {
-    info.textContent = `Gespeichert ${timeAgo(saved.savedAt)}: ${SCENARIOS[saved.world]?.title || 'Hannover'}${saved.sandbox ? ' (Sandbox)' : ''} · Woche ${saved.week} · ${saved.score} Fahrgäste`;
+    info.textContent = `Gespeichert ${timeAgo(saved.savedAt)}: ${SCENARIOS[saved.world]?.title || 'Hannover'}${saved.sandbox ? ' (Sandbox)' : ''} · Woche ${saved.week} · ${(saved.score * (SCENARIOS[saved.world]?.paxPerUnit || 1)).toLocaleString('de-DE')} Fahrgäste`;
   }
   $('#screen-start').hidden = false;
 }
@@ -3295,7 +3334,7 @@ const euPoly = pts => pts.map(eu);
 const EUROPA_MAP = {
   // Landflächen (das Meer ist alles andere); innere Meere werden wieder zu Wasser
   land: [
-    euPoly([[45, 72], [33, 69.5], [28, 71.0], [23.5, 70.8], [18.9, 69.7], [15.0, 68.5], [12.5, 66.0], [10.4, 63.4], [5.3, 62.5],
+    euPoly([[60, 72], [45, 72], [33, 69.5], [28, 71.0], [23.5, 70.8], [18.9, 69.7], [15.0, 68.5], [12.5, 66.0], [10.4, 63.4], [5.3, 62.5],
       [5.0, 60.4], [5.6, 58.9], [7.0, 58.0], [9.5, 59.0], [10.7, 59.9], [11.0, 59.0], [11.9, 57.7], [12.9, 55.6], [14.3, 55.6],
       [16.4, 56.6], [16.5, 57.8], [18.1, 59.3], [17.3, 60.7], [17.3, 62.5], [21.0, 64.0], [22.1, 65.6], [25.4, 65.0], [24.5, 64.0],
       [21.5, 61.5], [21.5, 60.5], [24.9, 60.2], [28.0, 60.5], [30.3, 59.9], [28.0, 59.5], [24.0, 59.4], [23.5, 58.3], [24.1, 57.0],
@@ -3309,7 +3348,7 @@ const EUROPA_MAP = {
       [16.6, 38.9], [17.1, 39.4], [16.5, 40.2], [18.5, 40.1], [16.9, 41.1], [15.6, 41.9], [14.0, 42.6], [13.6, 43.6], [12.3, 44.5],
       [12.3, 45.4], [13.7, 45.6], [14.5, 45.2], [15.3, 44.2], [16.4, 43.5], [18.1, 42.6], [19.4, 41.9], [19.4, 40.5], [20.2, 39.6],
       [21.2, 38.3], [21.7, 36.8], [22.9, 36.4], [23.7, 37.9], [24.0, 38.5], [22.9, 40.6], [24.4, 40.9], [26.0, 40.8], [26.5, 40.3],
-      [26.2, 39.5], [27.0, 38.4], [27.3, 37.0], [28.5, 36.6], [30.7, 36.9], [33.0, 36.1], [36.0, 36.5], [45, 36]]),
+      [26.2, 39.5], [27.0, 38.4], [27.3, 37.0], [28.5, 36.6], [30.7, 36.9], [33.0, 36.1], [36.0, 36.5], [45, 36], [60, 36]]),
     // Großbritannien, Irland, Island
     euPoly([[-5.7, 50.1], [-3.0, 50.6], [-1.0, 50.8], [1.4, 51.1], [1.7, 52.6], [0.3, 53.5], [-0.1, 54.5], [-1.6, 55.6], [-2.0, 57.1],
       [-3.0, 58.6], [-5.0, 58.6], [-6.2, 56.6], [-5.6, 55.4], [-4.9, 54.8], [-3.2, 54.5], [-3.1, 53.4], [-4.6, 53.3], [-4.2, 52.2],
@@ -3325,8 +3364,12 @@ const EUROPA_MAP = {
     euPoly([[2.4, 39.6], [3.4, 39.8], [3.2, 39.3]]),
     euPoly([[10.9, 55.7], [12.6, 56.0], [12.6, 55.3], [11.8, 55.0], [11.0, 55.2]]),
     // Nordafrika und Levante (unten am Rand)
-    euPoly([[-15, 25], [-15, 30], [-9.6, 30.4], [-6.8, 34.0], [-5.9, 35.8], [-2.0, 35.1], [3.0, 36.7], [10.2, 37.2], [11.1, 36.9],
-      [10.0, 34.0], [15.0, 32.4], [20.0, 32.0], [25.0, 31.7], [29.9, 31.2], [32.3, 31.2], [34.9, 32.8], [35.6, 34.6], [45, 34.6], [45, 25]]),
+    euPoly([[-17.1, 15], [-17.1, 20.8], [-16.2, 23.9], [-14.5, 26.1], [-12.9, 27.9], [-11.0, 28.7], [-9.8, 29.9], [-9.6, 30.4],
+      [-9.8, 31.5], [-8.5, 33.3], [-6.8, 34.0], [-5.9, 35.8], [-2.0, 35.1], [3.0, 36.7], [10.2, 37.2], [11.1, 36.9],
+      [10.0, 34.0], [15.0, 32.4], [20.0, 32.0], [25.0, 31.7], [29.9, 31.2], [32.3, 31.2], [34.9, 32.8], [35.6, 34.6], [45, 34.6],
+      [48.0, 30.0], [50.2, 26.6], [51.6, 25.0], [54.2, 24.2], [56.3, 26.3], [57.2, 23.9], [60, 22.5], [60, 15]]),
+    // Kanarische Inseln
+    euPoly([[-17.0, 28.5], [-15.6, 28.2], [-13.5, 29.3], [-13.8, 28.0], [-15.4, 27.7], [-16.9, 27.9]]),
   ],
   innerSeas: [
     { name: 'Schwarzes Meer', pts: euPoly([[29.1, 41.2], [28.0, 41.9], [27.9, 43.2], [28.7, 44.2], [29.7, 45.2], [30.7, 46.5], [32.5, 46.1],
@@ -3335,14 +3378,15 @@ const EUROPA_MAP = {
   seaLabels: [
     { name: 'Nordsee', at: eu([3, 56]) }, { name: 'Ostsee', at: eu([19, 57.6]) }, { name: 'Mittelmeer', at: eu([5.5, 39.5]) },
     { name: 'Mittelmeer', at: eu([19, 35.3]) }, { name: 'Atlantik', at: eu([-14, 47]) }, { name: 'Schwarzes Meer', at: eu([34, 43.5]) },
-    { name: 'Nordatlantik', at: eu([-12, 61]) },
+    { name: 'Nordatlantik', at: eu([-12, 61]) }, { name: 'Persischer Golf', at: eu([51.5, 27.6]) },
   ],
   water: [], lakes: [], green: [], pois: [],
   // Länder: groß und blass (wie das Umland in Hannover)
   towns: [
     ['Deutschland', 10.5, 51.3], ['Frankreich', 2.0, 46.8], ['Spanien', -4.5, 39.2], ['Italien', 12.8, 43.2], ['Polen', 19.5, 52.2],
     ['Großbritannien', -2.3, 52.6], ['Skandinavien', 15, 63.5], ['Türkei', 33, 39], ['Griechenland', 22, 39.6], ['Rumänien', 25, 46],
-    ['Ukraine', 31, 49], ['Russland', 38, 58],
+    ['Ukraine', 31, 49], ['Russland', 38, 58], ['Marokko', -6.5, 31.6], ['Algerien', 3, 31], ['Tunesien', 9.4, 33.8],
+    ['Ägypten', 29.5, 27], ['Arabien', 46, 26.5], ['Iran', 54, 32],
   ].map(([name, lon, lat]) => ({ name, at: eu([lon, lat]) })),
   // Flughäfen: die ersten drei sind die Startstationen
   districts: [
@@ -3359,37 +3403,43 @@ const EUROPA_MAP = {
     ['Sevilla', -5.9, 37.42], ['Lissabon', -9.13, 38.77], ['Málaga', -4.5, 36.67], ['Athen', 23.94, 37.94], ['Istanbul', 28.75, 41.26],
     ['Heraklion', 25.18, 35.34], ['Antalya', 30.8, 36.9], ['Moskau', 37.4, 55.97], ['Larnaka', 33.62, 34.87], ['Tromsø', 18.92, 69.68],
     ['Reykjavík', -22.6, 63.98],
+    // Nordafrika, Kanaren und Nahost
+    ['Tanger', -5.9, 35.73], ['Fès', -4.98, 33.93], ['Casablanca', -7.59, 33.37], ['Marrakesch', -8.03, 31.6], ['Agadir', -9.41, 30.33],
+    ['Gran Canaria', -15.39, 27.93], ['Teneriffa', -16.57, 28.04], ['Algier', 3.21, 36.69], ['Tunis', 10.22, 36.85],
+    ['Tel Aviv', 34.89, 32.0], ['Kairo', 31.41, 30.11], ['Hurghada', 33.8, 27.18], ['Dubai', 55.36, 25.25],
   ].map(([name, lon, lat]) => { const [x, y] = eu([lon, lat]); return { name, x: Math.round(x), y: Math.round(y) }; }),
 };
 
 const EUROPA_TIERS = {
-  rail: ['London', 'Paris', 'Amsterdam', 'Madrid', 'Rom', 'Istanbul', 'München', 'Barcelona', 'Moskau'],
+  rail: ['London', 'Paris', 'Amsterdam', 'Madrid', 'Rom', 'Istanbul', 'München', 'Barcelona', 'Moskau', 'Dubai', 'Kairo'],
   metro: ['Berlin', 'Zürich', 'Wien', 'Kopenhagen', 'Stockholm', 'Oslo', 'Helsinki', 'Dublin', 'Lissabon', 'Brüssel', 'Mailand',
-    'Athen', 'Warschau', 'Prag', 'Düsseldorf', 'Hamburg', 'Manchester', 'Palma', 'Budapest', 'Edinburgh', 'Nizza'],
-  tram: ['Hannover', 'Lyon', 'Venedig', 'Neapel', 'Krakau', 'Bukarest', 'Sofia', 'Riga', 'Belgrad', 'Toulouse', 'Porto'],
+    'Athen', 'Warschau', 'Prag', 'Düsseldorf', 'Hamburg', 'Manchester', 'Palma', 'Budapest', 'Edinburgh', 'Nizza',
+    'Casablanca', 'Marrakesch', 'Tel Aviv', 'Algier', 'Tunis', 'Gran Canaria'],
+  tram: ['Hannover', 'Lyon', 'Venedig', 'Neapel', 'Krakau', 'Bukarest', 'Sofia', 'Riga', 'Belgrad', 'Toulouse', 'Porto',
+    'Agadir', 'Tanger', 'Hurghada', 'Teneriffa'],
 };
 
 const PLANE = 'M3 12h18M14 12 9.5 4.5M14 12l-4.5 7.5M5.5 12 3.5 8.5M5.5 12l-2 3.5';
 const EUROPA_MODES = {
   bus: { name: 'Propeller', vehicle: 'Propellermaschine', lineName: 'Propellerlinie', none: 'Keine Propellermaschine frei',
     no: 'keine Propellermaschine', gift: 'eine Propellermaschine', one: 'Eine Propellermaschine', the: 'die Propellermaschine', two: '2 Propellermaschinen',
-    speed: 3.2, dwell: 0.4, maxHop: 13, minHop: 0, maxStops: 9, style: 'dashed', plane: 0.9,
+    cap: 2, speed: 3.2, dwell: 0.4, maxHop: 13, minHop: 0, maxStops: 9, style: 'dashed', plane: 0.9,
     icon: `<path d="${PLANE}"/><circle cx="11.5" cy="8.2" r="1.3"/><circle cx="11.5" cy="15.8" r="1.3"/>` },
   tram: { name: 'Regionaljet', vehicle: 'Regionaljet', lineName: 'Regionalroute', none: 'Kein Regionaljet frei',
     no: 'kein Regionaljet', gift: 'einen Regionaljet', one: 'Ein Regionaljet', the: 'den Regionaljet',
-    speed: 4.2, dwell: 0.35, maxHop: 22, minHop: 0, maxStops: 10, style: 'dotted', plane: 1.0,
+    cap: 3, speed: 4.2, dwell: 0.35, maxHop: 22, minHop: 0, maxStops: 10, style: 'dotted', plane: 1.0,
     icon: `<path d="${PLANE}"/>` },
   metro: { name: 'Mittelstrecke', vehicle: 'Mittelstreckenjet', lineName: 'Mittelstreckenroute', none: 'Kein Mittelstreckenjet frei',
     no: 'kein Mittelstreckenjet', gift: 'einen Mittelstreckenjet', one: 'Ein Mittelstreckenjet', the: 'den Mittelstreckenjet',
-    speed: 5.5, dwell: 0.45, maxHop: 37, minHop: 0, maxStops: 99, style: 'solid', plane: 1.2,
+    cap: 4, speed: 5.5, dwell: 0.45, maxHop: 37, minHop: 0, maxStops: 99, style: 'solid', plane: 1.2,
     icon: `<path d="${PLANE}"/><path d="M11 8.5h2M11 15.5h2"/>` },
   sbahn: { name: 'Großraumjet', vehicle: 'Großraumjet', lineName: 'Großraumroute', none: 'Kein Großraumjet frei',
     no: 'kein Großraumjet', gift: 'einen Großraumjet', one: 'Ein Großraumjet', the: 'den Großraumjet',
-    speed: 6.5, dwell: 0.7, maxHop: 99, minHop: 0, maxStops: 9, style: 'sbahn', plane: 1.5,
+    cap: 6, speed: 6.5, dwell: 0.7, maxHop: 99, minHop: 0, maxStops: 9, style: 'sbahn', plane: 1.5,
     icon: `<path d="${PLANE}"/><path d="M10.5 7.5h2M11.8 6.2h2M10.5 16.5h2M11.8 17.8h2"/>` },
   rail: { name: 'Jumbo', vehicle: 'Jumbo', lineName: 'Jumbo-Route', none: 'Kein Jumbo frei',
     no: 'kein Jumbo', gift: 'einen Jumbo', one: 'Ein Jumbo', the: 'den Jumbo',
-    speed: 8, dwell: 0.9, maxHop: 99, minHop: 25, maxStops: 6, style: 'jumbo', plane: 1.8,
+    cap: 9, speed: 8, dwell: 0.9, maxHop: 99, minHop: 25, maxStops: 6, style: 'jumbo', plane: 1.8,
     icon: `<path d="${PLANE}"/><path d="M15 10h4.5"/>` },
 };
 
@@ -3400,27 +3450,23 @@ const EUROPA = {
   dayLength: 16,                                    // längere Wochen
   demand: 0.75,                                     // weniger Andrang am Anfang
   spawnInterval: week => Math.max(18, 32 - week),   // neue Städte seltener
+  paxPerUnit: 50,                                   // ein Fahrgast-Symbol = 50 Personen
   /**
    * Unternehmer-Modus: Geld verdienen und ausgeben.
-   * Ein Fahrgast-Symbol steht für ~100 Fluggäste.
+   * Umsatz = Personen × Ticketpreis × Preis-Regler. Unter 0 € ist die Airline pleite.
    */
   business: {
-    start: 4e6,                 // Startkapital
-    credit: 2e6,                // Kreditrahmen – darunter ist die Airline pleite
-    fare: { bus: 25e3, tram: 35e3, metro: 55e3, sbahn: 80e3, rail: 120e3 },      // Umsatz pro Symbol
-    lease: { bus: 60e3, tram: 100e3, metro: 160e3, sbahn: 260e3, rail: 400e3 },  // Leasing pro Flugzeug und Woche
-    routeFee: 40e3,             // Gebühren pro Route und Woche
-    planePrice: { bus: 0.3e6, tram: 0.6e6, metro: 1.2e6, sbahn: 2.5e6, rail: 4e6 },
-    routePrice: { bus: 0.5e6, tram: 0.9e6, metro: 1.5e6, sbahn: 2.5e6, rail: 3.5e6 },
-    tierPrice: { tram: 1e6, metro: 2.5e6, rail: 5e6 },
-    nodePrice: 1.5e6,
-    bigPrice: 1e6,
-    marketingPrice: 0.6e6,
-    prices: {
-      cheap: { name: 'Günstig', fare: 0.7, demand: 1.3, text: 'mehr Fluggäste, weniger pro Ticket' },
-      normal: { name: 'Normal', fare: 1, demand: 1, text: 'ausgewogen' },
-      premium: { name: 'Premium', fare: 1.4, demand: 0.7, text: 'weniger Fluggäste, mehr pro Ticket' },
-    },
+    start: 4e5,                 // Startkapital
+    ticket: { bus: 79, tram: 99, metro: 149, sbahn: 249, rail: 399 },            // Ticketpreis pro Person (Regler = 100 %)
+    lease: { bus: 5e3, tram: 7e3, metro: 14e3, sbahn: 30e3, rail: 60e3 },          // Leasing pro Flugzeug und Woche
+    routeFee: 4e3,              // Gebühren pro Route und Woche
+    planePrice: { bus: 25e3, tram: 45e3, metro: 110e3, sbahn: 290e3, rail: 600e3 },
+    routePrice: { bus: 40e3, tram: 65e3, metro: 135e3, sbahn: 290e3, rail: 525e3 },
+    tierPrice: { tram: 70e3, metro: 225e3, rail: 750e3 },
+    nodePrice: 150e3,
+    bigPrice: 100e3,
+    marketingPrice: 60e3,
+    priceMin: 0.5, priceMax: 2,  // Preis-Regler: 50 % bis 200 %
   },
   hubName: 'Frankfurt',
   hubTitle: 'Der Flughafen Frankfurt',
@@ -3454,11 +3500,11 @@ const EUROPA = {
     { key: 'karneval', name: 'Karneval', place: 'Venedig', text: 'Karneval in Venedig – Masken überall!' },
   ],
   modeText: {
-    bus: 'kurze Strecken bis ~600 km, landet überall',
-    tram: 'bis ~1.100 km, ab Regionalflughafen',
-    metro: 'bis ~2.200 km, nur Flughäfen',
-    sbahn: 'nur Großflughäfen, über Frankfurt',
-    rail: 'nur Langstrecken ab ~1.500 km, ab Frankfurt',
+    bus: '100 Sitze, bis ~800 km, landet überall',
+    tram: '150 Sitze, bis ~1.300 km, ab Regionalflughafen',
+    metro: '200 Sitze, bis ~2.200 km, nur Flughäfen',
+    sbahn: '300 Sitze, nur Großflughäfen, über Frankfurt',
+    rail: '450 Sitze, nur Langstrecken ab ~1.500 km, ab Frankfurt',
   },
   tierUpgrades: [
     { tier: 'tram', title: 'Landebahn verlängern', text: 'Ein Flugplatz wird Regionalflughafen.' },
@@ -3466,11 +3512,11 @@ const EUROPA = {
     { tier: 'rail', title: 'Großflughafen', text: 'Hier landen auch Großraumjets und Jumbos.' },
   ],
   bigTitle: 'Großes Terminal',
-  lead: 'Gründe deine Airline in Frankfurt – mit 4 Mio € Startkapital. Verdiene an jedem Ticket, zahle Leasing und Gebühren und wachse bis nach London, Rom und Moskau.',
+  lead: 'Gründe deine Airline in Frankfurt – mit 400.000 € Startkapital. Verdiene an jedem Ticket, zahle Leasing und Gebühren und fliege bis nach Marrakesch, Kairo und Dubai.',
   howto: [
     'Wähle unten ein Flugzeug und zieh von Flughafen zu Flughafen – jede Route least automatisch ein Flugzeug.',
     'Fluggäste bringen Umsatz, Flugzeuge und Routen kosten laufend Geld. Im Firmen-Shop (Aktenkoffer) kaufst du Flugzeuge, Routen und Ausbauten.',
-    'Achte auf Kontostand und überfüllte Flughäfen: Pleite oder Chaos am Gate heißt Endstation.',
+    'Den Ticketpreis stellst du im Shop per Regler ein. Achtung: Rutscht das Konto unter 0 €, ist die Airline pleite.',
   ],
 };
 
@@ -3735,12 +3781,12 @@ function updateSandboxStats() {
   const veh = G.trains.length;
   const waiting = G.stations.reduce((a, s) => a + s.queue.length, 0);
   const rows = [
-    ['Fahrgäste befördert', G.score.toLocaleString('de-DE')],
+    ['Fahrgäste befördert', fmtPax(G.score)],
     ['Stationen', G.stations.length],
     ['Linien', G.lines.length],
     ['Fahrzeuge', veh],
     ['Netzlänge', `${networkKm().toLocaleString('de-DE', { maximumFractionDigits: SC.key === 'europa' ? 0 : 1 })} km`],
-    ['Warten gerade', waiting],
+    ['Warten gerade', fmtPax(waiting)],
   ];
   const top = [...G.lines].sort((a, b) => (b.riders || 0) - (a.riders || 0)).slice(0, 3);
   const key = JSON.stringify(rows) + top.map(l => l.id + ':' + (l.riders || 0)).join();
