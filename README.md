@@ -172,16 +172,15 @@ Beim ersten Öffnen erscheint eine Paywall: „5,99 € einmalig“ oder Freisch
 - Achtung: Eine reine Browser-Sperre ist nicht wirklich sicher – wer sich auskennt, kann sie umgehen. Für echtes Bezahlen braucht es einen Zahlungsanbieter mit Server.
 
 ## Sandbox
-Auf dem Startzettel „Sandbox“ tippen (geht in Hannover und Europa). Dann gilt:
-- Es entstehen **keine Stationen von allein**, es gibt **kein Game Over**, keine Upgrade-Zettel und in Europa kein Geld.
-- Am Anfang steht nur der Hauptbahnhof (bzw. Frankfurt). Alle Linien-Plätze sind frei, dazu 30 Fahrzeuge pro Verkehrsmittel.
-- Werkzeuge links:
-  - **Linien**: ganz normal zeichnen, verlängern, einfügen, Ringe schließen.
-  - **Bauen**: auf die Karte tippen. Form (●▲■★◆✚) und Stationsart (Auto/Bus/T/U/S) wählst du vorher. In der Nähe eines Stadtteils rastet die Station dort ein und bekommt seinen Namen.
-  - **Ausbau**: Station antippen → Bus → Tram → U-Bahn → Bahnhof → Bus (nie kleiner, als die Linien dort brauchen).
-  - **Form**: Station antippen → nächste Form.
-  - **Schieben**: Station anfassen und verschieben.
-  - **Abreißen**: Station antippen; zu kurze Linien verschwinden mit.
-  - **Fahrgäste**: Aus / Wenig / Normal / Viel.
-- Die Sandbox wird wie ein normales Spiel gespeichert.
+Auf dem Startzettel „Sandbox“ tippen (geht in Hannover und Europa). Es entstehen **keine Stationen von allein**, es gibt **kein Game Over**, keine Upgrade-Zettel und in Europa kein Geld. Alle Linien-Plätze sind frei, dazu 30 Fahrzeuge pro Verkehrsmittel.
 
+Der Werkzeugzettel links hat vier Reiter (mit „–“ einklappen). Oben steht immer, was ein Tipp auf die Karte gerade macht; „✎ Linien“ oder ein Verkehrsmittel unten antippen führt zurück zum Linienzeichnen.
+- **Bauen:** Station setzen (Form ●▲■★◆✚ und Stationsart Auto/Bus/T/U/S vorher wählen; in der Nähe eines Stadtteils rastet sie ein und bekommt seinen Namen). „Innenstadt“ oder „Ganze Region“ baut alle freien Stadtteile auf einmal.
+- **Ändern:** Ausbau, Form, Name, Schieben, Umsteigeknoten, Großer Bahnhof (beides an/aus), Abreißen.
+- **Spaß:** Ereignis wählen (z. B. 96-Spiel) und Station antippen; Rushhour, Feierabend (alle wollen zum Hauptbahnhof), alle Stationen leeren, +1 Fahrzeug je Linie.
+- **Stadt:** Fahrgast-Menge (Aus/Wenig/Normal/Viel), Statistik mit Netzlänge in km und den drei stärksten Linien, „Alles abreißen“.
+
+## Größeres Netz
+- Umland-Orte sind jetzt echte Stationen: Langenhagen, Flughafen, Messe, Laatzen, Hemmingen, Garbsen, Isernhagen, Seelze, Ronnenberg, Lehrte, Sarstedt, Wunstorf, Burgdorf – ideal für lange S-Bahn- und Zugstrecken.
+- Größere Reichweite: Bus 3,6 km, Tram 4,5 km, U-Bahn 6,6 km zwischen zwei Halten.
+- Mehr Halte pro Linie: Tram 12, S-Bahn 9, Zug 6 (Europa entsprechend mehr). Man kann weiter herauszoomen und verschieben.

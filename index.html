@@ -92,23 +92,68 @@
 
   <!-- Sandbox-Werkzeuge (nur im Sandbox-Modus) -->
   <div class="sandbox note" id="sandbox" hidden>
-    <span class="sb-title">Sandbox</span>
-    <div class="sb-tools" id="sb-tools" role="radiogroup" aria-label="Werkzeug">
-      <button class="sb-tool" data-tool="lines"><svg class="ico" viewBox="0 0 24 24"><path d="M4 18L10 9l5 6 5-9"/><circle cx="4" cy="18" r="1.6"/><circle cx="20" cy="6" r="1.6"/></svg>Linien</button>
-      <button class="sb-tool" data-tool="build"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>Bauen</button>
-      <button class="sb-tool" data-tool="tier"><svg class="ico" viewBox="0 0 24 24"><path d="M12 20V5M6 11l6-6 6 6"/></svg>Ausbau</button>
-      <button class="sb-tool" data-tool="shape"><svg class="ico" viewBox="0 0 24 24"><path d="M12 4l7 12H5z"/><circle cx="12" cy="18" r="2"/></svg>Form</button>
-      <button class="sb-tool" data-tool="move"><svg class="ico" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></svg>Schieben</button>
-      <button class="sb-tool" data-tool="remove"><svg class="ico" viewBox="0 0 24 24"><path d="M5 7h14M9 7V4.5h6V7M7 7l1 13h8l1-13"/></svg>Abreißen</button>
+    <div class="sb-head">
+      <span class="sb-title">Sandbox</span>
+      <button class="sb-min" id="sb-min" aria-label="Werkzeuge ein- oder ausklappen">–</button>
     </div>
-    <div class="sb-build" id="sb-build" hidden>
-      <span class="sb-label">Form</span>
-      <div class="sb-row" id="sb-shapes"></div>
-      <span class="sb-label">Stationsart</span>
-      <div class="sb-row" id="sb-tiers"></div>
+    <div class="sb-body">
+      <div class="sb-status" id="sb-status">
+        <span id="sb-status-text"></span>
+        <button class="sb-back" id="sb-back" hidden>✎ Linien</button>
+      </div>
+      <div class="sb-tabs" role="tablist">
+        <button class="sb-tab" data-tab="build" role="tab">Bauen</button>
+        <button class="sb-tab" data-tab="edit" role="tab">Ändern</button>
+        <button class="sb-tab" data-tab="fun" role="tab">Spaß</button>
+        <button class="sb-tab" data-tab="city" role="tab">Stadt</button>
+      </div>
+
+      <section class="sb-pane" data-pane="build">
+        <button class="sb-tool big" data-tool="build">⊕ Station bauen</button>
+        <span class="sb-label">Form</span>
+        <div class="sb-row" id="sb-shapes"></div>
+        <span class="sb-label">Stationsart</span>
+        <div class="sb-row" id="sb-tiers"></div>
+        <span class="sb-label">Schnell bauen</span>
+        <div class="sb-grid">
+          <button class="sb-act" data-act="inner">Innenstadt</button>
+          <button class="sb-act" data-act="all">Ganze Region</button>
+        </div>
+      </section>
+
+      <section class="sb-pane" data-pane="edit" hidden>
+        <div class="sb-grid">
+          <button class="sb-tool" data-tool="tier">↑ Ausbau</button>
+          <button class="sb-tool" data-tool="shape">▲ Form</button>
+          <button class="sb-tool" data-tool="name">✎ Name</button>
+          <button class="sb-tool" data-tool="move">✥ Schieben</button>
+          <button class="sb-tool" data-tool="node">⇄ Knoten</button>
+          <button class="sb-tool" data-tool="big">◎ Groß</button>
+          <button class="sb-tool danger" data-tool="remove">✕ Abreißen</button>
+        </div>
+      </section>
+
+      <section class="sb-pane" data-pane="fun" hidden>
+        <span class="sb-label">Ereignis – wählen, dann Station antippen</span>
+        <div class="sb-grid" id="sb-events"></div>
+        <span class="sb-label">Sofort</span>
+        <div class="sb-grid">
+          <button class="sb-act" data-act="rush">Rushhour</button>
+          <button class="sb-act" data-act="home">Feierabend</button>
+          <button class="sb-act" data-act="calm">Alle leeren</button>
+          <button class="sb-act" data-act="fleet">+1 Fahrzeug je Linie</button>
+        </div>
+      </section>
+
+      <section class="sb-pane" data-pane="city" hidden>
+        <span class="sb-label">Fahrgäste</span>
+        <div class="sb-row" id="sb-demand"></div>
+        <span class="sb-label">Dein Netz</span>
+        <dl class="sb-stats" id="sb-stats"></dl>
+        <ol class="sb-top" id="sb-top"></ol>
+        <button class="sb-act danger wide" data-act="clear">Alles abreißen</button>
+      </section>
     </div>
-    <span class="sb-label">Fahrgäste</span>
-    <div class="sb-row" id="sb-demand"></div>
   </div>
 
   <!-- Laufendes Ereignis (z. B. 96-Spiel) -->
