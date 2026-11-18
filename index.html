@@ -82,6 +82,7 @@
   <!-- Menü für eine Linie (über dem Stift) -->
   <div class="line-menu note" id="line-menu" hidden>
     <button class="pen-btn" id="lm-add">+ Zug</button>
+    <button class="pen-btn" id="lm-add-max" hidden>+ mehrere</button>
     <button class="pen-btn" id="lm-remove">− Zug</button>
     <button class="pen-btn" id="lm-rename">Name ändern</button>
     <button class="pen-btn" id="lm-ring" hidden>Ring öffnen</button>
@@ -89,6 +90,17 @@
   </div>
 
   <p class="hint" id="hint" hidden></p>
+
+  <!-- Airline: Flughafen antippen → ausbauen -->
+  <div class="airport-menu note" id="airport-menu" hidden>
+    <b id="ap-title"></b>
+    <small id="ap-info"></small>
+    <div class="ap-btns">
+      <button class="pen-btn small" data-n="1"></button>
+      <button class="pen-btn small" data-n="10"></button>
+      <button class="pen-btn small primary" data-n="max"></button>
+    </div>
+  </div>
 
   <!-- Sandbox-Werkzeuge (nur im Sandbox-Modus) -->
   <div class="sandbox note" id="sandbox" hidden>
@@ -283,12 +295,12 @@
       <p class="lead">Kontostand <b id="shop-money"></b> · laufende Kosten <b id="shop-costs"></b> pro Woche</p>
       <h3>Ticketpreis</h3>
       <div class="seg shop-price" id="shop-price"></div>
+      <h3 id="shop-h-build">Ausbau &amp; Marketing</h3>
+      <div class="shop-grid" id="shop-build"></div>
       <h3 id="shop-h-planes">Flugzeuge kaufen</h3>
       <div class="shop-grid" id="shop-planes"></div>
       <h3 id="shop-h-routes">Routen-Lizenzen</h3>
       <div class="shop-grid" id="shop-routes"></div>
-      <h3>Ausbau &amp; Marketing</h3>
-      <div class="shop-grid" id="shop-build"></div>
       <div class="start-actions"><button class="pen-btn primary" id="shop-close">Fertig</button></div>
     </div>
   </div>

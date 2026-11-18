@@ -208,3 +208,12 @@ Die zweite Spielwelt heißt **Welt**: deine eigene Airline mit Sitz in Frankfurt
 - **Firmenname** und **Status**: Start-up → Regional-Airline (10.000 Fluggäste) → Nationale Airline (50.000) → Internationale Airline (150.000) → Globale Airline (400.000) → Weltmarke (1 Mio). Jede Stufe: Investoren-Bonus und mehr Buchungen.
 - **Börsengang** (ab „Internationale Airline“, im Firmen-Shop): bringt einmalig mindestens 1 Mio €. Danach gibt es eine Aktie (Start 10,00 €), deren Kurs jede Woche mit deinem Gewinn steigt oder fällt; in Gewinnwochen gehen 15 % als Dividende an die Aktionäre.
 - **Ticketpreis per Regler** (50–200 %); 1 Symbol = 50 Personen.
+
+## Airline: Idle-Ausbau
+- **Flughafen antippen** (kurz, ohne Ziehen) öffnet sein Ausbau-Menü: Stufe 1–25. Jede Stufe bringt **+100 Plätze** und **+12 % Fluggäste**. Kaufen mit **+1**, **+10** oder **Max** (so viel das Geld hergibt). Die Stufe steht als gelbe Zahl am Flughafen.
+- **Firmen-Shop → Firmen-Upgrades** (ganz oben), mit Mengenwahl **×1 / ×10 / Max**:
+  - **Alle Flughäfen ausbauen** – baut überall auf einmal aus, günstigste Stufen zuerst.
+  - **Marketing** (+8 % Buchungen pro Stufe), **Bordservice** (+5 % pro Ticket), **Wartung** (−4 % Leasing, bis −60 %), **Schnellere Abfertigung** (+5 % Tempo).
+- **Mehrere Flugzeuge auf einmal:** Route antippen → „+10 auf einmal“.
+- **Offline-Einnahmen:** Während du weg bist, verdient die Airline weiter (30 % der letzten Wochengewinne, höchstens 8 Stunden). Beim Weiterspielen gibt es das Geld mit „Willkommen zurück!“.
+
