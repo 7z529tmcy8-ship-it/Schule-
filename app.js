@@ -1482,9 +1482,9 @@ function pageBot() {
       ${B.log.slice(0, 7).reverse().map(n => `<div><span class="t-dim">[Tag ${n.day}]</span> ${esc(n.text)}</div>`).join('') || '<div class="t-dim">Noch keine Aktionen.</div>'}
       <div id="bot-live" class="t-live">${B.on ? '&gt; starte Scan …' : '&gt; Bot pausiert. Schalter oben umlegen.'}</div>
       <div id="bot-con">${CON.map(conLine).join('')}</div>
-      <form data-form="botcmd" class="t-prompt"><label for="bot-cmd">chronobot $</label><input id="bot-cmd" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="send" placeholder="Befehl eingeben … (hilfe)"></form>
+      <form data-form="botcmd" class="t-prompt"><label for="bot-cmd">chronobot $</label><input id="bot-cmd" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="send" placeholder="z. B. deals, kaufe rolex, verkaufen …"></form>
     </div>
-    <div class="t-chips">${['hilfe', 'status', 'scan', 'kauf rolex', 'fokus omega', 'modus hai', 'budget max', 'verkauf alles', 'notverkauf'].map(c => `<button class="t-chip" data-act="botcmd" data-v="${c}">${c}</button>`).join('')}</div>
+    ${botMenuHTML()}
   </div>
 
   <div class="cols">
@@ -1722,20 +1722,47 @@ function modeByName(n) {
   n = (n || '').toLowerCase();
   return BOT_MODES.findIndex(m => m.name.toLowerCase().replace(/[^a-zäöü]/g, '').startsWith(n.replace(/[^a-zäöü]/g, '')) && n);
 }
+// Einfache Wörter in Befehle übersetzen ("kaufe rolex" → "kauf rolex")
+function simplify(t) {
+  t = t.replace(/[!?.]+$/, '').trim();
+  const A = [
+    [/^(start|los|starten|go)$/, 'an'], [/^(stopp?|halt|pause|stoppen)$/, 'aus'],
+    [/^(info|wie läufts|wie laeufts|stand)$/, 'status'],
+    [/^(deals|angebote|schnäppchen|suchen)$/, 'scan'], [/^(deals|angebote) (.+)$/, 'scan $2'],
+    [/^(kaufen|kaufe|kauf mir) (.+)$/, 'kauf $2'],
+    [/^nur (.+)$/, 'fokus $1'], [/^(alle|alles kaufen|egal|alle marken)$/, 'fokus aus'],
+    [/^geld (.+)$/, 'budget $1'],
+    [/^(vorsichtig|ausgewogen|riskant|hai)$/, 'modus $1'],
+    [/^(uhren|liste|meine uhren)$/, 'positionen'],
+    [/^billiger$/, 'preis -5%'], [/^teurer$/, 'preis +5%'],
+    [/^(verkaufen|alles verkaufen)$/, 'verkauf alles'], [/^(sofort verkaufen|alles sofort verkaufen|weg damit)$/, 'notverkauf'],
+  ];
+  for (const [re, to] of A) if (re.test(t)) return t.replace(re, to);
+  // nur ein Markenname → Deals dieser Marke zeigen
+  if (BRANDS.some(b => b.toLowerCase().includes(t)) && t.length > 2 && !BOT_WORDS.includes(t.split(' ')[0])) return 'scan ' + t;
+  return t;
+}
+const BOT_WORDS = ['hilfe', 'help', 'status', 'an', 'aus', 'modus', 'budget', 'scan', 'kauf', 'fokus', 'maxpreis', 'positionen', 'preis', 'verkauf', 'notverkauf', 'laden', 'sniper', 'clear', 'hallo', 'kaffee'];
+
 function runCmd(raw) {
   const B = S.bot;
   const line = raw.trim().replace(/^\//, '');
   if (!line) return;
   CMD_HIST.push(line); cmdPos = CMD_HIST.length;
   out(`<span class="t-me">chronobot $ ${esc(line)}</span>`);
-  const [cmd, ...rest] = line.toLowerCase().split(/\s+/);
+  const [cmd, ...rest] = simplify(line.toLowerCase()).split(/\s+/);
   const arg = rest.join(' ');
   const ok = t => out('✔ ' + t);
   const err = t => out('✖ ' + t, 't-err');
   switch (cmd) {
     case 'hilfe': case 'help': case '?':
-      out('Verfügbare Befehle:');
-      BOT_HELP.forEach(([c, d]) => out(`  <b>${esc(c)}</b> <span class="t-dim">– ${esc(d)}</span>`));
+      out('So sprichst du mit mir – einfach eins davon tippen:');
+      [['start', 'stopp', 'Bot an oder aus'], ['deals', '', 'die besten Angebote'], ['kaufe rolex', '', 'sofort eine Rolex kaufen'],
+       ['nur omega', 'alle', 'nur noch Omega kaufen / wieder alles'], ['geld 10000', '', 'so viel darf ich ausgeben'],
+       ['vorsichtig', 'hai', 'wie mutig ich bin'], ['uhren', '', 'meine Uhren'], ['billiger', 'teurer', 'Preise ändern'],
+       ['verkaufen', '', 'alles schnell verkaufen'], ['info', '', 'wie läuft’s?']]
+        .forEach(([a, b, d]) => out(`  <b>${a}</b>${b ? ` / <b>${b}</b>` : ''} <span class="t-dim">→ ${d}</span>`));
+      out('<span class="t-dim">Oder einfach die Knöpfe unten benutzen. Profi-Befehle: „profi“</span>');
       break;
     case 'status': {
       const items = botItems();
@@ -1766,7 +1793,8 @@ function runCmd(raw) {
     }
     case 'scan': {
       const n = clamp(parseInt(arg) || 5, 1, 15);
-      const deals = S.listings.filter(l => !l.flash && botMatches(l)).map(l => ({ l, r: l.price / valueOf(l.m, l.cond, l.papers) })).sort((a, b) => a.r - b.r).slice(0, n);
+      const q = isNaN(parseInt(arg)) ? arg : '';
+      const deals = S.listings.filter(l => !l.flash && (q ? `${MODEL[l.m].brand} ${MODEL[l.m].name}`.toLowerCase().includes(q) : botMatches(l))).map(l => ({ l, r: l.price / valueOf(l.m, l.cond, l.papers) })).sort((a, b) => a.r - b.r).slice(0, n);
       if (!deals.length) { err('Keine passenden Angebote.'); break; }
       out(`Top ${deals.length} Deals${B.focus ? ` (Fokus: ${esc(B.focus)})` : ''}:`);
       deals.forEach(({ l, r }, i) => out(`  ${i + 1}. ${esc(MODEL[l.m].brand)} ${esc(MODEL[l.m].name)} – ${fmtEur(l.price)} <span class="${r < 1 ? '' : 't-err'}">(${r < 1 ? '−' : '+'}${Math.abs(Math.round((1 - r) * 100))} %)</span>${l.fake && B.up.scanner ? ' <span class="t-err">⚠ Fälschung!</span>' : !l.dealer && !l.papers ? ' <span class="t-dim">privat, ohne Papiere</span>' : ''}`));
@@ -1813,6 +1841,7 @@ function runCmd(raw) {
       if (!isFinite(pct) || Math.abs(pct) > 50) { err('Beispiel: preis -5% oder preis +3%'); break; }
       let n = 0;
       for (const o of botItems()) { if (o.ask) { o.ask = niceRound(o.ask * (1 + pct / 100)); n++; } if (o.shop) { o.shop = niceRound(o.shop * (1 + pct / 100)); n++; } }
+      if (!n) { out('Noch nichts inseriert – der Bot setzt seine Preise am nächsten Markttag.'); break; }
       ok(`${n} Preis${n === 1 ? '' : 'e'} um ${pct > 0 ? '+' : ''}${pct} % geändert. (Am nächsten Markttag passt der Bot seine Preise wieder selbst an.)`);
       break;
     }
@@ -1843,6 +1872,10 @@ function runCmd(raw) {
       B.snipeOff = arg === 'aus'; ok(`Sniper ${B.snipeOff ? 'aus' : 'an'}.`);
       break;
     }
+    case 'profi':
+      out('Profi-Befehle:');
+      BOT_HELP.forEach(([c, d]) => out(`  <b>${esc(c)}</b> <span class="t-dim">– ${esc(d)}</span>`));
+      break;
     case 'clear': case 'cls': CON.length = 0; break;
     case 'hallo': case 'hi': out(`Hallo ${esc(S.name)}! Ich bin chronobot ${botTier()}. Tipp „hilfe“ für alle Befehle.`); break;
     case 'kaffee': out('☕ Ich bin ein Bot. Ich trinke nur Marktdaten.'); break;
@@ -1850,7 +1883,35 @@ function runCmd(raw) {
   }
   save();
 }
+// Einfaches Knopf-Menü unter dem Terminal
+function botMenuHTML() {
+  const B = S.bot, pk = UI.botPick;
+  const tile = (icon, label, act, v, cls = '') => `<button class="bm-tile ${cls}" data-act="${act}" data-v="${esc(v)}"><span>${icon}</span>${label}</button>`;
+  const brandsNow = [...new Set(S.listings.filter(l => !l.flash).map(l => MODEL[l.m].brand))].sort((a, b) => a.localeCompare(b, 'de'));
+  let sub = '';
+  if (pk === 'kauf') sub = `<div class="bm-q">Welche Marke soll ich kaufen?</div>` + brandsNow.map(b => `<button class="bm-opt" data-act="botcmd" data-v="kaufe ${esc(b.toLowerCase())}">${esc(b)}</button>`).join('');
+  if (pk === 'fokus') sub = `<div class="bm-q">Nur noch diese Marke kaufen:</div><button class="bm-opt on" data-act="botcmd" data-v="alle">Alle Marken</button>` + BRANDS.map(b => `<button class="bm-opt ${B.focus === b.toLowerCase() ? 'on' : ''}" data-act="botcmd" data-v="nur ${esc(b.toLowerCase())}">${esc(b)}</button>`).join('');
+  if (pk === 'geld') sub = `<div class="bm-q">Wie viel darf ich ausgeben?</div>` + [2000, 5000, 10000, 25000, 50000, 100000, 250000].filter(v => v <= S.money + botInUse()).map(v => `<button class="bm-opt" data-act="botcmd" data-v="geld ${v}">${fmtEur(v)}</button>`).join('') + `<button class="bm-opt" data-act="botcmd" data-v="geld max">Alles</button>`;
+  if (pk === 'mut') sub = `<div class="bm-q">Wie mutig soll ich sein?</div>` + BOT_MODES.map((m, i) => `<button class="bm-opt ${B.mode === i ? 'on' : ''}" data-act="botcmd" data-v="modus ${['vorsichtig', 'ausgewogen', 'riskant', 'hai'][i]}">${m.name}</button>`).join('');
+  return `<div class="bot-menu">
+    <div class="bm-grid">
+      ${B.on ? tile('⏸', 'Stopp', 'botcmd', 'stopp', 'red') : tile('▶️', 'Start', 'botcmd', 'start', 'green')}
+      ${tile('🔍', 'Beste Deals', 'botcmd', 'deals')}
+      ${tile('🛒', 'Kaufen …', 'bot-pick', 'kauf', pk === 'kauf' ? 'on' : '')}
+      ${tile('🎯', B.focus ? `Nur ${esc(B.focus)}` : 'Nur Marke …', 'bot-pick', 'fokus', pk === 'fokus' ? 'on' : '')}
+      ${tile('💶', `Geld: ${fmtEur(B.budget)}`, 'bot-pick', 'geld', pk === 'geld' ? 'on' : '')}
+      ${tile('🦈', `Mut: ${BOT_MODES[B.mode].name.replace('🦈 ', '')}`, 'bot-pick', 'mut', pk === 'mut' ? 'on' : '')}
+      ${tile('⌚', 'Meine Uhren', 'botcmd', 'uhren')}
+      ${tile('💰', 'Alles verkaufen', 'botcmd', 'verkaufen')}
+      ${tile('📊', 'Wie läuft’s?', 'botcmd', 'info')}
+      ${tile('❓', 'Hilfe', 'botcmd', 'hilfe')}
+    </div>
+    ${sub ? `<div class="bm-sub">${sub}<button class="bm-opt x" data-act="bot-pick" data-v="">✕</button></div>` : ''}
+  </div>`;
+}
+
 function submitCmd(text) {
+  UI.botPick = null;
   runCmd(text);
   render();
   const inp = $('#bot-cmd'); if (inp) inp.focus();
@@ -2160,6 +2221,7 @@ document.addEventListener('click', e => {
     case 'shop-create': createShop(); break;
     case 'shop-tab': UI.shopTab = t.dataset.v; render(); break;
     case 'botcmd': submitCmd(t.dataset.v); break;
+    case 'bot-pick': UI.botPick = UI.botPick === t.dataset.v || !t.dataset.v ? null : t.dataset.v; render(); break;
     case 'bot-stock': {
       S.bot.stock = !S.bot.stock;
       if (S.bot.stock) botStockShop(false);

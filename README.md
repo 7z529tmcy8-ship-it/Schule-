@@ -77,7 +77,9 @@ Beim Öffnen erscheint kurz ein Ladebildschirm im Stil von 2010:
 
 ### Bot-Befehle (Terminal)
 
-Unter dem Bot-Terminal gibt es eine Befehlszeile (↑/↓ = letzte Befehle) und Schnell-Buttons:
+Unter dem Terminal gibt es ein **Knopf-Menü** (Start/Stopp, Beste Deals, Kaufen …, Nur Marke …, Geld, Mut, Meine Uhren, Alles verkaufen, Wie läuft’s?, Hilfe). Bei „Kaufen …“, „Nur Marke …“, „Geld“ und „Mut“ klappt eine Auswahl auf.
+
+Man kann auch einfache Wörter tippen: `start`, `stopp`, `deals`, `kaufe rolex`, `nur omega`, `alle`, `geld 10000`, `vorsichtig`/`hai`, `uhren`, `billiger`/`teurer`, `verkaufen`, `info` – oder nur einen Markennamen (`rolex` zeigt Rolex-Deals). `profi` zeigt die ausführlichen Befehle:
 
 | Befehl | Wirkung |
 |---|---|
