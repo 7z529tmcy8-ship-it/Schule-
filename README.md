@@ -1,219 +1,43 @@
-# MetroRush 🚇
+# Chronothek ⌚
 
-Ein Verkehrs-Planungsspiel im Schulheft-Look – gemacht **nur für das iPad** (Safari / Home-Bildschirm, Apple Pencil und Finger).
-Inspiriert vom Spielprinzip von Mini Metro, aber mit eigener Grafik und eigenem Namen. Alles läuft im Browser und offline, nichts wird hochgeladen.
+Ein Sammelspiel für Uhren im Stil von Apple-Webseiten um 2010: glänzende Leisten, Aqua-Knöpfe, Produktbilder mit Spiegelung und eine Uhrenbox aus Leder.
+Du startest mit **3.000 € Spielgeld** und baust dir eine Sammlung auf, von der Casio F-91W bis zur Patek Philippe Nautilus.
+Alles läuft im Browser und offline (PWA). Der Spielstand liegt nur auf deinem Gerät.
 
-## Anleitung (Tutorial)
-Beim allerersten Spiel startet automatisch eine **Anleitung in 9 Schritten**: Du baust deine erste Bus- und Zuglinie selbst, die richtige Stelle leuchtet jeweils gelb auf, und ein gestrichelter Pfeil zeigt, wohin du ziehen sollst. Währenddessen gibt es keinen Zeitdruck.
-Später kannst du sie jederzeit über **„Anleitung“** auf dem Startzettel wiederholen oder mit „Überspringen“ abbrechen.
+> **Nur ein Spiel:** Alle Beträge sind Spielgeld. Uhrennamen und Referenzen dienen nur zur Beschreibung. Es gibt keine Verbindung zu den Herstellern oder zu echten Händlern, und es werden keine Logos verwendet. Die Uhrenbilder werden im Spiel selbst gezeichnet. Die Startpreise sind **grobe Schätzungen** für den Gebrauchtmarkt und ändern sich im Spiel zufällig.
 
-## Zwei Spielwelten
-Auf dem Startzettel wählst du die Spielwelt. Beide funktionieren nach derselben Logik (Drehkreuz, Netzgrößen, Reichweiten, Stationsarten, Ausbau, Upgrades, Ereignisse).
-
-| | Hannover | Europa |
-|---|---|---|
-| Drehkreuz | Hauptbahnhof | Flughafen Frankfurt |
-| Stationen | 42 Stadtteile | ~60 Städte mit Flughafen |
-| Karte | Leine, Ihme, Maschsee, Kanal, Eilenriede | Küsten, Nordsee, Ostsee, Mittelmeer, Schwarzes Meer |
-| großes Netz, kurze Wege | Bus (max. ~2,7 km) | Propellermaschine (max. ~600 km) |
-| mittel | Tram, U-Bahn | Regionaljet (~1.100 km), Mittelstrecke (~2.200 km) |
-| klein, weit | S-Bahn, Zug (mind. ~3 km) | Großraumjet, Jumbo (mind. ~1.500 km) |
-| Stationsarten | Haltestelle · T · U · S | Flugplatz · R · F · G |
-| Ereignisse | 96-Spiel, Messe, Maschseefest, Zoo-Tag | Oktoberfest, Sommerferien, CL-Finale, Hannover Messe, Karneval |
-
-Es gibt **einen** Spielstand (die zuletzt gespielte Welt) und einen Rekord pro Welt. Die Anleitung spielt in Hannover. Auch die Europa-Karte ist **grob aus dem Gedächtnis** gezeichnet (1 Kästchen ≈ 60 km); die Daten stehen in `EUROPA_MAP` in `game.js`.
-
-## Europa: deine eigene Airline
-In Europa bist du Unternehmer:in. Die Welt wächst langsamer (längere Wochen, seltener neue Städte), dafür geht es ums Geld:
-- **Kontostand** (Start: 4 Mio €) oben im Status. Jeder angekommene Fluggast-Block bringt **Ticketumsatz** – je größer das Flugzeug, desto mehr. Flugzeuge kosten laufend **Leasing**, Routen **Gebühren**.
-- **Firmen-Shop** (Aktenkoffer-Knopf): Flugzeuge kaufen, Routen-Lizenzen, Flughäfen ausbauen, Umsteige-Terminal, großes Terminal, **Werbekampagne** (+40 % Fluggäste für eine Woche).
-- **Ticketpreis**: Günstig (mehr Fluggäste, weniger pro Ticket), Normal, Premium (weniger Fluggäste, mehr pro Ticket).
-- **Wochenbilanz** am Ende jeder Woche: Umsatz, Kosten, Gewinn, Kontostand, Diagramm der letzten Wochen und ein Tipp.
-- **Pleite = Endstation:** Unter dem Kreditrahmen von −2 Mio € ist die Airline insolvent.
-- Flugzeuge steigen nach dem Start auf und sinken vor der Landung – mit Schatten und Kondensstreifen. Verkäufe steigen als „+55.000 €“ über den Flughäfen auf.
-
-Alle Zahlen stehen gesammelt in `EUROPA.business` in `game.js`.
-
-## Hannover
-Gespielt wird auf einer **grob skizzierten Karte von Hannover**: Leine, Ihme, Maschsee, Mittellandkanal, Eilenriede, Herrenhäuser Gärten und ein paar Orientierungspunkte (Rathaus, Zoo, Stadion, Messe).
-Neue Stationen entstehen in echten **Stadtteilen** – von innen (Oststadt, Nordstadt, Linden) nach außen (Misburg, Wettbergen, Lahe). Noch nicht erschlossene Stadtteile stehen blass auf der Karte.
-Die Lage ist aus dem Gedächtnis eingetragen und **nicht kartengenau** (1 Kästchen ≈ 300 m). Korrigieren lässt sich alles in `HANNOVER` am Anfang von `game.js` (Angaben in km vom Hauptbahnhof aus, x nach Osten, y nach Süden).
-
-## So spielst du
-- In der Mitte steht der **Hauptbahnhof** (Haus mit „H“). Viele Fahrgäste wollen dorthin, und dort steigen auch die meisten ein.
-- Wähle unten ein Verkehrsmittel und zieh mit Stift oder Finger von Station zu Station – so entsteht eine Linie.
-- Fahrgäste (kleine Formen) wollen zu einer Station mit ihrer Form. Umstiege – auch zwischen Bus, Tram, U-Bahn und Zug – passieren automatisch.
-- Am Linienende („Stiftkappe“) ziehst du die Linie weiter oder zurück.
-- **Buslinien** dürfen beliebig viele Haltestellen haben; die anderen Verkehrsmittel bleiben begrenzt.
-- Einfacher: An der **Endstation** einer Linie ansetzen und weiterziehen – das verlängert die Linie (am Hauptbahnhof nur, wenn keine neue Linie mehr frei ist).
-- **Station einfügen:** Mitten auf einen Linienabschnitt tippen und zu einer Station ziehen – sie wird zwischen den beiden Halten eingefügt.
-- **Ringlinien:** Zieh eine Linie zurück zu ihrer Startstation (beim Zeichnen oder Verlängern) – sie wird zum Ring und die Fahrzeuge fahren im Kreis. Über das Linien-Menü („Ring öffnen“) wird sie wieder normal.
-- **Nächste Station aussuchen:** Wenn eine neue Station fällig ist, erscheinen gelb-gestrichelte Vorschläge am Rand deines Netzes (mit Form und Stationsart). Tippe einen an, um ihn zu bauen – so bestimmst du, in welche Richtung die Stadt wächst. Wer nicht wählt, bekommt nach Ablauf des Bleistiftbogens einen zufälligen.
-- Unten auf einen bunten Stift tippen → Zug hinzufügen/abziehen oder Linie löschen.
-- Jede Woche gibt es einen Zug und eine Wahl: neue Linie, Extra-Zug oder großer Bahnhof.
-- Ist eine Station zu lange überfüllt (roter Kreis), ist Endstation. Dein Rekord wird gespeichert.
-- Oben rechts: Pause, normal, schnell. Verlässt du die App, pausiert das Spiel automatisch.
-
-## Die Verkehrsmittel
-
-| | Bus | Tram | U-Bahn | S-Bahn | Zug |
-|---|---|---|---|---|---|
-| Netz | groß (bis 5 Linien) | mittel | mittel | klein | sehr klein |
-| Abstand zwischen Halten | max. ~2,7 km | max. ~3,3 km | max. ~4,5 km | beliebig | **mind. ~3 km** |
-| Hält an | allen Stationen | Tram-Halt, U-Bahn, Bahnhof | U-Bahn-Station, Bahnhof | nur Bahnhof | nur Bahnhof |
-| Tempo / Plätze | langsam / 4 | mittel / 6 | schnell / 6 | schnell / 8 | sehr schnell / 10 |
-| Besonderheit | hält überall, kurze Wege | schnelles Einsteigen | – | Linie über den Hauptbahnhof | nur lange Strecken ab Hauptbahnhof |
-
-## Stationsarten und Ausbau
-- **Bushaltestelle** (klein, ohne Abzeichen) – nur Busse
-- **Tram-Halt** („T“) – Bus und Tram
-- **U-Bahn-Station** (blaues „U“) – Bus, Tram, U-Bahn
-- **Bahnhof** (grünes „S“) – alles, auch S-Bahn und Zug
-- **Hauptbahnhof** – alles
-
-Welche Art ein Stadtteil hat, ist grob an Hannovers echtes Netz angelehnt, aber vereinfacht.
-Wählst du ein Verkehrsmittel, werden Stationen blass, an denen es nicht halten kann.
-**Ausbau:** Wöchentliche Upgrades wie „Tram-Gleise legen“, „U-Bahn-Station bauen“ oder „Bahnhof bauen“ machen eine Station eine Stufe größer – einfach danach auf die Station tippen.
-
-Jede Woche werden drei Upgrades ausgelost: neue Linien, zusätzliche Fahrzeuge, Ausbau oder ein großer Bahnhof.
-
-## Karte zoomen und verschieben
-- **Zwei Finger** auseinander/zusammen: rein- und rauszoomen.
-- **Ein Finger auf leerer Fläche** (nicht auf einer Station): Karte verschieben.
-- Rechts am Rand: **+**, **−** und **◎** (zurück zur automatischen Ansicht, die immer die ganze Stadt zeigt).
-- Rausgezoomt siehst du ganz Hannover mit Umland (Langenhagen, Garbsen, Seelze, Laatzen, Hemmingen …).
-
-## Fokus zu Beginn
-Bei „Losfahren“ wählst du, worauf du setzt – davon hast du am Anfang mehr Linien:
-
-| Fokus (Hannover / Europa) | Linien am Start: Bus/Propeller · Tram/Regionaljet · U-Bahn/Mittelstrecke · S-Bahn/Großraumjet · Zug/Jumbo |
+## Seiten (wie eine Händler-Webseite)
+| Seite | Was du dort machst |
 |---|---|
-| Busnetz / Kurzstrecke | 4 · 1 · 1 · – · – |
-| Stadtbahn / Mittelstrecke | 1 · 2 · 2 · 1 · – |
-| Schiene / Langstrecke | 1 · – · 1 · 2 · 2 |
-| Ausgewogen | 2 · 1 · 1 · 1 · 1 |
+| **Start** | Kontostand, Sammlungswert, Stufe, Tagesbonus, Nebenjob, neue Angebote, Marktbewegungen, Uhren-News |
+| **Marktplatz** | Angebote mit Filtern (Marke, Kategorie, Preis, Zustand, Box & Papiere), Sortierung, Suche. Grünes Schild = unter Marktwert |
+| **Angebot** | Großes Produktbild, Daten, Händler, Echtheitsprüfung, **Kaufen** (Kasse) oder **Preisvorschlag** (Annahme, Gegenangebot oder Absage) |
+| **Modell** | Marktwert-Verlauf (7 / 30 / 90 Tage), alle aktuellen Angebote des Modells |
+| **Auktionen** | 4 Live-Auktionen mit Countdown, andere Bieter, 5 % Aufgeld, Verlängerung bei späten Geboten |
+| **Sammlung** | Uhrenbox, Depot-Übersicht mit Gewinn/Verlust; pro Uhr: inserieren, sofort an Händler verkaufen (80 %), Revision |
+| **Merkliste** | Gemerkte Modelle mit Preisänderung und Angebotszahl, dazu eine Tabelle aller Modelle |
+| **Profil** | Name, Statistik, Erfolge mit Geld-Belohnung, Spielstand löschen |
 
-## Fahrzeuge und Wochen-Meilensteine
-- **Fahrzeuge kommen automatisch:** Jede neue Linie hat sofort ein Fahrzeug. Jede Woche kommt ein weiteres dazu und fährt direkt auf der Linie mit, die es am dringendsten braucht.
-- **Am Ende jeder Woche wählst du eine neue Linie** – für jedes Verkehrsmittel, das noch wachsen kann, gibt es eine Karte (bevorzugt die, mit denen du Stationen ohne Anschluss erreichst) – oder einen Ausbau (Station ausbauen, Umsteigeknoten, großer Bahnhof).
+## Regeln
+- Alle **30 Sekunden** beginnt ein neuer Markttag. Dann ändern sich die Preise und neue Angebote kommen dazu. Deine Inserate können verkauft werden.
+  - Ist die App zu, laufen bis zu 40 Markttage nach.
+- **Wert einer Uhr** = Marktwert × Zustand (Ungetragen 108 %, Sehr gut 100 %, Gut 90 %, Getragen 80 %, Revisionsbedürftig 62 %) × 88 %, wenn Box & Papiere fehlen.
+- **Revision**: kostet etwa 6 % vom Marktwert und dauert 2 Tage. Danach ist die Uhr „Sehr gut“.
+- **Verkaufen**:
+  - Inserieren: 6 % Gebühr. Je höher der Preis, desto kleiner die Chance pro Tag.
+  - Sofortverkauf an einen Händler: 80 % vom Wert.
+- **News** wie Preiserhöhungen, Hype oder Zinsen verändern die Preise einzelner Modelle, Marken oder des ganzen Markts.
+- **Stufen** nach Sammlungswert: Einsteiger → Sammler (5.000 €) → Kenner (25.000 €) → Connaisseur (100.000 €) → Grand Collector (500.000 €) → Legende (2 Mio. €).
 
-## Liniennamen, Umsteigeknoten und Ereignisse
-- **Liniennamen:** Jede Linie bekommt automatisch einen Namen wie in Hannover – Busse 100, 121, 128 …, Trams 10, 17, 11, U-Bahn U1–U3, S-Bahn S1/S5, Züge RE2/RE3. Der Name steht am Stift und als Schild an der Linie. Im Linien-Menü kannst du ihn mit **„Name ändern“** umbenennen (max. 6 Zeichen).
-- **Umsteigeknoten** (Upgrade, Abzeichen ⇄): Ein- und Umsteigen geht dort deutlich schneller, und es passen 6 Fahrgäste mehr hin.
-- **Ereignisse** (ab Woche 2): 96-Spiel im Stadion, Messe, Maschseefest oder Zoo-Tag. Die Station nahe dem Ort bekommt ein rotes Fähnchen, viele Fahrgäste wollen dorthin. Am Ende reisen alle auf einmal ab.
+## Uhren & Daten
+44 Modelle von 25 Marken stehen in `MODELS` in `app.js`: Name, Referenz, Startpreis, Kategorie, Durchmesser, Material und Aussehen (Form, Zifferblatt, Lünette, Band).
+Neue Modelle trägst du einfach dort ein. Alte Spielstände bekommen sie automatisch dazu.
 
-## Ladebildschirm
-Beim Öffnen erscheint kurz ein Zettel mit dem Logo, drumherum fahren Bus, U-Bahn, S-Bahn und Zug. Antippen überspringt ihn.
+## Dateien
+- `index.html` – Seitengerüst mit Navigation und Fußzeile
+- `style.css` – das Design im Stil von 2010
+- `app.js` – Daten, Markt, Auktionen, Uhren-Grafik (SVG), Seiten
+- `sw.js` – Offline-Cache (`CACHE_VERSION` bei Änderungen hochzählen)
+- `manifest.json`, `icons/` – App für den Home-Bildschirm
 
-## Speichern
-Das Spiel **speichert sich automatisch**: alle 5 Sekunden, beim Pausieren, nach jedem Wochen-Upgrade und sobald du die App verlässt.
-Beim nächsten Öffnen tippst du auf **Weiterspielen**. Über den **Menü-Knopf** (☰ oben rechts) speicherst du sofort und kommst zum Startzettel.
-„Neues Spiel“ fragt vorher nach, weil es den Spielstand überschreibt. Nach „Endstation“ wird der Stand gelöscht – nur der Rekord bleibt.
-Der Spielstand liegt nur auf diesem iPad (im Speicher von Safari bzw. der Home-Bildschirm-App).
-
-## Das Spiel aufs iPad bringen (kostenlos)
-
-Die App muss einmal im Internet liegen (über **https**), damit Safari sie installieren kann. Danach funktioniert sie auch **offline**.
-Du brauchst dafür keinen Computer – alles geht auf dem iPad.
-
-### Weg A: GitHub Pages (empfohlen, das Projekt liegt schon auf GitHub)
-1. Öffne in Safari dein Repository auf **github.com** und melde dich an.
-2. Tippe auf **Settings** (Einstellungen). Falls du es nicht siehst: Safari auf „Desktop-Website anfordern“ stellen (**aA**-Symbol in der Adressleiste).
-3. Links im Menü: **Pages**.
-4. Bei **Source** wähle **Deploy from a branch**, darunter den Branch, in dem die App liegt (z. B. `main` oder `master`) und den Ordner **/ (root)** → **Save**.
-5. Nach 1–2 Minuten erscheint oben die Adresse, z. B.
-   `https://DEIN-NAME.github.io/Schule-/`
-   Hinweis: Bei einem **privaten** Repository geht GitHub Pages nur mit einem bezahlten Konto. Dann das Repository auf „Public“ stellen oder Weg B nehmen.
-
-### Weg B: Netlify Drop (ohne GitHub)
-1. Lade das Projekt als ZIP herunter (auf GitHub: **Code → Download ZIP**). Die Datei landet in der Dateien-App unter „Downloads“.
-2. In der **Dateien-App** auf die ZIP tippen → sie wird zu einem Ordner entpackt.
-3. Öffne in Safari **https://app.netlify.com/drop** und lege kostenlos ein Konto an (sonst wird die Seite nach einer Stunde gelöscht).
-4. Tippe auf „browse to upload“ und wähle den **entpackten Ordner** (der, in dem `index.html` direkt drin liegt).
-5. Netlify zeigt dir eine Adresse wie `https://irgendwas-12345.netlify.app`.
-
-### Installieren: „Zum Home-Bildschirm“
-1. Öffne die Adresse in **Safari** (nicht in Chrome – nur Safari kann auf dem iPad Web-Apps installieren).
-2. Tippe auf das **Teilen-Symbol** (Quadrat mit Pfeil nach oben).
-3. Wähle **Zum Home-Bildschirm** → **Hinzufügen**.
-4. Starte die App ab jetzt immer über das neue Symbol auf dem Home-Bildschirm. Sie läuft dann im Vollbild wie eine echte App und funktioniert offline.
-
-> Hinweis: Die App auf dem Home-Bildschirm und die Seite in Safari haben getrennte Speicher – dein Rekord wird also pro Variante gemerkt.
-
-
-### Updates
-Nach Änderungen am Code in `sw.js` die Zahl in `CACHE_VERSION` (z. B. `heftmetro-v5` → `heftmetro-v6`) hochzählen.
-Das iPad holt sich die neue Version beim nächsten Start mit Internet (eventuell zweimal öffnen).
-
-## Technik
-
-| Datei | Inhalt |
-|---|---|
-| `index.html` | Aufbau: Spielfeld, Status, Linien-Stifte, Zettel (Start, Upgrade, Game Over) |
-| `style.css` | Schulheft-Design, Safe Areas, Quer- und Hochformat |
-| `game.js` | Spiellogik, Wegfindung, Zeichnen (Canvas), Pencil-/Finger-Eingabe |
-| `sw.js` | Service Worker für Offline-Nutzung |
-| `manifest.json`, `icons/` | PWA-Daten für den Home-Bildschirm |
-| `.claude/skills/heft-metro-design/SKILL.md` | Design-System (Farben, Schrift, Zeichenstil, iPad-Regeln) |
-
-Spiel-Balance (Tageslänge, Kapazität, Zuggeschwindigkeit …) steht gesammelt in `CFG` oben in `game.js`.
-
-### Lokal testen (mit Computer, optional)
-```bash
-npx http-server -p 8080 .
-# dann http://localhost:8080 öffnen
-```
-
-## Paywall (Vorschau)
-Beim ersten Öffnen erscheint eine Paywall: „5,99 € einmalig“ oder Freischalten per Code.
-- Bezahlen ist noch **nicht** eingebaut – der Kauf-Knopf zeigt nur „Bezahlen kommt bald“.
-- Mit dem Code wird das Spiel freigeschaltet; das merkt sich das Gerät (`localStorage`, Schlüssel `heftmetro.unlocked`).
-- Der Code steht nur als Prüfsumme in `game.js` (`CODE_HASH`). Neuen Code setzen: Prüfsumme mit `codeHash('NEUERCODE')` in der Browser-Konsole berechnen und eintragen.
-- Achtung: Eine reine Browser-Sperre ist nicht wirklich sicher – wer sich auskennt, kann sie umgehen. Für echtes Bezahlen braucht es einen Zahlungsanbieter mit Server.
-
-## Sandbox
-Auf dem Startzettel „Sandbox“ tippen (geht in Hannover und Europa). Es entstehen **keine Stationen von allein**, es gibt **kein Game Over**, keine Upgrade-Zettel und in Europa kein Geld. Alle Linien-Plätze sind frei, dazu 30 Fahrzeuge pro Verkehrsmittel.
-
-Der Werkzeugzettel links hat vier Reiter (mit „–“ einklappen). Oben steht immer, was ein Tipp auf die Karte gerade macht; „✎ Linien“ oder ein Verkehrsmittel unten antippen führt zurück zum Linienzeichnen.
-- **Bauen:** Station setzen (Form ●▲■★◆✚ und Stationsart Auto/Bus/T/U/S vorher wählen; in der Nähe eines Stadtteils rastet sie ein und bekommt seinen Namen). „Innenstadt“ oder „Ganze Region“ baut alle freien Stadtteile auf einmal.
-- **Ändern:** Ausbau, Form, Name, Schieben, Umsteigeknoten, Großer Bahnhof (beides an/aus), Abreißen.
-- **Spaß:** Ereignis wählen (z. B. 96-Spiel) und Station antippen; Rushhour, Feierabend (alle wollen zum Hauptbahnhof), alle Stationen leeren, +1 Fahrzeug je Linie.
-- **Stadt:** Fahrgast-Menge (Aus/Wenig/Normal/Viel), Statistik mit Netzlänge in km und den drei stärksten Linien, „Alles abreißen“.
-
-## Größeres Netz
-- Umland-Orte sind jetzt echte Stationen: Langenhagen, Flughafen, Messe, Laatzen, Hemmingen, Garbsen, Isernhagen, Seelze, Ronnenberg, Lehrte, Sarstedt, Wunstorf, Burgdorf – ideal für lange S-Bahn- und Zugstrecken.
-- Größere Reichweite: Bus 3,6 km, Tram 4,5 km, U-Bahn 6,6 km zwischen zwei Halten.
-- Mehr Halte pro Linie: Tram 12, S-Bahn 9, Zug 6 (Europa entsprechend mehr). Man kann weiter herauszoomen und verschieben.
-
-## Airline-Welt
-Die zweite Spielwelt heißt **Welt**: deine eigene Airline mit Sitz in Frankfurt.
-
-**So einfach geht's:** Zieh von Flughafen zu Flughafen. **Das Flugzeug wird automatisch nach der Entfernung gewählt** – jeder Flughafen kann jedes Flugzeug empfangen, es gibt keine Flughafen-Arten und keine Pflicht über Frankfurt.
-
-| Flugzeug | längster Abschnitt | Sitze | Kauf | Leasing/Woche |
-|---|---|---|---|---|
-| Propellermaschine | bis 800 km | 100 | 25.000 € | 5.000 € |
-| Regionaljet | bis 1.500 km | 150 | 45.000 € | 7.000 € |
-| Mittelstreckenjet | bis 4.500 km | 200 | 110.000 € | 14.000 € |
-| Großraumjet | bis 10.500 km | 300 | 290.000 € | 30.000 € |
-| Jumbo | darüber | 450 | 600.000 € | 60.000 € |
-
-- Wird eine Route länger (verlängern, Ring, Flughafen einfügen), steigt sie automatisch auf ein größeres Flugzeug um – und wieder zurück, wenn sie kürzer wird.
-- Unten gibt es nur noch eine Gruppe **„Routen“** (z. B. 3/4). Route antippen → **„+ Flugzeug“ kaufen** oder **„− Flugzeug“ verkaufen** (halber Preis zurück).
-- Start ohne Fokus-Zettel: Name eingeben, 4 Routen-Lizenzen, los. Weitere Routen im Firmen-Shop (jede etwas teurer).
-- Der Firmen-Shop zeigt eine **Flotten-Übersicht**: welches Flugzeug für welche Entfernung und wie viele davon fliegen.
-- **Weltkarte** mit rund 160 Flughäfen (grob skizziert, nicht kartengenau); kleine Regional-Grüppchen für Propeller (Karibik, Hawaii, Japan/Korea, Neuseeland, Ost-Australien, Südostasien, Marokko/Kanaren, Mittelmeer).
-- Neue Flughäfen tauchen **irgendwo auf der Welt** auf.
-- **Kein Game Over durch volle Flughäfen** – nur verpasste Fluggäste. **Vorbei ist es nur bei Pleite** (Konto unter 0 €).
-- **Firmenname** und **Status**: Start-up → Regional-Airline (10.000 Fluggäste) → Nationale Airline (50.000) → Internationale Airline (150.000) → Globale Airline (400.000) → Weltmarke (1 Mio). Jede Stufe: Investoren-Bonus und mehr Buchungen.
-- **Börsengang** (ab „Internationale Airline“, im Firmen-Shop): bringt einmalig mindestens 1 Mio €. Danach gibt es eine Aktie (Start 10,00 €), deren Kurs jede Woche mit deinem Gewinn steigt oder fällt; in Gewinnwochen gehen 15 % als Dividende an die Aktionäre.
-- **Ticketpreis per Regler** (50–200 %); 1 Symbol = 50 Personen.
-
-## Airline: Idle-Ausbau
-- **Flughafen antippen** (kurz, ohne Ziehen) öffnet sein Ausbau-Menü: Stufe 1–25. Jede Stufe bringt **+100 Plätze** und **+12 % Fluggäste**. Kaufen mit **+1**, **+10** oder **Max** (so viel das Geld hergibt). Die Stufe steht als gelbe Zahl am Flughafen.
-- **Firmen-Shop → Firmen-Upgrades** (ganz oben), mit Mengenwahl **×1 / ×10 / Max**:
-  - **Alle Flughäfen ausbauen** – baut überall auf einmal aus, günstigste Stufen zuerst.
-  - **Marketing** (+8 % Buchungen pro Stufe), **Bordservice** (+5 % pro Ticket), **Wartung** (−4 % Leasing, bis −60 %), **Schnellere Abfertigung** (+5 % Tempo).
-- **Mehrere Flugzeuge auf einmal:** Route antippen → „+10 auf einmal“.
-- **Offline-Einnahmen:** Während du weg bist, verdient die Airline weiter (30 % der letzten Wochengewinne, höchstens 8 Stunden). Beim Weiterspielen gibt es das Geld mit „Willkommen zurück!“.
-
+Das frühere Spiel MetroRush ist gelöscht, bleibt aber in der Git-Historie erhalten.

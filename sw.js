@@ -1,14 +1,12 @@
-/* =====================================================================
-   Service Worker von MetroRush – macht das Spiel offline spielbar.
-   Nach Änderungen am Code CACHE_VERSION hochzählen.
-   ===================================================================== */
-const CACHE_VERSION = 'heftmetro-v27';
+/* Service Worker von Chronothek – macht die App offline nutzbar.
+   Nach Änderungen am Code CACHE_VERSION hochzählen. */
+const CACHE_VERSION = 'chronothek-v1';
 
 const ASSETS = [
   './',
   './index.html',
   './style.css',
-  './game.js',
+  './app.js',
   './manifest.json',
   './icons/icon-180.png',
   './icons/icon-192.png',
@@ -20,7 +18,7 @@ self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE_VERSION).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
 });
 
-// Aktivierung: alle anderen Caches löschen – auch die der früheren Handschrift-App
+// Alte Caches löschen (auch die des früheren Spiels)
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys()

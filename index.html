@@ -2,338 +2,67 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <title>MetroRush</title>
-  <meta name="description" content="Plane Bus, Tram, U-Bahn und Zug im Schulheft – ein Spiel für das iPad.">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Chronothek</title>
+  <meta name="description" content="Bau dir eine Uhrensammlung auf – mit echten Modellen und Spielgeld.">
 
-  <!-- PWA / „Zum Home-Bildschirm“ -->
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#fbfaf6">
+  <meta name="theme-color" content="#3a3a3a">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="MetroRush">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Chronothek">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
   <link rel="icon" type="image/png" href="icons/icon-192.png">
 
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Spielfeld -->
-  <canvas id="game" class="board" aria-label="Spielfeld"></canvas>
-
-  <!-- ===== Status oben ===== -->
-  <header class="hud hud-top">
-    <div class="score note-chip">
-      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3.2"/><path d="M5.5 20c.8-4 3.4-6.5 6.5-6.5s5.7 2.5 6.5 6.5"/></svg>
-      <span id="score">0</span>
-    </div>
-    <!-- Kontostand der Airline (nur Europa) -->
-    <div class="money note-chip" id="money-chip" hidden>
-      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M15 8.5a4 4 0 1 0 0 7M7.5 11h6M7.5 13.5h6"/></svg>
-      <span class="money-col"><small id="company-label"></small><span id="money">0 €</span></span>
-    </div>
-    <div class="hud-right">
-      <div class="week note-chip">
-        <svg class="clock" viewBox="0 0 40 40" aria-hidden="true">
-          <circle cx="20" cy="20" r="15" class="clock-face"/>
-          <path id="clock-pie" class="clock-pie" d=""/>
-        </svg>
-        <span id="week-label">Woche 1 · Mo</span>
-      </div>
-      <button class="icon-btn" id="btn-shop" aria-label="Firmen-Shop" hidden>
-        <svg class="ico" viewBox="0 0 24 24"><rect x="3.5" y="7.5" width="17" height="12" rx="2"/><path d="M9 7.5V5.5h6v2M3.5 12.5h17"/></svg>
-      </button>
-      <button class="icon-btn" id="btn-menu" aria-label="Speichern und Menü">
-        <svg class="ico" viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h14"/></svg>
-      </button>
-      <div class="speed" role="group" aria-label="Tempo">
-        <button class="icon-btn" data-speed="0" aria-label="Pause">
-          <svg class="ico" viewBox="0 0 24 24"><path d="M8.5 5.5v13M15.5 5.5v13"/></svg>
-        </button>
-        <button class="icon-btn" data-speed="1" aria-label="Normal">
-          <svg class="ico" viewBox="0 0 24 24"><path d="M8 5.5l10 6.5-10 6.5z"/></svg>
-        </button>
-        <button class="icon-btn" data-speed="2" aria-label="Schnell">
-          <svg class="ico" viewBox="0 0 24 24"><path d="M4 6l7.5 6L4 18zM12.5 6l7.5 6-7.5 6z"/></svg>
-        </button>
-      </div>
-    </div>
-  </header>
-
-  <!-- ===== Zoomen: +, −, ganze Stadt ===== -->
-  <div class="zoom-ctrl" role="group" aria-label="Karte zoomen">
-    <button class="icon-btn" id="zoom-in" aria-label="Hineinzoomen">
-      <svg class="ico" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-    </button>
-    <button class="icon-btn" id="zoom-out" aria-label="Herauszoomen">
-      <svg class="ico" viewBox="0 0 24 24"><path d="M5 12h14"/></svg>
-    </button>
-    <button class="icon-btn" id="zoom-fit" aria-label="Ganze Stadt zeigen">
-      <svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
-    </button>
-  </div>
-
-  <!-- ===== Linien-Stifte unten ===== -->
-  <footer class="hud hud-bottom">
-    <div class="pens" id="pens" aria-label="Verkehrsmittel und Linien"></div>
-  </footer>
-
-  <!-- Menü für eine Linie (über dem Stift) -->
-  <div class="line-menu note" id="line-menu" hidden>
-    <button class="pen-btn" id="lm-add">+ Zug</button>
-    <button class="pen-btn" id="lm-add-max" hidden>+ mehrere</button>
-    <button class="pen-btn" id="lm-remove">− Zug</button>
-    <button class="pen-btn" id="lm-rename">Name ändern</button>
-    <button class="pen-btn" id="lm-ring" hidden>Ring öffnen</button>
-    <button class="pen-btn danger" id="lm-delete">Linie löschen</button>
-  </div>
-
-  <p class="hint" id="hint" hidden></p>
-
-  <!-- Airline: Flughafen antippen → ausbauen -->
-  <div class="airport-menu note" id="airport-menu" hidden>
-    <b id="ap-title"></b>
-    <small id="ap-info"></small>
-    <div class="ap-btns">
-      <button class="pen-btn small" data-n="1"></button>
-      <button class="pen-btn small" data-n="10"></button>
-      <button class="pen-btn small primary" data-n="max"></button>
-    </div>
-  </div>
-
-  <!-- Sandbox-Werkzeuge (nur im Sandbox-Modus) -->
-  <div class="sandbox note" id="sandbox" hidden>
-    <div class="sb-head">
-      <span class="sb-title">Sandbox</span>
-      <button class="sb-min" id="sb-min" aria-label="Werkzeuge ein- oder ausklappen">–</button>
-    </div>
-    <div class="sb-body">
-      <div class="sb-status" id="sb-status">
-        <span id="sb-status-text"></span>
-        <button class="sb-back" id="sb-back" hidden>✎ Linien</button>
-      </div>
-      <div class="sb-tabs" role="tablist">
-        <button class="sb-tab" data-tab="build" role="tab">Bauen</button>
-        <button class="sb-tab" data-tab="edit" role="tab">Ändern</button>
-        <button class="sb-tab" data-tab="fun" role="tab">Spaß</button>
-        <button class="sb-tab" data-tab="city" role="tab">Stadt</button>
-      </div>
-
-      <section class="sb-pane" data-pane="build">
-        <button class="sb-tool big" data-tool="build">⊕ Station bauen</button>
-        <span class="sb-label">Form</span>
-        <div class="sb-row" id="sb-shapes"></div>
-        <span class="sb-label">Stationsart</span>
-        <div class="sb-row" id="sb-tiers"></div>
-        <span class="sb-label">Schnell bauen</span>
-        <div class="sb-grid">
-          <button class="sb-act" data-act="inner">Innenstadt</button>
-          <button class="sb-act" data-act="all">Ganze Region</button>
-        </div>
-      </section>
-
-      <section class="sb-pane" data-pane="edit" hidden>
-        <div class="sb-grid">
-          <button class="sb-tool" data-tool="tier">↑ Ausbau</button>
-          <button class="sb-tool" data-tool="shape">▲ Form</button>
-          <button class="sb-tool" data-tool="name">✎ Name</button>
-          <button class="sb-tool" data-tool="move">✥ Schieben</button>
-          <button class="sb-tool" data-tool="node">⇄ Knoten</button>
-          <button class="sb-tool" data-tool="big">◎ Groß</button>
-          <button class="sb-tool danger" data-tool="remove">✕ Abreißen</button>
-        </div>
-      </section>
-
-      <section class="sb-pane" data-pane="fun" hidden>
-        <span class="sb-label">Ereignis – wählen, dann Station antippen</span>
-        <div class="sb-grid" id="sb-events"></div>
-        <span class="sb-label">Sofort</span>
-        <div class="sb-grid">
-          <button class="sb-act" data-act="rush">Rushhour</button>
-          <button class="sb-act" data-act="home">Feierabend</button>
-          <button class="sb-act" data-act="calm">Alle leeren</button>
-          <button class="sb-act" data-act="fleet">+1 Fahrzeug je Linie</button>
-        </div>
-      </section>
-
-      <section class="sb-pane" data-pane="city" hidden>
-        <span class="sb-label">Fahrgäste</span>
-        <div class="sb-row" id="sb-demand"></div>
-        <span class="sb-label">Dein Netz</span>
-        <dl class="sb-stats" id="sb-stats"></dl>
-        <ol class="sb-top" id="sb-top"></ol>
-        <button class="sb-act danger wide" data-act="clear">Alles abreißen</button>
-      </section>
-    </div>
-  </div>
-
-  <!-- Laufendes Ereignis (z. B. 96-Spiel) -->
-  <div class="event-chip note-chip" id="event-chip" hidden>
-    <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 21V4M6 4h11l-2.5 4L17 12H6"/></svg>
-    <span id="event-text"></span>
-  </div>
-
-  <!-- Tutorial: Zettel mit Erklärung, die Stelle im Spiel leuchtet auf -->
-  <div class="coach note" id="coach" hidden role="dialog" aria-live="polite">
-    <span class="coach-step" id="coach-step"></span>
-    <p class="coach-text" id="coach-text"></p>
-    <div class="coach-actions">
-      <button class="pen-btn small" id="coach-skip">Überspringen</button>
-      <button class="pen-btn primary small" id="coach-next">Weiter</button>
-    </div>
-  </div>
-  <div class="toast note" id="toast" role="status" aria-live="polite"></div>
-
-  <!-- ===== Zettel: Start ===== -->
-  <div class="overlay" id="screen-start">
-    <div class="note note-big">
-      <h1>MetroRush</h1>
-      <div class="worlds" role="radiogroup" aria-label="Spielwelt">
-        <button class="world" data-world="hannover"><b>Hannover</b><small>Bus, Tram, U-Bahn, S-Bahn, Zug</small></button>
-        <button class="world" data-world="europa"><b>Welt</b><small>Deine Airline</small></button>
-      </div>
-      <p class="lead" id="start-lead"></p>
-      <ol class="howto">
-        <li><span class="mini-shape">●</span> <span id="how-0"></span></li>
-        <li><span class="mini-shape">▲</span> <span id="how-1"></span></li>
-        <li><span class="mini-shape">■</span> <span id="how-2"></span></li>
-      </ol>
-      <p class="record" id="start-record"></p>
-      <div class="save-info" id="save-info" hidden></div>
-      <div class="start-actions">
-        <button class="pen-btn primary" id="btn-continue" hidden>Weiterspielen</button>
-        <button class="pen-btn primary" id="btn-start">Losfahren</button>
-        <button class="pen-btn" id="btn-sandbox">Sandbox</button>
-        <button class="pen-btn" id="btn-tutorial">Anleitung</button>
-      </div>
-      <p class="fineprint">Gemacht für das iPad.</p>
-    </div>
-  </div>
-
-  <!-- ===== Zettel: Paywall (Freischalten) ===== -->
-  <div class="overlay paywall" id="screen-paywall" hidden>
-    <div class="note note-big pay-note">
-      <span class="pay-stamp">Vollversion</span>
-      <h1>MetroRush</h1>
-      <p class="lead">Einmal freischalten – für immer spielen.</p>
-      <ul class="pay-list">
-        <li>Hannover mit Bus, Tram, U-Bahn, S-Bahn &amp; Zug</li>
-        <li>Weltweite Airline mit eigenem Namen</li>
-        <li>Ringlinien, Ausbau, Ereignisse &amp; Speicherstand</li>
-        <li>Keine Werbung, kein Abo</li>
-      </ul>
-      <div class="pay-price"><b>5,99 €</b><span>einmalig</span></div>
-      <button class="pen-btn primary pay-buy" id="pay-buy">Jetzt für 5,99 € freischalten</button>
-      <div class="pay-or"><span>oder mit Code</span></div>
-      <form class="pay-code" id="pay-form" autocomplete="off">
-        <input id="pay-input" type="text" inputmode="text" autocapitalize="characters" spellcheck="false" placeholder="Code eingeben" aria-label="Freischalt-Code">
-        <button class="pen-btn" type="submit">Einlösen</button>
+  <div class="page">
+    <!-- Navigationsleiste im Stil von 2010 -->
+    <nav class="globalnav" aria-label="Hauptnavigation">
+      <a href="#/" class="brand" data-nav="">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 6.5V12l3.5 2.2"/></svg>
+        Chronothek
+      </a>
+      <a href="#/markt" data-nav="markt">Marktplatz</a>
+      <a href="#/auktionen" data-nav="auktionen">Auktionen</a>
+      <a href="#/sammlung" data-nav="sammlung">Sammlung</a>
+      <a href="#/merkliste" data-nav="merkliste">Merkliste</a>
+      <a href="#/profil" data-nav="profil">Profil</a>
+      <form class="search" id="search-form" role="search">
+        <input type="search" id="search-input" placeholder="Suche" autocomplete="off" aria-label="Uhren suchen">
       </form>
-      <p class="pay-msg" id="pay-msg" role="status" aria-live="polite"></p>
-      <p class="fineprint">Einmalzahlung · gilt auf diesem Gerät</p>
-    </div>
-  </div>
+    </nav>
 
-  <!-- ===== Zettel: Fokus zu Beginn ===== -->
-  <div class="overlay" id="screen-focus" hidden>
-    <div class="note note-big note-wide">
-      <h2 id="focus-title">Worauf setzt du?</h2>
-      <p class="lead">Davon hast du am Anfang mehr Linien. Fahrzeuge kommen automatisch mit jeder Linie.</p>
-      <div class="cards focus-cards" id="focus-cards"></div>
-    </div>
-  </div>
-
-  <!-- ===== Zettel: Firmenname (Airline) ===== -->
-  <div class="overlay" id="screen-company" hidden>
-    <div class="note note-big">
-      <h2>Wie heißt deine Airline?</h2>
-      <p class="lead">Der Name steht oben neben dem Kontostand, in jeder Wochenbilanz – und ganz groß, wenn du zur Weltmarke wirst.</p>
-      <form class="company-form" id="company-form" autocomplete="off">
-        <input id="company-input" type="text" maxlength="24" spellcheck="false" aria-label="Name der Airline">
-        <button class="pen-btn primary" type="submit">Gründen</button>
-      </form>
-      <span class="sb-label">Ideen</span>
-      <div class="sb-row" id="company-ideas"></div>
-    </div>
-  </div>
-
-  <!-- ===== Zettel: Wochen-Upgrade ===== -->
-  <div class="overlay" id="screen-upgrade" hidden>
-    <div class="note note-big note-wide">
-      <h2 id="up-title">Woche 1 geschafft!</h2>
-      <p class="lead" id="up-lead">Du bekommst ein Fahrzeug geschenkt. Wähle dazu ein Upgrade:</p>
-      <div class="cards" id="up-cards"></div>
-    </div>
-  </div>
-
-  <!-- ===== Zettel: Wochenbilanz (Airline) ===== -->
-  <div class="overlay" id="screen-balance" hidden>
-    <div class="note note-big note-wide">
-      <h2 id="bal-title">Wochenbilanz</h2>
-      <div class="bal-grid">
-        <span>Ticketumsatz</span><b id="bal-rev"></b>
-        <span>Kosten &amp; Investitionen</span><b id="bal-cost"></b>
-        <span>Gewinn</span><b id="bal-profit"></b>
-        <span>Kontostand</span><b id="bal-money"></b>
-        <span>Verpasste Fluggäste</span><b id="bal-lost"></b>
+    <!-- Kontostand & Markttag -->
+    <div class="subbar">
+      <div class="wallet" title="Spielgeld">
+        <span class="wallet-label">Kontostand</span>
+        <strong id="wallet-money">0 €</strong>
       </div>
-      <p class="bal-status" id="bal-status"></p>
-      <svg class="bal-chart" id="bal-chart" viewBox="0 0 400 110" aria-label="Gewinn der letzten Wochen"></svg>
-      <p class="lead bal-tip" id="bal-tip"></p>
-      <div class="start-actions">
-        <button class="pen-btn primary" id="bal-go">Weiterfliegen</button>
-        <button class="pen-btn" id="bal-shop">Zum Firmen-Shop</button>
+      <div class="daybox">
+        <span id="day-label">Markttag 1</span>
+        <span class="daybar"><span id="day-progress"></span></span>
       </div>
     </div>
+
+    <main id="view" tabindex="-1"></main>
+
+    <footer class="footer">
+      <p><strong>Chronothek</strong> ist ein Spiel. Alle Beträge sind Spielgeld, es wird nichts echt gekauft oder verkauft.</p>
+      <p>Uhrennamen und Referenzen dienen nur zur Beschreibung. Es besteht keine Verbindung zu den Herstellern oder zu echten Uhrenhändlern. Die Preise sind grobe Schätzungen und ändern sich im Spiel zufällig.</p>
+    </footer>
   </div>
 
-  <!-- ===== Zettel: Firmen-Shop (Airline) ===== -->
-  <div class="overlay" id="screen-shop" hidden>
-    <div class="note note-big note-wide shop">
-      <h2>Firmen-Shop</h2>
-      <p class="lead">Kontostand <b id="shop-money"></b> · laufende Kosten <b id="shop-costs"></b> pro Woche</p>
-      <h3>Ticketpreis</h3>
-      <div class="seg shop-price" id="shop-price"></div>
-      <h3 id="shop-h-build">Ausbau &amp; Marketing</h3>
-      <div class="shop-grid" id="shop-build"></div>
-      <h3 id="shop-h-planes">Flugzeuge kaufen</h3>
-      <div class="shop-grid" id="shop-planes"></div>
-      <h3 id="shop-h-routes">Routen-Lizenzen</h3>
-      <div class="shop-grid" id="shop-routes"></div>
-      <div class="start-actions"><button class="pen-btn primary" id="shop-close">Fertig</button></div>
-    </div>
-  </div>
+  <div id="modal-root"></div>
+  <div id="toasts" aria-live="polite"></div>
 
-  <!-- ===== Zettel: Game Over ===== -->
-  <div class="overlay" id="screen-over" hidden>
-    <div class="note note-big">
-      <h2>Endstation!</h2>
-      <p class="lead" id="over-reason">Eine Station war überfüllt.</p>
-      <div class="stats">
-        <div><span class="big-num" id="over-score">0</span><span>Fahrgäste</span></div>
-        <div><span class="big-num" id="over-weeks">1</span><span>Wochen</span></div>
-      </div>
-      <p class="record" id="over-record"></p>
-      <button class="pen-btn primary" id="btn-again">Nochmal</button>
-    </div>
-  </div>
-
-  <!-- ===== Ladebildschirm: bei jedem Öffnen, Antippen überspringt ===== -->
-  <div class="splash" id="splash" role="status" aria-label="MetroRush lädt">
-    <canvas id="splash-canvas" aria-hidden="true"></canvas>
-    <div class="splash-note">
-      <svg class="splash-mark" viewBox="0 0 64 64" aria-hidden="true">
-        <path d="M32 7 L56 25 V56 H8 V25 Z"/>
-        <path d="M24 30 V48 M40 30 V48 M24 39 H40"/>
-      </svg>
-      <h1 class="splash-title">MetroRush</h1>
-      <p class="splash-sub">Hannover · Welt</p>
-      <div class="splash-bar" aria-hidden="true"><span></span></div>
-      <p class="splash-hint">Tippen zum Überspringen</p>
-    </div>
-  </div>
-
-  <script src="game.js" defer></script>
+  <script src="app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+    }
+  </script>
 </body>
 </html>
