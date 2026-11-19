@@ -75,6 +75,10 @@ Beim Öffnen erscheint kurz ein Ladebildschirm im Stil von 2010:
 
 - Die Bot-Seite hat ein **Live-Terminal** in Grün auf Schwarz und eine **Gewinnkurve**.
 
+### Bot-Meldungen
+
+Einstellung beim Bot: **Aus** (nur Terminal), **Kurz** (Standard: eine Zusammenfassung pro Markttag, z. B. „3 gekauft, 2 verkauft (+1.200 €)“) oder **Alle** (jeder Kauf/Verkauf). Per Befehl: `leise`, `kurz`, `laut`. Fälschungs-Warnungen kommen außer bei „Aus“ immer.
+
 ### Bot-Befehle (Terminal)
 
 Unter dem Terminal gibt es ein **Knopf-Menü** (Start/Stopp, Beste Deals, Kaufen …, Nur Marke …, Geld, Mut, Meine Uhren, Alles verkaufen, Wie läuft’s?, Hilfe). Bei „Kaufen …“, „Nur Marke …“, „Geld“ und „Mut“ klappt eine Auswahl auf.

@@ -383,7 +383,8 @@ function advanceDay(quiet) {
       const m = MODEL[o.m];
       if (o.bot) {
         const r = botSold(o, pay);
-        if (!quiet) toast(`🤖 Bot hat <b>${esc(m.brand)} ${esc(m.name)}</b> verkauft: ${r.profit >= 0 ? 'Gewinn' : 'Verlust'} ${fmtEur(r.profit)}${r.fee ? `, Bot-Anteil ${fmtEur(r.fee)}` : ''}`);
+        BOTDAY.sold++; BOTDAY.profit += r.profit - r.fee;
+        if (!quiet) botNote(`🤖 Bot hat <b>${esc(m.brand)} ${esc(m.name)}</b> verkauft: ${r.profit >= 0 ? 'Gewinn' : 'Verlust'} ${fmtEur(r.profit)}${r.fee ? `, Bot-Anteil ${fmtEur(r.fee)}` : ''}`);
         continue;
       }
       sellItem(o, pay);
@@ -392,6 +393,7 @@ function advanceDay(quiet) {
       if (!quiet) toast(msg);
     }
   }
+  botDaySummary(quiet);
 }
 
 function sellItem(o, pay) {
@@ -424,9 +426,21 @@ const BOT_MODES = [
   { name: 'Riskant', buyBelow: 0.96, perTrade: 1, markup: 1.08, desc: 'Kauft fast alles leicht unter Wert, auch teure Uhren, und will mehr Gewinn. Dauert länger, kann auch Verlust bringen.' },
   { name: '🦈 Hai', buyBelow: 1.0, perTrade: 1, markup: 1.12, momentum: true, desc: 'Kauft auch zum vollen Preis, wenn ein Modell gerade steigt (Momentum), und will 12 % mehr. Großer Gewinn – oder großer Verlust.' },
 ];
-function newBot() { return { on: false, stock: false, focus: '', maxPrice: 0, snipeOff: false, budget: 2000, mode: 1, trades: 0, gross: 0, fees: 0, losses: 0, log: [], hist: [], up: { turbo: 0, scanner: 0, ai: 0, sniper: 0, license: 0 } }; }
+function newBot() { return { notify: 1, on: false, stock: false, focus: '', maxPrice: 0, snipeOff: false, budget: 2000, mode: 1, trades: 0, gross: 0, fees: 0, losses: 0, log: [], hist: [], up: { turbo: 0, scanner: 0, ai: 0, sniper: 0, license: 0 } }; }
 function botItems() { return S.owned.filter(o => o.bot); }
 function botInUse() { return botItems().reduce((s, o) => s + o.cost, 0); }
+// Bot-Meldungen: 0 = aus, 1 = nur eine kurze Zusammenfassung pro Markttag, 2 = alle
+const BOT_NOTIFY = ['Aus', 'Kurz', 'Alle'];
+let BOTDAY = { buy: 0, sold: 0, profit: 0 };
+function botNote(html, ms) { if (S.bot.notify === 2) toast(html, ms); }
+function botDaySummary(quiet) {
+  const d = BOTDAY; BOTDAY = { buy: 0, sold: 0, profit: 0 };
+  if (quiet || S.bot.notify !== 1 || (!d.buy && !d.sold)) return;
+  const parts = [];
+  if (d.buy) parts.push(`${d.buy} gekauft`);
+  if (d.sold) parts.push(`${d.sold} verkauft (${d.profit >= 0 ? '+' : ''}${fmtEur(d.profit)})`);
+  toast(`🤖 Bot heute: ${parts.join(', ')}`, 3000);
+}
 function botLog(text) { S.bot.log.unshift({ day: S.day, text }); S.bot.log = S.bot.log.slice(0, 25); }
 
 function runBot(quiet) {
@@ -479,13 +493,14 @@ function botBuy(l, r, quiet) {
   if (l.fake) {
     B.trades++; B.losses += l.price; S.stats.fakes++;
     botLog(`Reingefallen! ${MODEL[l.m].brand} ${MODEL[l.m].name} war eine Fälschung – ${fmtEur(l.price)} weg. (Tipp: Deal-Scanner)`);
-    if (!quiet) toast(`😱 Dein Bot hat eine <b>Fälschung</b> gekauft: −${fmtEur(l.price)}. Der Deal-Scanner hätte das erkannt.`, 6000);
+    if (!quiet && S.bot.notify > 0) toast(`😱 Dein Bot hat eine <b>Fälschung</b> gekauft: −${fmtEur(l.price)}. Der Deal-Scanner hätte das erkannt.`, 6000);
     return 'fake';
   }
   S.owned.push({ id: uid('o'), m: l.m, cond: l.cond, papers: l.papers, cost: l.price, day: S.day, source: 'Trading-Bot', ask: 0, service: 0, bot: true });
   const m = MODEL[l.m];
   botLog(`Gekauft: ${m.brand} ${m.name} für ${fmtEur(l.price)} (${r <= 1 ? `${Math.round((1 - r) * 100)} % unter` : `${Math.round((r - 1) * 100)} % über`} Wert).`);
-  if (!quiet) toast(`🤖 Bot kauft <b>${esc(m.brand)} ${esc(m.name)}</b> für ${fmtEur(l.price)}`);
+  BOTDAY.buy++;
+  if (!quiet) botNote(`🤖 Bot kauft <b>${esc(m.brand)} ${esc(m.name)}</b> für ${fmtEur(l.price)}`);
   return true;
 }
 
@@ -500,7 +515,7 @@ function botStockShop(quiet) {
     o.ask = 0; o.shop = niceRound(itemValue(o) * shopTol()); free--; n++;
     botLog(`In den Laden gelegt: ${MODEL[o.m].brand} ${MODEL[o.m].name} für ${fmtEur(o.shop)}.`);
   }
-  if (n && !quiet) toast(`🤖🏪 Bot hat <b>${n} Uhr${n === 1 ? '' : 'en'}</b> in deine Vitrinen gelegt.`);
+  if (n && !quiet) botNote(`🤖🏪 Bot hat <b>${n} Uhr${n === 1 ? '' : 'en'}</b> in deine Vitrinen gelegt.`);
   return n;
 }
 
@@ -610,10 +625,11 @@ function runShop(quiet) {
     sh.reviews.unshift({ s: stars, who, day: S.day }); sh.reviews = sh.reviews.slice(0, 20);
     sh.sales++; sh.revenue += eff; soldToday++;
     const isBot = o.bot;
-    if (isBot) { o.shop = eff; const res = botSold(o, pay); sh.profit += pay - res.fee - o.cost; }
+    if (isBot) { o.shop = eff; const res = botSold(o, pay); sh.profit += pay - res.fee - o.cost; BOTDAY.profit += res.profit - res.fee; }
     else { sh.profit += pay - o.cost; sellItem(o, pay); }
     shopLog(`${who} aus ${city} kauft ${m.brand} ${m.name} für ${fmtEur(eff)}${sale ? ' (Sale)' : ''}${isBot ? ' [Bot-Ware]' : ''} · ${'★'.repeat(stars)}`);
-    if (!quiet) toast(`🏪 <b>${esc(who)}</b> hat in deinem Laden die <b>${esc(m.brand)} ${esc(m.name)}</b> für ${fmtEur(eff)} gekauft!${isBot ? ' 🤖' : ''} ${'★'.repeat(stars)}`, 5000);
+    if (isBot) { BOTDAY.sold++; }
+    if (!quiet) (isBot ? botNote : toast)(`🏪 <b>${esc(who)}</b> hat in deinem Laden die <b>${esc(m.brand)} ${esc(m.name)}</b> für ${fmtEur(eff)} gekauft!${isBot ? ' 🤖' : ''} ${'★'.repeat(stars)}`, 5000);
   }
   if (!soldToday) shopLog(`${vis} Besucher, heute nichts verkauft.`);
   // Ankauf: Kund:innen bieten dir ihre Uhren an
@@ -1492,6 +1508,9 @@ function pageBot() {
       <h3>Strategie</h3>
       <div class="segmented">${BOT_MODES.map((m, i) => `<button data-act="bot-mode" data-v="${i}" class="${B.mode === i ? 'on' : ''}">${m.name}</button>`).join('')}</div>
       <p class="muted" style="font-size:12px">${mode.desc}</p>
+      <h3>Meldungen vom Bot</h3>
+      <div class="segmented">${BOT_NOTIFY.map((n, i) => `<button data-act="bot-notify" data-v="${i}" class="${B.notify === i ? 'on' : ''}">${n}</button>`).join('')}</div>
+      <p class="muted" style="font-size:12px">${['Keine Einblendungen – alles steht nur im Terminal.', 'Eine kurze Meldung pro Markttag (z. B. „3 gekauft, 2 verkauft“).', 'Jeder Kauf und Verkauf wird eingeblendet.'][B.notify]}</p>
       <h3>Budget</h3>
       <div class="center" style="font-size:22px;font-weight:300" id="budget-val">${fmtEur(B.budget)}</div>
       <input type="range" data-act="f-budget" id="budget-range" min="500" max="${maxBudget}" step="500" value="${Math.min(B.budget, maxBudget)}">
@@ -1742,7 +1761,7 @@ function simplify(t) {
   if (BRANDS.some(b => b.toLowerCase().includes(t)) && t.length > 2 && !BOT_WORDS.includes(t.split(' ')[0])) return 'scan ' + t;
   return t;
 }
-const BOT_WORDS = ['hilfe', 'help', 'status', 'an', 'aus', 'modus', 'budget', 'scan', 'kauf', 'fokus', 'maxpreis', 'positionen', 'preis', 'verkauf', 'notverkauf', 'laden', 'sniper', 'clear', 'hallo', 'kaffee'];
+const BOT_WORDS = ['leise', 'laut', 'kurz', 'hilfe', 'help', 'status', 'an', 'aus', 'modus', 'budget', 'scan', 'kauf', 'fokus', 'maxpreis', 'positionen', 'preis', 'verkauf', 'notverkauf', 'laden', 'sniper', 'clear', 'hallo', 'kaffee'];
 
 function runCmd(raw) {
   const B = S.bot;
@@ -1760,7 +1779,7 @@ function runCmd(raw) {
       [['start', 'stopp', 'Bot an oder aus'], ['deals', '', 'die besten Angebote'], ['kaufe rolex', '', 'sofort eine Rolex kaufen'],
        ['nur omega', 'alle', 'nur noch Omega kaufen / wieder alles'], ['geld 10000', '', 'so viel darf ich ausgeben'],
        ['vorsichtig', 'hai', 'wie mutig ich bin'], ['uhren', '', 'meine Uhren'], ['billiger', 'teurer', 'Preise ändern'],
-       ['verkaufen', '', 'alles schnell verkaufen'], ['info', '', 'wie läuft’s?']]
+       ['verkaufen', '', 'alles schnell verkaufen'], ['leise', 'laut', 'weniger / mehr Einblendungen'], ['info', '', 'wie läuft’s?']]
         .forEach(([a, b, d]) => out(`  <b>${a}</b>${b ? ` / <b>${b}</b>` : ''} <span class="t-dim">→ ${d}</span>`));
       out('<span class="t-dim">Oder einfach die Knöpfe unten benutzen. Profi-Befehle: „profi“</span>');
       break;
@@ -1809,7 +1828,7 @@ function runCmd(raw) {
       if (!c.length) { err(`Kein Angebot für „${esc(arg)}“ gefunden.`); break; }
       const fit = c.find(x => x.l.price <= free);
       if (!fit) { err(`Zu teuer: günstigstes passendes Angebot ${fmtEur(Math.min(...c.map(x => x.l.price)))}, frei sind ${fmtEur(Math.max(0, free))}. Tipp: budget max`); break; }
-      const res = botBuy(fit.l, fit.r, false);
+      const res = botBuy(fit.l, fit.r, true);
       if (res === 'fake') err(`Gekauft – aber es war eine FÄLSCHUNG. −${fmtEur(fit.l.price)}`);
       else ok(`Gekauft: ${esc(MODEL[fit.l.m].brand)} ${esc(MODEL[fit.l.m].name)} für ${fmtEur(fit.l.price)}. Der Bot verkauft sie weiter.`);
       if (!B.on) out('Hinweis: Der Bot ist aus – er verkauft erst, wenn du „an“ eingibst.', 't-dim');
@@ -1876,6 +1895,9 @@ function runCmd(raw) {
       out('Profi-Befehle:');
       BOT_HELP.forEach(([c, d]) => out(`  <b>${esc(c)}</b> <span class="t-dim">– ${esc(d)}</span>`));
       break;
+    case 'leise': case 'ruhe': B.notify = 0; ok('Okay, ich bin still. Alles steht nur noch hier im Terminal.'); break;
+    case 'kurz': B.notify = 1; ok('Ich melde mich nur noch einmal pro Markttag kurz.'); break;
+    case 'laut': B.notify = 2; ok('Ich melde jeden Kauf und Verkauf.'); break;
     case 'clear': case 'cls': CON.length = 0; break;
     case 'hallo': case 'hi': out(`Hallo ${esc(S.name)}! Ich bin chronobot ${botTier()}. Tipp „hilfe“ für alle Befehle.`); break;
     case 'kaffee': out('☕ Ich bin ein Bot. Ich trinke nur Marktdaten.'); break;
@@ -2199,6 +2221,7 @@ document.addEventListener('click', e => {
     case 'takeover': { const o = S.owned.find(x => x.id === id); if (o) { o.bot = false; o.ask = 0; save(); closeModal(); render(); toast('Die Uhr gehört jetzt zu deiner Sammlung – der Bot fasst sie nicht mehr an.'); } break; }
     case 'bot-toggle': S.bot.on = !S.bot.on; save(); render(); toast(S.bot.on ? '🤖 Bot läuft – er handelt ab dem nächsten Markttag.' : 'Bot pausiert. Seine Uhren bleiben inseriert.'); break;
     case 'bot-mode': S.bot.mode = +t.dataset.v; save(); render(); break;
+    case 'bot-notify': S.bot.notify = +t.dataset.v; save(); render(); break;
     case 'bot-up': {
       const u = BOT_UPS.find(x => x.k === t.dataset.k); if (!u) break;
       const lvl = S.bot.up[u.k] || 0; if (lvl >= u.max) break;
