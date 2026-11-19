@@ -18,6 +18,34 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <!-- Ladebildschirm im Stil von 2010 -->
+  <div id="splash" class="splash" aria-hidden="true">
+    <div class="splash-center">
+      <div class="splash-icon"><img src="icons/icon-192.png" alt=""></div>
+      <div class="splash-icon splash-reflect"><img src="icons/icon-192.png" alt=""></div>
+      <div class="splash-title">Chronothek</div>
+      <div class="splash-sub">Die Uhrenbörse für Sammler</div>
+      <div class="splash-bar"><span id="splash-fill"></span></div>
+      <div class="splash-step" id="splash-step">Wird geladen …</div>
+    </div>
+    <div class="splash-foot">Spielgeld · keine echten Käufe</div>
+  </div>
+  <script>
+    (function () {
+      var steps = ['Tresor wird geöffnet …', 'Uhren werden poliert …', 'Marktpreise werden geladen …', 'Bot wird hochgefahren …', 'Willkommen!'];
+      var i = 0, fill = document.getElementById('splash-fill'), step = document.getElementById('splash-step');
+      function next() {
+        if (i < steps.length) {
+          step.textContent = steps[i]; fill.style.width = ((i + 1) / steps.length * 100) + '%'; i++;
+          setTimeout(next, i === steps.length ? 350 : 380);
+        } else {
+          var s = document.getElementById('splash'); s.classList.add('done');
+          setTimeout(function () { s.remove(); }, 550);
+        }
+      }
+      setTimeout(next, 150);
+    })();
+  </script>
   <div class="page">
     <!-- Navigationsleiste im Stil von 2010 -->
     <nav class="globalnav" aria-label="Hauptnavigation">

@@ -30,6 +30,19 @@ Alles läuft im Browser und offline (PWA). Der Spielstand liegt nur auf deinem G
 - **News** wie Preiserhöhungen, Hype oder Zinsen verändern die Preise einzelner Modelle, Marken oder des ganzen Markts.
 - **Stufen** nach Sammlungswert: Einsteiger → Sammler (5.000 €) → Kenner (25.000 €) → Connaisseur (100.000 €) → Grand Collector (500.000 €) → Legende (2 Mio. €).
 
+## Ladebildschirm
+Beim Öffnen erscheint kurz ein Ladebildschirm im Stil von 2010:
+- dunkler Leinen-Hintergrund
+- App-Icon mit Glanz und Spiegelung
+- gestreifter Aqua-Ladebalken mit kleinen Ladeschritten
+
+## Spannung im Markt
+- **Blitz-Deals ⚡**: Ab und zu taucht ein Angebot 25–40 % unter Wert auf. Es gilt nur **90 Sekunden** und erscheint als oranges Banner über jeder Seite. Der Bot darf keine Blitz-Deals kaufen.
+- **Fälschungen 🕵**: Privatverkäufe ohne Papiere sind zu 15 % gefälscht.
+  - An der Kasse kannst du die **Echtheitsprüfung** dazubuchen (3 %, mind. 25 €). Ist die Uhr gefälscht, wird der Kauf abgebrochen.
+  - Ohne Prüfung ist das Geld weg.
+- **Rangliste 🏁**: Du trittst gegen 8 ausgedachte Sammler an (von „Max K.“ bis „Sultan of Time“ mit 6 Mio. €), gemessen am Gesamtvermögen. Überholst du jemanden, bekommst du einen Hinweis. Platz 3 und Platz 1 bringen große Belohnungen.
+
 ## Trading-Bot
 - Der Bot ist **gratis**, behält aber **20 % von jedem Gewinn**. Bei Verlust zahlst du nichts extra. Die 6 % Marktplatz-Gebühr fallen trotzdem an.
 - Jeden Markttag kauft er bis zu 2 Schnäppchen unter Marktwert, je nach Strategie. Er inseriert sie mit Aufschlag und senkt den Preis, wenn sie nicht weggehen.
@@ -38,6 +51,18 @@ Alles läuft im Browser und offline (PWA). Der Spielstand liegt nur auf deinem G
   - Bot-Uhren tragen in der Uhrenbox das Schild „Bot“.
   - Mit „Vom Bot übernehmen“ holst du dir eine davon in deine Sammlung.
 - Er handelt auch, während die App zu ist (bis zu 40 Markttage).
+- **Strategie „🦈 Hai“**: kauft auch zum vollen Preis, wenn ein Modell gerade steigt, und will 12 % mehr. Damit sind große Gewinne möglich, aber auch große Verluste.
+- **Upgrades** (machen den Bot von „Basic“ bis „Overlord“):
+
+| Upgrade | Wirkung | Stufen |
+|---|---|---|
+| ⚡ Turbo-Modus | 2 → 4 → 6 → 8 → 10 Käufe pro Tag | 4 |
+| 🔍 Deal-Scanner | findet mehr Deals, erkennt Fälschungen (ohne Scanner kann der Bot reinfallen!) | 3 |
+| 🧠 KI-Preisfindung | Bot-Inserate verkaufen sich schneller | 3 |
+| 🎯 Auktions-Sniper | bietet in den letzten 40 s automatisch bis 85 % vom Wert | 1 |
+| 💼 Pro-Lizenz | Bot-Anteil 20 % → 15 % → 10 % | 2 |
+
+- Die Bot-Seite hat ein **Live-Terminal** in Grün auf Schwarz und eine **Gewinnkurve**.
 
 ## Uhren & Daten
 44 Modelle von 25 Marken stehen in `MODELS` in `app.js`: Name, Referenz, Startpreis, Kategorie, Durchmesser, Material und Aussehen (Form, Zifferblatt, Lünette, Band).

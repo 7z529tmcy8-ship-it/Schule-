@@ -123,6 +123,11 @@ const ACHIEVEMENTS = [
   { id: 'rolex', icon: '👑', name: 'Krone', desc: 'Besitze eine Rolex.', reward: 1000, test: s => s.owned.some(o => MODEL[o.m].brand === 'Rolex') },
   { id: 'trinity', icon: '🏛', name: 'Heilige Dreifaltigkeit', desc: 'Patek Philippe, Audemars Piguet und Vacheron Constantin gleichzeitig.', reward: 25000, test: s => ['Patek Philippe', 'Audemars Piguet', 'Vacheron Constantin'].every(b => s.owned.some(o => MODEL[o.m].brand === b)) },
   { id: 'hundredk', icon: '💎', name: 'Sechsstellig', desc: 'Sammlungswert über 100.000 €.', reward: 5000, test: s => collectionValue(s) >= 100000 },
+  { id: 'flash', icon: '⚡', name: 'Blitzmerker', desc: 'Schnapp dir einen Blitz-Deal.', reward: 500, test: s => s.stats.flash >= 1 },
+  { id: 'caught', icon: '🕵', name: 'Fälschung entlarvt', desc: 'Die Echtheitsprüfung findet eine Fälschung.', reward: 300, test: s => s.stats.fakesCaught >= 1 },
+  { id: 'botboss', icon: '🤖', name: 'Bot-Boss', desc: 'Dein Bot macht 10.000 € netto.', reward: 2000, test: s => s.bot && s.bot.gross - s.bot.losses - s.bot.fees >= 10000 },
+  { id: 'podium', icon: '🥉', name: 'Podium', desc: 'Platz 3 in der Rangliste.', reward: 20000, test: s => s.rivals && rankOf(s) <= 3 },
+  { id: 'top1', icon: '🥇', name: 'Nummer 1', desc: 'Platz 1 in der Rangliste.', reward: 250000, test: s => s.rivals && rankOf(s) === 1 },
   { id: 'million', icon: '🏆', name: 'Uhren-Millionär', desc: 'Gesamtvermögen über 1 Mio. €.', reward: 50000, test: s => netWorth(s) >= 1e6 },
 ];
 
@@ -136,6 +141,15 @@ const NEWS = [
   { t: 'all', up: [-0.04, -0.02], text: () => 'Zinsen steigen – der Markt für Luxusuhren kühlt ab.' },
   { t: 'all', up: [0.02, 0.04], text: () => 'Rekordauktion in Genf: Sammler sind in Kauflaune.' },
 ];
+
+/* ---------- Rangliste: andere (ausgedachte) Sammler ---------- */
+const RIVALS = [
+  ['Max K.', 2500, 0.004], ['Uhren-Lisa', 9000, 0.006], ['watchfreak92', 22000, 0.007],
+  ['Sammler Henrik', 60000, 0.006], ['Dr. Brenner', 160000, 0.005], ['Gräfin von Tick', 420000, 0.005],
+  ['Mr. Tourbillon', 1300000, 0.004], ['Sultan of Time', 6000000, 0.003],
+];
+function newRivals() { return RIVALS.map(([n, w, g]) => ({ n, w, g })); }
+function rankOf(s) { const me = netWorth(s); return 1 + s.rivals.filter(r => r.w > me).length; }
 
 /* ---------- Hilfen ---------- */
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -168,7 +182,8 @@ function newGame(name) {
   const s = {
     v: 1, name: name || 'Sammler:in', money: START_MONEY, day: 1, lastTick: Date.now(),
     prices: {}, owned: [], listings: [], auctions: [], watch: [], news: [],
-    stats: { bought: 0, sold: 0, profit: 0, bestFlip: 0, bestDeal: 0, offers: 0, auctions: 0, services: 0, spent: 0 },
+    stats: { bought: 0, sold: 0, profit: 0, bestFlip: 0, bestDeal: 0, offers: 0, auctions: 0, services: 0, spent: 0, flash: 0, fakes: 0, fakesCaught: 0 },
+    rivals: newRivals(), rank: 9,
     ach: {}, lastBonus: '', jobReady: 0, bot: newBot(),
   };
   for (const m of MODELS) {
@@ -202,6 +217,7 @@ function genListing(fresh, forceId) {
     id: uid('a'), m: m.id, cond, papers, price: niceRound(value * ratio),
     year: rint(m.year, 2025), seller, city, dealer: !!dealer,
     day: fresh ? S.day - rint(0, 6) : S.day, offered: 0,
+    fake: !dealer && !papers && Math.random() < 0.15,
   };
 }
 
@@ -239,6 +255,9 @@ function load() {
     s.auctions = s.auctions.filter(a => MODEL[a.m]);
     s.watch = s.watch.filter(id => MODEL[id]);
     s.bot = Object.assign(newBot(), s.bot || {});
+    s.bot.up = Object.assign(newBot().up, s.bot.up || {});
+    s.stats = Object.assign({ flash: 0, fakes: 0, fakesCaught: 0 }, s.stats);
+    if (!s.rivals) { s.rivals = newRivals(); s.rank = 9; }
     return s;
   } catch (e) { return null; }
 }
@@ -277,7 +296,25 @@ function advanceDay(quiet) {
     return Math.random() > sellP && S.day - l.day < 25;
   });
   while (S.listings.length < LISTINGS) S.listings.push(genListing(false));
+  // Blitz-Deal (nur live, läuft 90 Sekunden)
+  if (!quiet && !S.listings.some(l => l.flash) && Math.random() < 0.2) {
+    const l = genListing(false);
+    l.dealer = true; l.fake = false; l.seller = 'Chronothek Blitz-Deal'; l.city = 'Online';
+    l.price = niceRound(valueOf(l.m, l.cond, l.papers) * rnd(0.6, 0.75));
+    l.flash = Date.now() + 90000;
+    S.listings.push(l);
+    toast(`⚡ <b>Blitz-Deal!</b> ${esc(MODEL[l.m].brand)} ${esc(MODEL[l.m].name)} für ${fmtEur(l.price)} – nur 90 Sekunden!`, 6000);
+  }
   runBot(quiet);
+  // Rivalen wachsen
+  for (const r of S.rivals) r.w *= Math.exp(r.g + 0.02 * gauss());
+  const rank = rankOf(S);
+  if (rank < S.rank && !quiet) {
+    const passed = [...S.rivals].sort((a, b) => b.w - a.w)[rank - 1];
+    toast(`🏁 Du hast <b>${esc(passed ? passed.n : 'jemanden')}</b> überholt – jetzt Platz ${rank}!`, 5000);
+  }
+  S.rank = rank;
+  if (S.bot.on) { S.bot.hist.push(botNet()); if (S.bot.hist.length > HISTORY) S.bot.hist.shift(); }
   // Eigene Inserate
   for (const o of [...S.owned]) {
     if (o.service && S.day >= o.service) {
@@ -285,7 +322,7 @@ function advanceDay(quiet) {
       if (!quiet) toast(`🔧 Revision fertig: <b>${esc(MODEL[o.m].name)}</b> ist jetzt „Sehr gut“.`);
     }
     if (!o.ask) continue;
-    const ratio = o.ask / itemValue(o);
+    const ratio = o.ask / itemValue(o) - (o.bot ? 0.04 * S.bot.up.ai : 0);
     const p = ratio <= 0.9 ? 0.85 : ratio <= 1 ? 0.55 : ratio <= 1.05 ? 0.32 : ratio <= 1.15 ? 0.14 : ratio <= 1.3 ? 0.05 : 0.01;
     if (Math.random() < p) {
       const pay = Math.round(o.ask * (1 - FEE_SELL));
@@ -314,13 +351,25 @@ function sellItem(o, pay) {
 }
 
 /* ---------- Trading-Bot: gratis, behält einen Anteil vom Gewinn ---------- */
-const BOT_SHARE = 0.2;
+const BOT_UPS = [
+  { k: 'turbo', icon: '⚡', name: 'Turbo-Modus', max: 4, base: 1500, f: 3, desc: l => `${2 + 2 * l} Käufe pro Markttag` },
+  { k: 'scanner', icon: '🔍', name: 'Deal-Scanner', max: 3, base: 2500, f: 3, desc: l => l ? `findet ${2 * l} % mehr Deals und erkennt Fälschungen` : 'erkennt keine Fälschungen' },
+  { k: 'ai', icon: '🧠', name: 'KI-Preisfindung', max: 3, base: 4000, f: 3, desc: l => l ? `verkauft ${l * 4} % „besser“ – schnellere Verkäufe` : 'Standard-Preise' },
+  { k: 'sniper', icon: '🎯', name: 'Auktions-Sniper', max: 1, base: 15000, f: 1, desc: l => l ? 'bietet in den letzten 40 s bis 85 % vom Wert' : 'bietet nicht bei Auktionen' },
+  { k: 'license', icon: '💼', name: 'Pro-Lizenz', max: 2, base: 20000, f: 4, desc: l => `Bot-Anteil nur noch ${20 - 5 * l} %` },
+];
+const BOT_TIERS = ['Basic', 'Plus', 'Pro', 'Elite', 'Quant', 'Overlord'];
+function botShare() { return 0.2 - 0.05 * (S.bot.up.license || 0); }
+function botUpCost(u, lvl) { return u.base * Math.pow(u.f, lvl); }
+function botTier() { const n = Object.values(S.bot.up).reduce((a, b) => a + b, 0); return BOT_TIERS[Math.min(BOT_TIERS.length - 1, Math.floor(n / 2.2))]; }
+function botNet() { return S.bot.gross - S.bot.losses - S.bot.fees; }
 const BOT_MODES = [
   { name: 'Vorsichtig', buyBelow: 0.86, perTrade: 0.35, markup: 1.0, desc: 'Kauft nur echte Schnäppchen (14 % unter Wert) und verkauft schnell zum Marktwert.' },
   { name: 'Ausgewogen', buyBelow: 0.91, perTrade: 0.5, markup: 1.03, desc: 'Kauft ab 9 % unter Wert und verkauft etwas über Marktwert.' },
   { name: 'Riskant', buyBelow: 0.96, perTrade: 1, markup: 1.08, desc: 'Kauft fast alles leicht unter Wert, auch teure Uhren, und will mehr Gewinn. Dauert länger, kann auch Verlust bringen.' },
+  { name: '🦈 Hai', buyBelow: 1.0, perTrade: 1, markup: 1.12, momentum: true, desc: 'Kauft auch zum vollen Preis, wenn ein Modell gerade steigt (Momentum), und will 12 % mehr. Großer Gewinn – oder großer Verlust.' },
 ];
-function newBot() { return { on: false, budget: 2000, mode: 1, trades: 0, gross: 0, fees: 0, losses: 0, log: [] }; }
+function newBot() { return { on: false, budget: 2000, mode: 1, trades: 0, gross: 0, fees: 0, losses: 0, log: [], hist: [], up: { turbo: 0, scanner: 0, ai: 0, sniper: 0, license: 0 } }; }
 function botItems() { return S.owned.filter(o => o.bot); }
 function botInUse() { return botItems().reduce((s, o) => s + o.cost, 0); }
 function botLog(text) { S.bot.log.unshift({ day: S.day, text }); S.bot.log = S.bot.log.slice(0, 25); }
@@ -342,17 +391,26 @@ function runBot(quiet) {
     const target = age > 8 ? v * 0.97 : age > 4 ? v * Math.max(1, mode.markup - 0.03) : v * mode.markup;
     o.ask = niceRound(Math.max(target, 1));
   }
-  // 2. Schnäppchen kaufen (höchstens 2 pro Tag)
+  // 2. Schnäppchen kaufen (Turbo = mehr Käufe pro Tag)
   let free = Math.min(S.money, B.budget - botInUse());
-  for (let n = 0; n < 2; n++) {
+  const thr = Math.min(0.99, mode.buyBelow + 0.02 * B.up.scanner) + (mode.momentum ? 0.01 : 0);
+  for (let n = 0; n < 2 + 2 * B.up.turbo; n++) {
     const cands = S.listings
       .map(l => ({ l, r: l.price / valueOf(l.m, l.cond, l.papers) }))
-      .filter(c => c.r <= mode.buyBelow && c.l.price <= free && c.l.price <= B.budget * mode.perTrade)
+      .filter(c => !c.l.flash && !(c.l.fake && B.up.scanner > 0))
+      .filter(c => c.l.price <= free && c.l.price <= B.budget * mode.perTrade)
+      .filter(c => c.r <= thr && (!mode.momentum || c.r <= 0.92 || changeOver(c.l.m, 7) > 0.02))
       .sort((a, b) => a.r - b.r);
     if (!cands.length) break;
     const { l, r } = cands[0];
     S.money -= l.price; free -= l.price;
     S.listings = S.listings.filter(x => x !== l);
+    if (l.fake) {
+      B.trades++; B.losses += l.price; S.stats.fakes++;
+      botLog(`Reingefallen! ${MODEL[l.m].brand} ${MODEL[l.m].name} war eine Fälschung – ${fmtEur(l.price)} weg. (Tipp: Deal-Scanner)`);
+      if (!quiet) toast(`😱 Dein Bot hat eine <b>Fälschung</b> gekauft: −${fmtEur(l.price)}. Der Deal-Scanner hätte das erkannt.`, 6000);
+      continue;
+    }
     S.owned.push({ id: uid('o'), m: l.m, cond: l.cond, papers: l.papers, cost: l.price, day: S.day, source: 'Trading-Bot', ask: 0, service: 0, bot: true });
     const m = MODEL[l.m];
     botLog(`Gekauft: ${m.brand} ${m.name} für ${fmtEur(l.price)} (${Math.round((1 - r) * 100)} % unter Wert).`);
@@ -363,7 +421,7 @@ function runBot(quiet) {
 function botSold(o, pay) {
   S.owned = S.owned.filter(x => x !== o);
   const profit = pay - o.cost;
-  const fee = profit > 0 ? Math.round(profit * BOT_SHARE) : 0;
+  const fee = profit > 0 ? Math.round(profit * botShare()) : 0;
   S.money += pay - fee;
   const B = S.bot;
   B.trades++; B.fees += fee;
@@ -385,6 +443,24 @@ function catchUp() {
   return done;
 }
 
+/* ---------- Auktions-Sniper des Bots ---------- */
+function botSnipe(now) {
+  const B = S.bot;
+  if (!B.on || !B.up.sniper) return false;
+  let changed = false;
+  for (const a of S.auctions) {
+    if (a.me || a.ends - now > 40000 || a.ends <= now) continue;
+    const max = valueOf(a.m, a.cond, a.papers) * 0.85;
+    const next = a.bid + aucStep(a.bid);
+    const free = Math.min(S.money, B.budget - botInUse());
+    if (next > max || next * (1 + PREMIUM) > free) continue;
+    a.bid = next; a.bids++; a.me = true; a.byBot = true; a.lead = '🤖 Dein Bot';
+    if (a.ends - now < 20000) a.ends = now + 20000;
+    changed = true;
+  }
+  return changed;
+}
+
 /* ---------- Auktionen ---------- */
 function tickAuctions(now, live) {
   let changed = false;
@@ -403,7 +479,7 @@ function tickAuctions(now, live) {
     if (!able.length) continue;
     const chance = a.me ? (left < 20 ? 0.45 : 0.12) : (left < 30 ? 0.12 : 0.03);
     if (Math.random() < chance) {
-      a.bid = next; a.bids++; a.me = false; a.lead = 'Bieter ' + rint(10, 99);
+      a.bid = next; a.bids++; a.me = false; a.byBot = false; a.lead = 'Bieter ' + rint(10, 99);
       if (left < 20) a.ends = now + 20000; // Schutz vor Last-Second-Geboten
       changed = true;
     }
@@ -418,7 +494,8 @@ function finishAuction(a, live) {
     const total = Math.round(a.bid * (1 + PREMIUM));
     if (S.money >= total) {
       S.money -= total;
-      addOwned(a.m, a.cond, a.papers, total, 'Auktion');
+      addOwned(a.m, a.cond, a.papers, total, a.byBot ? 'Bot-Auktion' : 'Auktion');
+      if (a.byBot) { S.owned[S.owned.length - 1].bot = true; botLog(`Auktion gewonnen: ${m.brand} ${m.name} für ${fmtEur(total)}.`); }
       S.stats.auctions++;
       addNews(`Zuschlag! Du hast die ${m.brand} ${m.name} ersteigert.`);
       if (live) toast(`🔨 <b>Zuschlag!</b> ${esc(m.brand)} ${esc(m.name)} für ${fmtEur(total)} (inkl. Aufgeld)`);
@@ -436,7 +513,7 @@ function placeBid(id, steps) {
   for (let i = 0; i < steps; i++) bid += aucStep(bid);
   if (a.me && steps === 0) return;
   if (S.money < bid * (1 + PREMIUM)) { toast('Dafür reicht dein Kontostand nicht (inkl. 5 % Aufgeld).'); return; }
-  a.bid = bid; a.bids++; a.me = true; a.lead = S.name;
+  a.bid = bid; a.bids++; a.me = true; a.byBot = false; a.lead = S.name;
   if (a.ends - Date.now() < 20000) a.ends = Date.now() + 20000;
   save(); render();
 }
@@ -456,6 +533,13 @@ function buyListing(id, priceOverride) {
   const deal = 1 - p / valueOf(l.m, l.cond, l.papers);
   S.money -= p;
   S.listings = S.listings.filter(x => x !== l);
+  if (l.fake) {
+    S.stats.fakes++; save(); flashWallet();
+    modal('Oh nein …', `<div class="shot">${watchImg(l.m)}</div><p class="center"><b>Die Uhr ist eine Fälschung!</b><br>Das Werk ist billig, die Gravur schief. ${fmtEur(p)} sind weg.</p><p class="muted center" style="font-size:12px">Tipp: Bei Privatverkäufen ohne Papiere lieber die Echtheitsprüfung dazubuchen.</p>`,
+      '<button class="btn blue" data-act="close">Lehrgeld …</button>');
+    return 'fake';
+  }
+  if (l.flash) S.stats.flash++;
   addOwned(l.m, l.cond, l.papers, p, l.seller);
   S.stats.bestDeal = Math.max(S.stats.bestDeal, deal);
   checkAchievements();
@@ -912,6 +996,11 @@ function pageHome() {
   </div>
 
   <div class="panel">
+    <div class="panel-head"><h2>Rangliste der Sammler</h2><a href="#/profil">Ganze Liste ›</a></div>
+    ${rankingHTML(true)}
+  </div>
+
+  <div class="panel">
     <div class="panel-head"><h2>Neu eingetroffen</h2><a href="#/markt">Alle Angebote ›</a></div>
     <div class="grid">${fresh.map(listingCard).join('')}</div>
   </div>
@@ -1034,11 +1123,15 @@ function pageListing(id) {
           <button class="btn big" data-act="offer" data-id="${l.id}" ${offerUsed ? 'disabled' : ''}>${offerUsed ? 'Vorschlag gesendet' : 'Preisvorschlag'}</button>
           ${heartBtn(l.m)}
         </div>
-        <div class="trust">
+        ${l.dealer ? `<div class="trust">
           <div>Echtheit von Chronothek-Uhrmachern geprüft</div>
           <div>Versicherter Versand, 14 Tage Rückgabe</div>
           <div>Käuferschutz: Geld erst nach Prüfung beim Verkäufer</div>
-        </div>
+        </div>` : `<div class="trust warn">
+          <div>Privatverkauf – Echtheitsprüfung nicht inklusive</div>
+          ${l.papers ? '<div>Box &amp; Papiere vorhanden</div>' : '<div>Ohne Papiere: Fälschungen kommen vor!</div>'}
+        </div>`}
+        ${l.flash ? `<div class="flash-inline">⚡ Blitz-Deal – endet in <span class="timer" data-ends="${l.flash}">${fmtTime(Math.max(0, Math.ceil((l.flash - Date.now()) / 1000)))}</span></div>` : ''}
         <table class="specs">${specRows(m, [['Zustand', COND[l.cond].name], ['Lieferumfang', l.papers ? 'Box, Papiere' : 'nur Uhr'], ['Inseriert', `Markttag ${Math.max(1, l.day)}`]])}</table>
       </div>
     </div>
@@ -1157,23 +1250,32 @@ function pageWatchlist() {
 }
 
 function pageBot() {
-  const B = S.bot, mode = BOT_MODES[B.mode];
+  const B = S.bot, mode = BOT_MODES[B.mode] || BOT_MODES[1];
   const items = botItems();
   const inUse = botInUse();
-  const net = B.gross - B.losses - B.fees;
+  const net = botNet();
   const maxBudget = Math.max(1000, Math.ceil((S.money + inUse) / 500) * 500);
+  const share = Math.round(botShare() * 100);
   return `
   <section class="hero bot-hero">
     <div>
-      <h1>Trading-<b>Bot</b></h1>
-      <p>Lass den Bot für dich handeln: Er sucht jeden Markttag Schnäppchen, kauft sie und verkauft sie mit Gewinn weiter.</p>
-      <p><b>Gratis.</b> Nur wenn er Gewinn macht, behält er <b>${BOT_SHARE * 100} %</b> davon. Bei Verlust zahlst du nichts extra.</p>
+      <h1>Trading-<b>Bot</b> <span class="badge gold" style="vertical-align:middle">${botTier()}</span></h1>
+      <p>Lass den Bot für dich handeln: Er scannt jeden Markttag alle Angebote, kauft Schnäppchen und verkauft sie mit Gewinn weiter.</p>
+      <p><b>Gratis.</b> Nur wenn er Gewinn macht, behält er <b>${share} %</b> davon. Bei Verlust zahlst du nichts extra.</p>
     </div>
     <div class="bot-switch">
       <button class="switch ${B.on ? 'on' : ''}" data-act="bot-toggle" role="switch" aria-checked="${B.on}" aria-label="Bot an oder aus"><span class="knob"></span><span class="lbl-on">AN</span><span class="lbl-off">AUS</span></button>
       <div class="muted" style="margin-top:8px">${B.on ? 'Bot läuft' : 'Bot ist aus'}</div>
     </div>
   </section>
+
+  <div class="terminal" aria-label="Bot-Terminal">
+    <div class="terminal-bar"><i></i><i></i><i></i><span>chronobot — ${botTier().toLowerCase()} — ${B.on ? 'aktiv' : 'pausiert'}</span></div>
+    <div class="terminal-body">
+      ${B.log.slice(0, 7).reverse().map(n => `<div><span class="t-dim">[Tag ${n.day}]</span> ${esc(n.text)}</div>`).join('') || '<div class="t-dim">Noch keine Aktionen.</div>'}
+      <div id="bot-live" class="t-live">${B.on ? '&gt; starte Scan …' : '&gt; Bot pausiert. Schalter oben umlegen.'}</div>
+    </div>
+  </div>
 
   <div class="cols">
     <div class="panel"><div class="panel-head"><h2>Einstellungen</h2></div>
@@ -1183,17 +1285,31 @@ function pageBot() {
       <h3>Budget</h3>
       <div class="center" style="font-size:22px;font-weight:300" id="budget-val">${fmtEur(B.budget)}</div>
       <input type="range" data-act="f-budget" id="budget-range" min="500" max="${maxBudget}" step="500" value="${Math.min(B.budget, maxBudget)}">
-      <p class="muted" style="font-size:12px">So viel Geld darf der Bot höchstens gleichzeitig in Uhren stecken. Gerade gebunden: <b>${fmtEur(inUse)}</b>.</p>
+      <p class="muted" style="font-size:12px">So viel darf der Bot höchstens gleichzeitig in Uhren stecken. Gerade gebunden: <b>${fmtEur(inUse)}</b>.</p>
     </div>
     <div class="panel"><div class="panel-head"><h2>Ergebnis</h2></div>
       <table class="sum">
         <tr><td>Abgeschlossene Trades</td><td>${B.trades}</td></tr>
         <tr><td>Gewinne</td><td class="up">${fmtEur(B.gross)}</td></tr>
         <tr><td>Verluste</td><td class="${B.losses ? 'down' : ''}">${B.losses ? fmtEur(-B.losses) : fmtEur(0)}</td></tr>
-        <tr><td>Bot-Anteil (${BOT_SHARE * 100} %)</td><td>${B.fees ? fmtEur(-B.fees) : fmtEur(0)}</td></tr>
+        <tr><td>Bot-Anteil</td><td>${B.fees ? fmtEur(-B.fees) : fmtEur(0)}</td></tr>
         <tr class="total"><td>Dein Netto</td><td class="${net >= 0 ? 'up' : 'down'}">${fmtEur(net)}</td></tr>
       </table>
+      ${B.hist.length > 2 ? chartSVG(B.hist.slice(-60), 480, 200) : '<p class="muted" style="font-size:12px">Die Gewinnkurve erscheint nach ein paar Markttagen.</p>'}
     </div>
+  </div>
+
+  <div class="panel"><div class="panel-head"><h2>Bot-Upgrades</h2><span class="muted" style="font-size:12px">einmal kaufen, wirkt für immer</span></div>
+    <div class="up-grid">${BOT_UPS.map(u => {
+      const lvl = B.up[u.k] || 0, maxed = lvl >= u.max, cost = botUpCost(u, lvl);
+      return `<div class="up-card ${maxed ? 'maxed' : ''}">
+        <div class="up-icon">${u.icon}</div>
+        <div class="up-name">${u.name}</div>
+        <div class="up-lvl">${Array.from({ length: u.max }, (_, i) => `<i class="${i < lvl ? 'on' : ''}"></i>`).join('')}</div>
+        <div class="up-desc">${esc(u.desc(lvl))}</div>
+        ${maxed ? '<span class="badge gold">Maximal</span>' : `<div class="up-next muted">Nächste Stufe: ${esc(u.desc(lvl + 1))}</div>
+        <button class="btn ${S.money >= cost ? 'blue' : ''} small" data-act="bot-up" data-k="${u.k}" ${S.money >= cost ? '' : 'disabled'}>${fmtEur(cost)}</button>`}
+      </div>`; }).join('')}</div>
   </div>
 
   <div class="panel"><div class="panel-head"><h2>Positionen des Bots (${items.length})</h2></div>
@@ -1204,11 +1320,31 @@ function pageBot() {
         <td class="num"><button class="btn small" data-act="item" data-id="${o.id}">Verwalten</button></td></tr>`).join('')}
     </table></div>` : '<div class="empty">Noch keine Positionen. Schalte den Bot ein – er kauft ab dem nächsten Markttag.</div>'}
   </div>
-
-  <div class="panel"><div class="panel-head"><h2>Protokoll</h2></div>
-    ${B.log.length ? `<ul class="list news">${B.log.map(n => `<li><span class="badge dark day">Tag ${n.day}</span><div class="grow">${esc(n.text)}</div></li>`).join('')}</ul>` : '<div class="empty">Hier steht, was der Bot macht.</div>'}
-  </div>
   <p class="muted" style="font-size:11px">Hinweis: Das ist ein Spiel. Echte „Trading-Bots“, die Gewinn versprechen, sind oft unseriös – im echten Leben lieber vorsichtig sein.</p>`;
+}
+
+function botLiveLine() {
+  const B = S.bot;
+  if (!B.on) return '&gt; Bot pausiert. Schalter oben umlegen.';
+  const deals = S.listings.map(l => ({ l, r: l.price / valueOf(l.m, l.cond, l.papers) })).sort((a, b) => a.r - b.r);
+  const best = deals[0];
+  const lines = [
+    `&gt; scanne ${S.listings.length} Angebote …`,
+    best ? `&gt; bestes Angebot: ${esc(MODEL[best.l.m].brand)} ${esc(MODEL[best.l.m].name)} ${fmtPct(best.r - 1)}` : '&gt; keine Angebote',
+    `&gt; ${S.auctions.length} Auktionen beobachtet${B.up.sniper ? ' · Sniper bereit 🎯' : ''}`,
+    `&gt; Budget frei: ${fmtEur(Math.max(0, Math.min(S.money, B.budget - botInUse())))}`,
+    `&gt; nächster Handel in ${Math.max(0, Math.ceil((DAY_MS - (Date.now() - S.lastTick)) / 1000))} s`,
+    `&gt; Markt-Stimmung: ${changeOver('rolex-sub', 7) > 0 ? 'bullish 📈' : 'bearish 📉'}`,
+  ];
+  return lines[Math.floor(Date.now() / 2000) % lines.length] + '<span class="cursor">▌</span>';
+}
+
+function rankingHTML(compact) {
+  const me = netWorth();
+  const rows = [...S.rivals.map(r => ({ n: r.n, w: r.w })), { n: S.name, w: me, me: true }].sort((a, b) => b.w - a.w);
+  const idx = rows.findIndex(r => r.me);
+  const show = compact ? rows.slice(Math.max(0, idx - 2), idx + 3) : rows;
+  return `<ol class="ranking">${show.map(r => { const pos = rows.indexOf(r) + 1; return `<li class="${r.me ? 'me' : ''}"><span class="pos ${pos <= 3 ? 'p' + pos : ''}">${pos}</span><span class="grow">${esc(r.n)}${r.me ? ' (du)' : ''}</span><span>${fmtEur(r.w)}</span></li>`; }).join('')}</ol>`;
 }
 
 function pageProfile() {
@@ -1225,6 +1361,7 @@ function pageProfile() {
       <tr><td>Gesamtvermögen</td><td>${fmtEur(netWorth())}</td></tr>
     </table>
   </div>
+  <div class="panel"><div class="panel-head"><h2>Rangliste</h2><span class="muted" style="font-size:12px">nach Gesamtvermögen</span></div>${rankingHTML(false)}</div>
   <div class="panel"><div class="panel-head"><h2>Erfolge</h2><span class="muted" style="font-size:12px">${Object.keys(S.ach).length} von ${ACHIEVEMENTS.length}</span></div>
     <div class="ach-grid">${ACHIEVEMENTS.map(a => `<div class="ach ${S.ach[a.id] ? '' : 'locked'}"><div class="medal">${a.icon}</div><div class="name">${esc(a.name)}</div><div class="desc">${esc(a.desc)}</div><div class="desc">Belohnung ${fmtEur(a.reward)}</div></div>`).join('')}</div>
   </div>
@@ -1240,6 +1377,14 @@ function pageProfile() {
   <div class="panel"><div class="panel-head"><h2>Neu anfangen</h2></div>
     <p class="muted" style="margin-top:0">Löscht deinen Spielstand auf diesem Gerät.</p>
     <button class="btn red" data-act="reset">Spielstand löschen</button></div>`;
+}
+
+function flashBanner() {
+  const l = S.listings.find(x => x.flash && x.flash > Date.now());
+  if (!l) return '';
+  const m = MODEL[l.m];
+  const pct = Math.round((1 - l.price / valueOf(l.m, l.cond, l.papers)) * 100);
+  return `<a class="flash-banner" href="#/angebot/${l.id}"><span class="bolt">⚡</span><span class="grow"><b>Blitz-Deal:</b> ${esc(m.brand)} ${esc(m.name)} für ${fmtEur(l.price)} <span class="badge green">${pct} % unter Wert</span></span><span class="timer" data-ends="${l.flash}">${fmtTime(Math.max(0, Math.ceil((l.flash - Date.now()) / 1000)))}</span></a>`;
 }
 
 /* ---------- Router ---------- */
@@ -1261,7 +1406,7 @@ function render() {
     case 'bot': html = pageBot(); break;
     default: html = pageHome();
   }
-  view.innerHTML = html;
+  view.innerHTML = flashBanner() + html;
   updateTop();
 }
 
@@ -1282,6 +1427,8 @@ function modal(title, body, foot, onBind) {
 }
 function closeModal() { $('#modal-root').innerHTML = ''; }
 
+function authFee(l) { return Math.max(25, niceRound(l.price * 0.03)); }
+
 function openBuy(id) {
   const l = S.listings.find(x => x.id === id); if (!l) return;
   const m = MODEL[l.m];
@@ -1290,7 +1437,7 @@ function openBuy(id) {
     <div class="center"><b>${esc(m.brand)} ${esc(m.name)}</b><div class="muted">${COND[l.cond].name} · ${l.papers ? 'Box &amp; Papiere' : 'ohne Papiere'}</div></div>
     <table class="sum">
       <tr><td>Artikel</td><td>${fmtEur(l.price)}</td></tr>
-      <tr><td>Echtheitsprüfung</td><td>gratis</td></tr>
+      ${l.dealer ? '<tr><td>Echtheitsprüfung</td><td>gratis</td></tr>' : `<tr><td colspan="2"><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="chk-auth"> Echtheitsprüfung dazubuchen (+${fmtEur(authFee(l))})</label><div class="down" style="font-size:12px">Privatverkauf${l.papers ? '' : ' ohne Papiere – Fälschungen möglich!'}</div></td></tr>`}
       <tr><td>Versicherter Versand</td><td>gratis</td></tr>
       <tr class="total"><td>Gesamt</td><td>${fmtEur(l.price)}</td></tr>
       <tr><td class="muted">Kontostand danach</td><td class="${S.money - l.price < 0 ? 'down' : 'muted'}">${fmtEur(S.money - l.price)}</td></tr>
@@ -1320,7 +1467,9 @@ function sendOffer(id) {
   const chance = r >= 0.95 ? 1 : r >= 0.88 ? 0.6 : r >= 0.8 ? 0.25 : 0.05;
   closeModal();
   if (Math.random() < chance) {
-    if (buyListing(id, offer)) {
+    const res = buyListing(id, offer);
+    if (res === 'fake') { render(); return; }
+    if (res) {
       S.stats.offers++;
       checkAchievements(); save();
       toast(`🤝 Angenommen! Du bekommst die Uhr für <b>${fmtEur(offer)}</b>.`);
@@ -1416,7 +1565,21 @@ document.addEventListener('click', e => {
     case 'clear-q': UI.q = ''; $('#search-input').value = ''; render(); break;
     case 'buy': openBuy(id); break;
     case 'confirm-buy': {
-      if (buyListing(id)) {
+      const l = S.listings.find(x => x.id === id); if (!l) { closeModal(); render(); break; }
+      if ($('#chk-auth')?.checked) {
+        const fee = authFee(l);
+        if (S.money < l.price + fee) { toast('Dafür reicht dein Kontostand nicht.'); break; }
+        S.money -= fee;
+        if (l.fake) {
+          S.listings = S.listings.filter(x => x !== l); S.stats.fakesCaught++;
+          checkAchievements(); save(); render();
+          modal('Prüfung: Fälschung!', `<div class="shot">${watchImg(l.m)}</div><p class="center">Unser Uhrmacher hat eine <b>Fälschung</b> entdeckt. Der Kauf ist abgebrochen – du zahlst nur ${fmtEur(fee)} für die Prüfung.</p>`, '<button class="btn blue" data-act="close">Puh, Glück gehabt</button>');
+          break;
+        }
+      }
+      const res = buyListing(id);
+      if (res === 'fake') { render(); break; }
+      if (res) {
         closeModal(); const m = MODEL[S.owned[S.owned.length - 1].m];
         toast(`✅ Gekauft: <b>${esc(m.brand)} ${esc(m.name)}</b> liegt jetzt in deiner Uhrenbox.`);
         location.hash = '#/sammlung';
@@ -1426,7 +1589,9 @@ document.addEventListener('click', e => {
     case 'offer': openOffer(id); break;
     case 'send-offer': sendOffer(id); break;
     case 'accept-counter': {
-      if (buyListing(id, +t.dataset.p)) { closeModal(); toast('🤝 Deal! Die Uhr gehört dir.'); location.hash = '#/sammlung'; }
+      const res = buyListing(id, +t.dataset.p);
+      if (res === 'fake') { render(); break; }
+      if (res) { closeModal(); toast('🤝 Deal! Die Uhr gehört dir.'); location.hash = '#/sammlung'; }
       break;
     }
     case 'bid': placeBid(id, +t.dataset.n); break;
@@ -1434,6 +1599,16 @@ document.addEventListener('click', e => {
     case 'takeover': { const o = S.owned.find(x => x.id === id); if (o) { o.bot = false; o.ask = 0; save(); closeModal(); render(); toast('Die Uhr gehört jetzt zu deiner Sammlung – der Bot fasst sie nicht mehr an.'); } break; }
     case 'bot-toggle': S.bot.on = !S.bot.on; save(); render(); toast(S.bot.on ? '🤖 Bot läuft – er handelt ab dem nächsten Markttag.' : 'Bot pausiert. Seine Uhren bleiben inseriert.'); break;
     case 'bot-mode': S.bot.mode = +t.dataset.v; save(); render(); break;
+    case 'bot-up': {
+      const u = BOT_UPS.find(x => x.k === t.dataset.k); if (!u) break;
+      const lvl = S.bot.up[u.k] || 0; if (lvl >= u.max) break;
+      const c = botUpCost(u, lvl);
+      if (S.money < c) { toast('Dafür reicht dein Kontostand nicht.'); break; }
+      S.money -= c; S.bot.up[u.k] = lvl + 1;
+      botLog(`Upgrade installiert: ${u.name} Stufe ${lvl + 1}.`);
+      save(); render(); toast(`${u.icon} <b>${u.name}</b> Stufe ${lvl + 1} installiert – Bot ist jetzt <b>${botTier()}</b>.`);
+      break;
+    }
     case 'list': openList(id); break;
     case 'confirm-list': {
       const o = S.owned.find(x => x.id === id);
@@ -1520,14 +1695,19 @@ function loop() {
   const now = Date.now();
   let dayChanged = false;
   while (now - S.lastTick >= DAY_MS) { S.lastTick += DAY_MS; advanceDay(false); dayChanged = true; }
-  const aucChanged = tickAuctions(now, true);
+  const sniped = botSnipe(now);
+  const aucChanged = tickAuctions(now, true) || sniped;
+  const before = S.listings.length;
+  S.listings = S.listings.filter(l => !l.flash || l.flash > now);
+  const flashGone = S.listings.length !== before;
   if (dayChanged || aucChanged) { checkAchievements(); save(); }
   // Fortschritt des Markttags
   $('#day-progress').style.width = ((now - S.lastTick) / DAY_MS * 100).toFixed(1) + '%';
   updateTop();
   const typing = document.activeElement && ['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName) && view.contains(document.activeElement);
   const onAuc = location.hash.startsWith('#/auktionen');
-  if (dayChanged && !typing) render();
+  const live = $('#bot-live'); if (live) live.innerHTML = botLiveLine();
+  if ((dayChanged || flashGone) && !typing) render();
   else if (aucChanged && onAuc) render();
   else {
     // nur Countdown-Texte aktualisieren
