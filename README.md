@@ -16,6 +16,7 @@ Alles läuft im Browser und offline (PWA). Der Spielstand liegt nur auf deinem G
 | **Auktionen** | 4 Live-Auktionen mit Countdown, andere Bieter, 5 % Aufgeld, Verlängerung bei späten Geboten |
 | **Sammlung** | Uhrenbox, Depot-Übersicht mit Gewinn/Verlust; pro Uhr: inserieren, sofort an Händler verkaufen (80 %), Revision |
 | **Merkliste** | Gemerkte Modelle mit Preisänderung und Angebotszahl, dazu eine Tabelle aller Modelle |
+| **Bot** | Trading-Bot an/aus, Strategie (Vorsichtig / Ausgewogen / Riskant), Budget, Positionen, Protokoll |
 | **Profil** | Name, Statistik, Erfolge mit Geld-Belohnung, Spielstand löschen |
 
 ## Regeln
@@ -28,6 +29,15 @@ Alles läuft im Browser und offline (PWA). Der Spielstand liegt nur auf deinem G
   - Sofortverkauf an einen Händler: 80 % vom Wert.
 - **News** wie Preiserhöhungen, Hype oder Zinsen verändern die Preise einzelner Modelle, Marken oder des ganzen Markts.
 - **Stufen** nach Sammlungswert: Einsteiger → Sammler (5.000 €) → Kenner (25.000 €) → Connaisseur (100.000 €) → Grand Collector (500.000 €) → Legende (2 Mio. €).
+
+## Trading-Bot
+- Der Bot ist **gratis**, behält aber **20 % von jedem Gewinn**. Bei Verlust zahlst du nichts extra. Die 6 % Marktplatz-Gebühr fallen trotzdem an.
+- Jeden Markttag kauft er bis zu 2 Schnäppchen unter Marktwert, je nach Strategie. Er inseriert sie mit Aufschlag und senkt den Preis, wenn sie nicht weggehen.
+  - Getragene Uhren lässt er vorher revidieren.
+- Er steckt höchstens das eingestellte **Budget** gleichzeitig in Uhren. Deine eigenen Uhren fasst er nie an.
+  - Bot-Uhren tragen in der Uhrenbox das Schild „Bot“.
+  - Mit „Vom Bot übernehmen“ holst du dir eine davon in deine Sammlung.
+- Er handelt auch, während die App zu ist (bis zu 40 Markttage).
 
 ## Uhren & Daten
 44 Modelle von 25 Marken stehen in `MODELS` in `app.js`: Name, Referenz, Startpreis, Kategorie, Durchmesser, Material und Aussehen (Form, Zifferblatt, Lünette, Band).

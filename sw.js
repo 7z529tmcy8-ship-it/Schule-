@@ -1,6 +1,6 @@
 /* Service Worker von Chronothek – macht die App offline nutzbar.
    Nach Änderungen am Code CACHE_VERSION hochzählen. */
-const CACHE_VERSION = 'chronothek-v1';
+const CACHE_VERSION = 'chronothek-v2';
 
 const ASSETS = [
   './',

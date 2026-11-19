@@ -169,7 +169,7 @@ function newGame(name) {
     v: 1, name: name || 'Sammler:in', money: START_MONEY, day: 1, lastTick: Date.now(),
     prices: {}, owned: [], listings: [], auctions: [], watch: [], news: [],
     stats: { bought: 0, sold: 0, profit: 0, bestFlip: 0, bestDeal: 0, offers: 0, auctions: 0, services: 0, spent: 0 },
-    ach: {}, lastBonus: '', jobReady: 0,
+    ach: {}, lastBonus: '', jobReady: 0, bot: newBot(),
   };
   for (const m of MODELS) {
     const h = []; let p = m.price; const vol = volOf(m), tr = trendOf(m);
@@ -238,6 +238,7 @@ function load() {
     s.listings = s.listings.filter(l => MODEL[l.m]);
     s.auctions = s.auctions.filter(a => MODEL[a.m]);
     s.watch = s.watch.filter(id => MODEL[id]);
+    s.bot = Object.assign(newBot(), s.bot || {});
     return s;
   } catch (e) { return null; }
 }
@@ -276,6 +277,7 @@ function advanceDay(quiet) {
     return Math.random() > sellP && S.day - l.day < 25;
   });
   while (S.listings.length < LISTINGS) S.listings.push(genListing(false));
+  runBot(quiet);
   // Eigene Inserate
   for (const o of [...S.owned]) {
     if (o.service && S.day >= o.service) {
@@ -287,9 +289,15 @@ function advanceDay(quiet) {
     const p = ratio <= 0.9 ? 0.85 : ratio <= 1 ? 0.55 : ratio <= 1.05 ? 0.32 : ratio <= 1.15 ? 0.14 : ratio <= 1.3 ? 0.05 : 0.01;
     if (Math.random() < p) {
       const pay = Math.round(o.ask * (1 - FEE_SELL));
+      const m = MODEL[o.m];
+      if (o.bot) {
+        const r = botSold(o, pay);
+        if (!quiet) toast(`🤖 Bot hat <b>${esc(m.brand)} ${esc(m.name)}</b> verkauft: ${r.profit >= 0 ? 'Gewinn' : 'Verlust'} ${fmtEur(r.profit)}${r.fee ? `, Bot-Anteil ${fmtEur(r.fee)}` : ''}`);
+        continue;
+      }
       sellItem(o, pay);
-      const msg = `💶 Verkauft: <b>${esc(MODEL[o.m].brand)} ${esc(MODEL[o.m].name)}</b> für ${fmtEur(o.ask)} (Auszahlung ${fmtEur(pay)})`;
-      addNews(`Deine ${MODEL[o.m].brand} ${MODEL[o.m].name} wurde verkauft.`);
+      const msg = `💶 Verkauft: <b>${esc(m.brand)} ${esc(m.name)}</b> für ${fmtEur(o.ask)} (Auszahlung ${fmtEur(pay)})`;
+      addNews(`Deine ${m.brand} ${m.name} wurde verkauft.`);
       if (!quiet) toast(msg);
     }
   }
@@ -303,6 +311,68 @@ function sellItem(o, pay) {
   S.stats.profit += profit;
   S.stats.bestFlip = Math.max(S.stats.bestFlip, profit);
   flashWallet();
+}
+
+/* ---------- Trading-Bot: gratis, behält einen Anteil vom Gewinn ---------- */
+const BOT_SHARE = 0.2;
+const BOT_MODES = [
+  { name: 'Vorsichtig', buyBelow: 0.86, perTrade: 0.35, markup: 1.0, desc: 'Kauft nur echte Schnäppchen (14 % unter Wert) und verkauft schnell zum Marktwert.' },
+  { name: 'Ausgewogen', buyBelow: 0.91, perTrade: 0.5, markup: 1.03, desc: 'Kauft ab 9 % unter Wert und verkauft etwas über Marktwert.' },
+  { name: 'Riskant', buyBelow: 0.96, perTrade: 1, markup: 1.08, desc: 'Kauft fast alles leicht unter Wert, auch teure Uhren, und will mehr Gewinn. Dauert länger, kann auch Verlust bringen.' },
+];
+function newBot() { return { on: false, budget: 2000, mode: 1, trades: 0, gross: 0, fees: 0, losses: 0, log: [] }; }
+function botItems() { return S.owned.filter(o => o.bot); }
+function botInUse() { return botItems().reduce((s, o) => s + o.cost, 0); }
+function botLog(text) { S.bot.log.unshift({ day: S.day, text }); S.bot.log = S.bot.log.slice(0, 25); }
+
+function runBot(quiet) {
+  const B = S.bot;
+  if (!B.on) return;
+  const mode = BOT_MODES[B.mode] || BOT_MODES[1];
+  // 1. Eigene Positionen inserieren bzw. Preis senken, wenn es zu lange dauert
+  for (const o of botItems()) {
+    if (o.service) continue;
+    const v = itemValue(o);
+    const age = S.day - o.day;
+    if (o.cond >= 3 && S.money >= serviceCost(o) && serviceCost(o) < v * 0.25 && !o.serviced) {
+      S.money -= serviceCost(o); o.cost += serviceCost(o); o.service = S.day + 2; o.serviced = 1; o.ask = 0;
+      botLog(`Revision für ${MODEL[o.m].brand} ${MODEL[o.m].name} beauftragt.`);
+      continue;
+    }
+    const target = age > 8 ? v * 0.97 : age > 4 ? v * Math.max(1, mode.markup - 0.03) : v * mode.markup;
+    o.ask = niceRound(Math.max(target, 1));
+  }
+  // 2. Schnäppchen kaufen (höchstens 2 pro Tag)
+  let free = Math.min(S.money, B.budget - botInUse());
+  for (let n = 0; n < 2; n++) {
+    const cands = S.listings
+      .map(l => ({ l, r: l.price / valueOf(l.m, l.cond, l.papers) }))
+      .filter(c => c.r <= mode.buyBelow && c.l.price <= free && c.l.price <= B.budget * mode.perTrade)
+      .sort((a, b) => a.r - b.r);
+    if (!cands.length) break;
+    const { l, r } = cands[0];
+    S.money -= l.price; free -= l.price;
+    S.listings = S.listings.filter(x => x !== l);
+    S.owned.push({ id: uid('o'), m: l.m, cond: l.cond, papers: l.papers, cost: l.price, day: S.day, source: 'Trading-Bot', ask: 0, service: 0, bot: true });
+    const m = MODEL[l.m];
+    botLog(`Gekauft: ${m.brand} ${m.name} für ${fmtEur(l.price)} (${Math.round((1 - r) * 100)} % unter Wert).`);
+    if (!quiet) toast(`🤖 Bot kauft <b>${esc(m.brand)} ${esc(m.name)}</b> für ${fmtEur(l.price)}`);
+  }
+}
+
+function botSold(o, pay) {
+  S.owned = S.owned.filter(x => x !== o);
+  const profit = pay - o.cost;
+  const fee = profit > 0 ? Math.round(profit * BOT_SHARE) : 0;
+  S.money += pay - fee;
+  const B = S.bot;
+  B.trades++; B.fees += fee;
+  if (profit >= 0) B.gross += profit; else B.losses += -profit;
+  S.stats.sold++; S.stats.profit += profit - fee;
+  const m = MODEL[o.m];
+  botLog(`Verkauft: ${m.brand} ${m.name} für ${fmtEur(o.ask)} → ${profit >= 0 ? 'Gewinn' : 'Verlust'} ${fmtEur(profit)}${fee ? `, Bot-Anteil ${fmtEur(fee)}` : ''}.`);
+  flashWallet();
+  return { profit, fee };
 }
 
 function catchUp() {
@@ -1051,7 +1121,7 @@ function pageCollection() {
     <div class="watchbox-lid"><span>${esc(S.name)}s Uhrenbox</span><span>${items.length} Uhr${items.length === 1 ? '' : 'en'}</span></div>
     <div class="watchbox-inner">
       ${items.map(o => `<button class="cushion" data-act="item" data-id="${o.id}">
-        ${o.ask ? '<span class="tag badge blue">Inseriert</span>' : o.service ? '<span class="tag badge gold">Revision</span>' : ''}
+        ${o.bot ? '<span class="tag badge dark">Bot</span>' : o.ask ? '<span class="tag badge blue">Inseriert</span>' : o.service ? '<span class="tag badge gold">Revision</span>' : ''}
         ${watchImg(o.m)}<span class="lbl">${esc(MODEL[o.m].brand)} ${esc(MODEL[o.m].name)}</span></button>`).join('')}
       ${Array.from({ length: slots - items.length }, () => '<div class="cushion empty-slot"></div>').join('')}
     </div>
@@ -1084,6 +1154,61 @@ function pageWatchlist() {
       <tr><th>Modell</th><th class="num">Marktwert</th><th class="num">30 Tage</th><th></th></tr>
       ${[...MODELS].sort((a, b) => price(b.id) - price(a.id)).map(m => `<tr><td><a href="#/modell/${m.id}">${esc(m.brand)} ${esc(m.name)}</a></td><td class="num">${fmtEur(price(m.id))}</td><td class="num ${changeOver(m.id, 30) >= 0 ? 'up' : 'down'}">${fmtPct(changeOver(m.id, 30))}</td><td class="num">${heartBtn(m.id)}</td></tr>`).join('')}
     </table></div></div>`;
+}
+
+function pageBot() {
+  const B = S.bot, mode = BOT_MODES[B.mode];
+  const items = botItems();
+  const inUse = botInUse();
+  const net = B.gross - B.losses - B.fees;
+  const maxBudget = Math.max(1000, Math.ceil((S.money + inUse) / 500) * 500);
+  return `
+  <section class="hero bot-hero">
+    <div>
+      <h1>Trading-<b>Bot</b></h1>
+      <p>Lass den Bot für dich handeln: Er sucht jeden Markttag Schnäppchen, kauft sie und verkauft sie mit Gewinn weiter.</p>
+      <p><b>Gratis.</b> Nur wenn er Gewinn macht, behält er <b>${BOT_SHARE * 100} %</b> davon. Bei Verlust zahlst du nichts extra.</p>
+    </div>
+    <div class="bot-switch">
+      <button class="switch ${B.on ? 'on' : ''}" data-act="bot-toggle" role="switch" aria-checked="${B.on}" aria-label="Bot an oder aus"><span class="knob"></span><span class="lbl-on">AN</span><span class="lbl-off">AUS</span></button>
+      <div class="muted" style="margin-top:8px">${B.on ? 'Bot läuft' : 'Bot ist aus'}</div>
+    </div>
+  </section>
+
+  <div class="cols">
+    <div class="panel"><div class="panel-head"><h2>Einstellungen</h2></div>
+      <h3>Strategie</h3>
+      <div class="segmented">${BOT_MODES.map((m, i) => `<button data-act="bot-mode" data-v="${i}" class="${B.mode === i ? 'on' : ''}">${m.name}</button>`).join('')}</div>
+      <p class="muted" style="font-size:12px">${mode.desc}</p>
+      <h3>Budget</h3>
+      <div class="center" style="font-size:22px;font-weight:300" id="budget-val">${fmtEur(B.budget)}</div>
+      <input type="range" data-act="f-budget" id="budget-range" min="500" max="${maxBudget}" step="500" value="${Math.min(B.budget, maxBudget)}">
+      <p class="muted" style="font-size:12px">So viel Geld darf der Bot höchstens gleichzeitig in Uhren stecken. Gerade gebunden: <b>${fmtEur(inUse)}</b>.</p>
+    </div>
+    <div class="panel"><div class="panel-head"><h2>Ergebnis</h2></div>
+      <table class="sum">
+        <tr><td>Abgeschlossene Trades</td><td>${B.trades}</td></tr>
+        <tr><td>Gewinne</td><td class="up">${fmtEur(B.gross)}</td></tr>
+        <tr><td>Verluste</td><td class="${B.losses ? 'down' : ''}">${B.losses ? fmtEur(-B.losses) : fmtEur(0)}</td></tr>
+        <tr><td>Bot-Anteil (${BOT_SHARE * 100} %)</td><td>${B.fees ? fmtEur(-B.fees) : fmtEur(0)}</td></tr>
+        <tr class="total"><td>Dein Netto</td><td class="${net >= 0 ? 'up' : 'down'}">${fmtEur(net)}</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel"><div class="panel-head"><h2>Positionen des Bots (${items.length})</h2></div>
+    ${items.length ? `<div class="table-wrap"><table class="table">
+      <tr><th>Uhr</th><th>Zustand</th><th class="num">Gekauft</th><th class="num">Wert</th><th class="num">Verkaufspreis</th><th></th></tr>
+      ${items.map(o => `<tr><td><a href="#/modell/${o.m}">${esc(MODEL[o.m].brand)} ${esc(MODEL[o.m].name)}</a></td><td>${condBadge(o.cond)}</td>
+        <td class="num">${fmtEur(o.cost)}</td><td class="num">${fmtEur(itemValue(o))}</td><td class="num">${o.service ? 'in Revision' : o.ask ? fmtEur(o.ask) : '–'}</td>
+        <td class="num"><button class="btn small" data-act="item" data-id="${o.id}">Verwalten</button></td></tr>`).join('')}
+    </table></div>` : '<div class="empty">Noch keine Positionen. Schalte den Bot ein – er kauft ab dem nächsten Markttag.</div>'}
+  </div>
+
+  <div class="panel"><div class="panel-head"><h2>Protokoll</h2></div>
+    ${B.log.length ? `<ul class="list news">${B.log.map(n => `<li><span class="badge dark day">Tag ${n.day}</span><div class="grow">${esc(n.text)}</div></li>`).join('')}</ul>` : '<div class="empty">Hier steht, was der Bot macht.</div>'}
+  </div>
+  <p class="muted" style="font-size:11px">Hinweis: Das ist ein Spiel. Echte „Trading-Bots“, die Gewinn versprechen, sind oft unseriös – im echten Leben lieber vorsichtig sein.</p>`;
 }
 
 function pageProfile() {
@@ -1133,6 +1258,7 @@ function render() {
     case 'sammlung': html = pageCollection(); break;
     case 'merkliste': html = pageWatchlist(); break;
     case 'profil': html = pageProfile(); break;
+    case 'bot': html = pageBot(); break;
     default: html = pageHome();
   }
   view.innerHTML = html;
@@ -1229,6 +1355,7 @@ function openItem(id) {
     `${o.ask ? `<button class="btn" data-act="unlist" data-id="${o.id}">Inserat zurückziehen</button>` : `<button class="btn blue" data-act="list" data-id="${o.id}" ${o.service ? 'disabled' : ''}>Inserieren</button>`}
      <button class="btn" data-act="dealer" data-id="${o.id}" ${o.service ? 'disabled' : ''}>Sofort an Händler: ${fmtEur(v * DEALER)}</button>
      ${o.cond >= 2 ? `<button class="btn" data-act="service" data-id="${o.id}" ${canService ? '' : 'disabled'}>Revision: ${fmtEur(serviceCost(o))}</button>` : ''}
+     ${o.bot ? `<button class="btn" data-act="takeover" data-id="${o.id}">Vom Bot übernehmen</button>` : ''}
      <a class="btn" href="#/modell/${o.m}" data-act="close-link">Kursverlauf</a>`);
 }
 
@@ -1304,6 +1431,9 @@ document.addEventListener('click', e => {
     }
     case 'bid': placeBid(id, +t.dataset.n); break;
     case 'item': openItem(id); break;
+    case 'takeover': { const o = S.owned.find(x => x.id === id); if (o) { o.bot = false; o.ask = 0; save(); closeModal(); render(); toast('Die Uhr gehört jetzt zu deiner Sammlung – der Bot fasst sie nicht mehr an.'); } break; }
+    case 'bot-toggle': S.bot.on = !S.bot.on; save(); render(); toast(S.bot.on ? '🤖 Bot läuft – er handelt ab dem nächsten Markttag.' : 'Bot pausiert. Seine Uhren bleiben inseriert.'); break;
+    case 'bot-mode': S.bot.mode = +t.dataset.v; save(); render(); break;
     case 'list': openList(id); break;
     case 'confirm-list': {
       const o = S.owned.find(x => x.id === id);
@@ -1366,6 +1496,7 @@ document.addEventListener('change', e => {
   if (t.dataset.act === 'f-max') UI.max = +t.value;
   if (t.dataset.act === 'f-cond') UI.cond = +t.value;
   if (t.dataset.act === 'f-papers') UI.papers = t.checked;
+  if (t.dataset.act === 'f-budget') { S.bot.budget = +t.value; save(); }
   render();
 });
 
@@ -1432,3 +1563,8 @@ window.__ch = {
   tick(n = 1) { for (let i = 0; i < n; i++) { S.lastTick = Date.now(); advanceDay(true); } checkAchievements(); save(); render(); },
   MODELS,
 };
+
+// Budget-Anzeige live mitziehen
+document.addEventListener('input', e => {
+  if (e.target.id === 'budget-range') { const v = $('#budget-val'); if (v) v.textContent = fmtEur(+e.target.value); }
+});
