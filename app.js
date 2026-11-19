@@ -358,6 +358,7 @@ function advanceDay(quiet) {
     toast(`⚡ <b>Blitz-Deal!</b> ${esc(MODEL[l.m].brand)} ${esc(MODEL[l.m].name)} für ${fmtEur(l.price)} – nur 90 Sekunden!`, 6000);
   }
   runBot(quiet);
+  botStockShop(quiet);
   runShop(quiet);
   // Rivalen wachsen
   for (const r of S.rivals) r.w *= Math.exp(r.g + 0.02 * gauss());
@@ -423,7 +424,7 @@ const BOT_MODES = [
   { name: 'Riskant', buyBelow: 0.96, perTrade: 1, markup: 1.08, desc: 'Kauft fast alles leicht unter Wert, auch teure Uhren, und will mehr Gewinn. Dauert länger, kann auch Verlust bringen.' },
   { name: '🦈 Hai', buyBelow: 1.0, perTrade: 1, markup: 1.12, momentum: true, desc: 'Kauft auch zum vollen Preis, wenn ein Modell gerade steigt (Momentum), und will 12 % mehr. Großer Gewinn – oder großer Verlust.' },
 ];
-function newBot() { return { on: false, budget: 2000, mode: 1, trades: 0, gross: 0, fees: 0, losses: 0, log: [], hist: [], up: { turbo: 0, scanner: 0, ai: 0, sniper: 0, license: 0 } }; }
+function newBot() { return { on: false, stock: false, budget: 2000, mode: 1, trades: 0, gross: 0, fees: 0, losses: 0, log: [], hist: [], up: { turbo: 0, scanner: 0, ai: 0, sniper: 0, license: 0 } }; }
 function botItems() { return S.owned.filter(o => o.bot); }
 function botInUse() { return botItems().reduce((s, o) => s + o.cost, 0); }
 function botLog(text) { S.bot.log.unshift({ day: S.day, text }); S.bot.log = S.bot.log.slice(0, 25); }
@@ -437,9 +438,13 @@ function runBot(quiet) {
     if (o.service) continue;
     const v = itemValue(o);
     const age = S.day - o.day;
-    if (o.cond >= 3 && S.money >= serviceCost(o) && serviceCost(o) < v * 0.25 && !o.serviced) {
+    if (!o.shop && o.cond >= 3 && S.money >= serviceCost(o) && serviceCost(o) < v * 0.25 && !o.serviced) {
       S.money -= serviceCost(o); o.cost += serviceCost(o); o.service = S.day + 2; o.serviced = 1; o.ask = 0;
       botLog(`Revision für ${MODEL[o.m].brand} ${MODEL[o.m].name} beauftragt.`);
+      continue;
+    }
+    if (o.shop) { // liegt im Laden: Preis mit der Zeit senken
+      o.shop = niceRound(Math.max(1, v * shopTol() * (age > 10 ? 0.92 : age > 5 ? 0.97 : 1)));
       continue;
     }
     const target = age > 8 ? v * 0.97 : age > 4 ? v * Math.max(1, mode.markup - 0.03) : v * mode.markup;
@@ -472,6 +477,21 @@ function runBot(quiet) {
   }
 }
 
+// Bot legt seine Uhren in freie Vitrinen deines Ladens (statt Marktplatz)
+function botStockShop(quiet) {
+  const B = S.bot;
+  if (!S.shop || !B.stock || S.shop.closed) return 0;
+  let free = shopSlots() - shopItems().length, n = 0;
+  const cands = botItems().filter(o => !o.shop && !o.service).sort((a, b) => itemValue(b) - itemValue(a));
+  for (const o of cands) {
+    if (free <= 0) break;
+    o.ask = 0; o.shop = niceRound(itemValue(o) * shopTol()); free--; n++;
+    botLog(`In den Laden gelegt: ${MODEL[o.m].brand} ${MODEL[o.m].name} für ${fmtEur(o.shop)}.`);
+  }
+  if (n && !quiet) toast(`🤖🏪 Bot hat <b>${n} Uhr${n === 1 ? '' : 'en'}</b> in deine Vitrinen gelegt.`);
+  return n;
+}
+
 function botSold(o, pay) {
   S.owned = S.owned.filter(x => x !== o);
   const profit = pay - o.cost;
@@ -482,7 +502,7 @@ function botSold(o, pay) {
   if (profit >= 0) B.gross += profit; else B.losses += -profit;
   S.stats.sold++; S.stats.profit += profit - fee;
   const m = MODEL[o.m];
-  botLog(`Verkauft: ${m.brand} ${m.name} für ${fmtEur(o.ask)} → ${profit >= 0 ? 'Gewinn' : 'Verlust'} ${fmtEur(profit)}${fee ? `, Bot-Anteil ${fmtEur(fee)}` : ''}.`);
+  botLog(`Verkauft${o.shop ? ' im Laden' : ''}: ${m.brand} ${m.name} für ${fmtEur(o.shop || o.ask)} → ${profit >= 0 ? 'Gewinn' : 'Verlust'} ${fmtEur(profit)}${fee ? `, Bot-Anteil ${fmtEur(fee)}` : ''}.`);
   flashWallet();
   return { profit, fee };
 }
@@ -561,23 +581,27 @@ function runShop(quiet) {
   S.money -= cost; sh.costs += cost; sh.profit -= cost;
   // Besucher
   const rating = shopRating();
-  const vis = Math.max(1, Math.round(shopVisitorsBase(sh.up.ads, sh.up.loc) * (0.8 + (rating ? rating / 5 : 0.6) * 0.4 + 0.03 * shopAmb()) * rnd(0.75, 1.25)));
+  const vis = Math.max(1, Math.round(shopVisitorsBase(sh.up.ads, sh.up.loc) * (1 + 4 * (shopSale() ? shopSale().pct : 0)) * (0.8 + (rating ? rating / 5 : 0.6) * 0.4 + 0.03 * shopAmb()) * rnd(0.75, 1.25)));
   sh.visitors = vis;
   const traffic = clamp(vis / 18, 0.25, 3);
+  const sale = shopSale();
   let soldToday = 0;
   for (const o of shopItems()) {
-    const p = clamp(shopChance(o) * traffic * (1 + 0.15 * sh.up.staff), 0, 0.92);
+    const eff = salePrice(o);
+    const p = clamp(shopChance(o, eff) * traffic * (1 + 0.15 * sh.up.staff), 0, 0.95);
     if (Math.random() >= p) continue;
-    const pay = Math.round(o.shop * (1 - SHOP_FEE));
+    const pay = Math.round(eff * (1 - SHOP_FEE));
     const m = MODEL[o.m];
-    const r = o.shop / itemValue(o) / shopTol();
-    const stars = clamp(Math.round((r <= 0.95 ? 5 : r <= 1.03 ? 4.6 : r <= 1.1 ? 3.8 : 3) + 0.08 * shopAmb() + rnd(-0.6, 0.4)), 1, 5);
+    const r = eff / itemValue(o) / shopTol();
+    const stars = clamp(Math.round((r <= 0.95 ? 5 : r <= 1.03 ? 4.6 : r <= 1.1 ? 3.8 : 3) + 0.08 * shopAmb() + (sale ? 0.4 : 0) + rnd(-0.6, 0.4)), 1, 5);
     const who = pick(FIRST_NAMES), city = pick(CITIES);
     sh.reviews.unshift({ s: stars, who, day: S.day }); sh.reviews = sh.reviews.slice(0, 20);
-    sh.sales++; sh.revenue += o.shop; sh.profit += pay - o.cost; soldToday++;
-    sellItem(o, pay);
-    shopLog(`${who} aus ${city} kauft ${m.brand} ${m.name} für ${fmtEur(o.shop)} · ${'★'.repeat(stars)}`);
-    if (!quiet) toast(`🏪 <b>${esc(who)}</b> hat in deinem Laden die <b>${esc(m.brand)} ${esc(m.name)}</b> für ${fmtEur(o.shop)} gekauft! ${'★'.repeat(stars)}`, 5000);
+    sh.sales++; sh.revenue += eff; soldToday++;
+    const isBot = o.bot;
+    if (isBot) { o.shop = eff; const res = botSold(o, pay); sh.profit += pay - res.fee - o.cost; }
+    else { sh.profit += pay - o.cost; sellItem(o, pay); }
+    shopLog(`${who} aus ${city} kauft ${m.brand} ${m.name} für ${fmtEur(eff)}${sale ? ' (Sale)' : ''}${isBot ? ' [Bot-Ware]' : ''} · ${'★'.repeat(stars)}`);
+    if (!quiet) toast(`🏪 <b>${esc(who)}</b> hat in deinem Laden die <b>${esc(m.brand)} ${esc(m.name)}</b> für ${fmtEur(eff)} gekauft!${isBot ? ' 🤖' : ''} ${'★'.repeat(stars)}`, 5000);
   }
   if (!soldToday) shopLog(`${vis} Besucher, heute nichts verkauft.`);
   // Ankauf: Kund:innen bieten dir ihre Uhren an
@@ -591,6 +615,13 @@ function runShop(quiet) {
   // Großhändler: neue Liste alle 3 Tage
   if (!sh.whole.length || S.day - sh.wholeDay >= 3) shopRestock();
 }
+// Sale-Aktion: Rabatt auf alle Ladenpreise, dafür viel mehr Besucher
+const SALES = [{ pct: 0.1, days: 2 }, { pct: 0.2, days: 2 }, { pct: 0.3, days: 1 }];
+const SALE_COOLDOWN = 6;
+function shopSale() { const sh = S.shop; return sh && sh.sale && S.day <= sh.sale.until ? sh.sale : null; }
+function salePrice(o) { const sl = shopSale(); return sl ? niceRound(o.shop * (1 - sl.pct)) : o.shop; }
+function saleReady() { const sh = S.shop; return !shopSale() && (!sh.sale || S.day >= sh.sale.start + SALE_COOLDOWN); }
+
 function shopRestock() {
   const sh = S.shop;
   sh.wholeDay = S.day;
@@ -1449,6 +1480,7 @@ function pageBot() {
       <h3>Budget</h3>
       <div class="center" style="font-size:22px;font-weight:300" id="budget-val">${fmtEur(B.budget)}</div>
       <input type="range" data-act="f-budget" id="budget-range" min="500" max="${maxBudget}" step="500" value="${Math.min(B.budget, maxBudget)}">
+      ${S.shop ? `<h3>Laden beliefern</h3><label class="check"><input type="checkbox" data-act="bot-stock" ${B.stock ? 'checked' : ''}> Schnäppchen in meinen Laden legen</label>` : ''}
       <p class="muted" style="font-size:12px">So viel darf der Bot höchstens gleichzeitig in Uhren stecken. Gerade gebunden: <b>${fmtEur(inUse)}</b>.</p>
     </div>
     <div class="panel"><div class="panel-head"><h2>Ergebnis</h2></div>
@@ -1480,7 +1512,7 @@ function pageBot() {
     ${items.length ? `<div class="table-wrap"><table class="table">
       <tr><th>Uhr</th><th>Zustand</th><th class="num">Gekauft</th><th class="num">Wert</th><th class="num">Verkaufspreis</th><th></th></tr>
       ${items.map(o => `<tr><td><a href="#/modell/${o.m}">${esc(MODEL[o.m].brand)} ${esc(MODEL[o.m].name)}</a></td><td>${condBadge(o.cond)}</td>
-        <td class="num">${fmtEur(o.cost)}</td><td class="num">${fmtEur(itemValue(o))}</td><td class="num">${o.service ? 'in Revision' : o.ask ? fmtEur(o.ask) : '–'}</td>
+        <td class="num">${fmtEur(o.cost)}</td><td class="num">${fmtEur(itemValue(o))}</td><td class="num">${o.service ? 'in Revision' : o.shop ? `🏪 ${fmtEur(o.shop)}` : o.ask ? fmtEur(o.ask) : '–'}</td>
         <td class="num"><button class="btn small" data-act="item" data-id="${o.id}">Verwalten</button></td></tr>`).join('')}
     </table></div>` : '<div class="empty">Noch keine Positionen. Schalte den Bot ein – er kauft ab dem nächsten Markttag.</div>'}
   </div>
@@ -1500,13 +1532,14 @@ function storeHTML(sh, opts = {}) {
     <div class="store-sign" style="font-family:${th.font}"><span>${esc(sh.name)}</span><small>Uhren · An- &amp; Verkauf</small></div>
     <div class="store-window">
       <div class="store-room">
-        <div class="store-shelf">${Array.from({ length: Math.min(slots, 8) }, (_, i) => { const o = items[i]; return `<div class="store-case">${o ? `${watchImg(o.m)}<span class="store-price">${fmtEur(o.shop)}</span>` : ''}</div>`; }).join('')}</div>
+        <div class="store-shelf">${Array.from({ length: Math.min(slots, 8) }, (_, i) => { const o = items[i]; return `<div class="store-case">${o ? `${watchImg(o.m)}<span class="store-price">${!opts.demo && shopSale() ? `<s>${fmtEur(o.shop)}</s> ${fmtEur(salePrice(o))}` : fmtEur(o.shop)}</span>${o.bot ? '<span class="store-bot">🤖</span>' : ''}` : ''}</div>`; }).join('')}</div>
         <div class="store-deco">${deco.map(d => `<span title="${esc(d.name)}">${d.icon}</span>`).join('')}</div>
         <div class="store-floor"></div>
         <div class="store-people">${Array.from({ length: vis }, (_, i) => `<span style="animation-delay:${i * -2.3}s;animation-duration:${9 + i * 1.7}s">${people[i % people.length]}</span>`).join('')}</div>
         <div class="store-light"></div>
       </div>
       <div class="store-glass"></div>
+      ${!opts.demo && shopSale() ? `<div class="store-sale">SALE −${Math.round(shopSale().pct * 100)} %</div>` : ''}
       ${sh.closed ? '<div class="store-closed">Heute geschlossen</div>' : '<div class="store-open">Geöffnet</div>'}
     </div>
     <div class="store-base"></div>
@@ -1589,10 +1622,30 @@ function pageShop() {
       <div class="stat"><small>Laden-Gewinn</small><strong class="${sh.profit >= 0 ? 'up' : 'down'}">${fmtEur(sh.profit)}</strong><div class="sub muted">nach Miete &amp; Lohn</div></div>
     </div>
   </div>
+  ${shopActionsHTML()}
   <div class="segmented shop-tabs">${[['fenster', '🗄 Schaufenster'], ['design', '🎨 Gestalten'], ['ausbau', '🏗 Ausbau'], ['ankauf', '🔁 Einkauf']].map(([k, n]) => `<button data-act="shop-tab" data-v="${k}" class="${tab === k ? 'on' : ''}">${n}</button>`).join('')}</div>
   ${body}
   <div class="terminal shop-log"><div class="terminal-bar"><i></i><i></i><i></i><span>Kassenbuch – ${esc(sh.name)}</span></div>
     <div class="terminal-body">${sh.log.slice(0, 8).map(n => `<div><span class="t-dim">[Tag ${n.day}]</span> ${esc(n.text)}</div>`).join('') || '<div class="t-dim">Noch keine Einträge – am nächsten Markttag kommen die ersten Kund:innen.</div>'}</div></div>`;
+}
+
+function shopActionsHTML() {
+  const sh = S.shop, sl = shopSale(), B = S.bot;
+  const left = sh.sale ? sh.sale.start + SALE_COOLDOWN - S.day : 0;
+  const botItemsIn = shopItems().filter(o => o.bot).length;
+  return `<div class="cols shop-actions">
+    <div class="panel"><div class="panel-head"><h2>🏷 Sale-Aktion</h2>${sl ? `<span class="badge red">läuft bis Tag ${sl.until}</span>` : ''}</div>
+      ${sl ? `<p style="margin-top:0">Gerade läuft dein <b>−${Math.round(sl.pct * 100)} %-Sale</b>: alle Ladenpreise reduziert, ca. <b>${Math.round(sl.pct * 400)} % mehr Besucher</b>.</p>`
+        : `<p class="muted" style="margin-top:0;font-size:12px">Alle Ladenpreise werden reduziert. Dafür kommen viel mehr Besucher und die Bewertungen werden besser. Weniger Gewinn pro Uhr – aber schneller Umsatz.</p>
+        <div class="chips">${SALES.map((x, i) => `<button class="chip" data-act="shop-sale" data-v="${i}" ${saleReady() ? '' : 'disabled'}>−${x.pct * 100} % für ${x.days} Tag${x.days === 1 ? '' : 'e'}</button>`).join('')}</div>
+        ${saleReady() ? '' : `<p class="muted" style="font-size:12px">Nächster Sale ab Tag ${sh.sale.start + SALE_COOLDOWN} (noch ${left} Tag${left === 1 ? '' : 'e'}).</p>`}`}
+    </div>
+    <div class="panel"><div class="panel-head"><h2>🤖 Bot beliefert den Laden</h2>
+      <button class="switch small-switch ${B.stock ? 'on' : ''}" data-act="bot-stock" role="switch" aria-checked="${!!B.stock}" aria-label="Bot beliefert Laden"><span class="knob"></span><span class="lbl-on">AN</span><span class="lbl-off">AUS</span></button></div>
+      <p class="muted" style="margin-top:0;font-size:12px">Der Bot legt seine Schnäppchen in deine freien Vitrinen statt auf den Marktplatz – so verkauft er zum Ladenpreis (über Marktwert, nur 2 % Gebühr). Sein Anteil (${Math.round(botShare() * 100)} % vom Gewinn) bleibt gleich.</p>
+      <div style="font-size:13px">${B.on ? '' : '<span class="down">Bot ist aus – <a href="#/bot">einschalten ›</a></span><br>'}Bot-Uhren im Laden: <b>${botItemsIn}</b> · freie Vitrinen: <b>${Math.max(0, shopSlots() - shopItems().length)}</b></div>
+    </div>
+  </div>`;
 }
 
 function openShopPut(id) {
@@ -1919,6 +1972,21 @@ document.addEventListener('click', e => {
     }
     case 'shop-create': createShop(); break;
     case 'shop-tab': UI.shopTab = t.dataset.v; render(); break;
+    case 'bot-stock': {
+      S.bot.stock = !S.bot.stock;
+      if (S.bot.stock) botStockShop(false);
+      else for (const o of botItems()) if (o.shop) o.shop = 0; // zurück auf den Marktplatz
+      save(); render();
+      toast(S.bot.stock ? '🤖🏪 Der Bot beliefert jetzt deinen Laden.' : 'Bot verkauft wieder über den Marktplatz.');
+      break;
+    }
+    case 'shop-sale': {
+      const x = SALES[+t.dataset.v]; if (!x || !saleReady()) break;
+      S.shop.sale = { pct: x.pct, start: S.day, until: S.day + x.days };
+      shopLog(`Sale gestartet: −${x.pct * 100} % bis Tag ${S.day + x.days}.`);
+      save(); render(); toast(`🏷 <b>Sale −${x.pct * 100} %</b> startet! Ab dem nächsten Markttag strömen die Kund:innen.`, 5000);
+      break;
+    }
     case 'shop-set': {
       const k = t.dataset.k; S.shop[k] = k === 'sign' ? +t.dataset.v : t.dataset.v; save(); render(); break;
     }

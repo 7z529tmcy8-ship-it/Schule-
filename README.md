@@ -50,6 +50,8 @@ Beim Öffnen erscheint kurz ein Ladebildschirm im Stil von 2010:
 - **Deko** (Pflanze bis Kronleuchter) gibt Ambiente → bessere Bewertungen, Kund:innen zahlen mehr.
 - **Ausbau:** Vitrinen (4–32 Plätze), Personal, Werbung (mehr Besucher), Lage (Seitenstraße bis Luxusmeile).
 - **Verkauf:** nur 2 % Kartengebühr statt 6 %; Kund:innen zahlen je nach Ausbau bis zu ~30 % über Marktwert. Jede:r hinterlässt Sterne.
+- **Sale-Aktion:** −10 % (2 Tage), −20 % (2 Tage) oder −30 % (1 Tag) auf alle Ladenpreise – bis zu doppelt so viele Besucher, bessere Bewertungen; danach 6 Tage Pause.
+- **Bot beliefert den Laden:** Schalter im Laden oder beim Bot. Der Bot legt seine Schnäppchen in freie Vitrinen, senkt den Preis nach 5/10 Tagen und behält wie immer seinen Anteil am Gewinn.
 - **Einkauf:** Kund:innen bieten Uhren zum Ankauf an (70–88 % vom Wert), der Großhändler liefert alle 3 Tage neue Ware.
 
 ## Trading-Bot

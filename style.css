@@ -619,9 +619,9 @@ input[type=range] { width: 100%; accent-color: #2f80d8; }
 }
 .store-sign span { display: block; font-size: 24px; letter-spacing: .5px; text-shadow: 0 -1px 0 rgba(0,0,0,.4), 0 0 10px rgba(255,255,255,.25); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .store-sign small { font-family: "Helvetica Neue", Arial, sans-serif; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; opacity: .85; }
-.store-window { position: relative; border: 10px solid #3b3b3b; border-top-width: 6px; background: #222; overflow: hidden;
+.store-window { position: relative; overflow: clip; border: 10px solid #3b3b3b; border-top-width: 6px; background: #222; overflow: hidden;
   border-image: linear-gradient(#6b6b6b, #2a2a2a) 1; }
-.store-room { position: relative; height: 230px; background: linear-gradient(var(--wall), var(--wall2)); overflow: hidden; }
+.store-room { position: relative; contain: paint; height: 230px; background: linear-gradient(var(--wall), var(--wall2)); overflow: hidden; }
 .theme-neon .store-room { background: linear-gradient(var(--wall), var(--wall2)), #000; box-shadow: inset 0 0 40px rgba(255,62,165,.35); }
 .theme-neon .store-sign span { text-shadow: 0 0 6px #fff, 0 0 14px var(--acc), 0 0 24px var(--acc); }
 .store-shelf {
@@ -668,3 +668,13 @@ input[type=range] { width: 100%; accent-color: #2f80d8; }
 .deco-icon { font-size: 28px; width: 44px; text-align: center; }
 .stars { color: #e8a317; letter-spacing: 1px; }
 .stars i { font-style: normal; color: #ccc; }
+.store-sale { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(-8deg); font: 900 30px/1 "Helvetica Neue", Arial, sans-serif;
+  color: #fff; background: #d42a2a; padding: 8px 18px; border: 3px solid #fff; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,.45); letter-spacing: 1px; animation: salepulse 1.4s ease-in-out infinite; }
+@keyframes salepulse { 50% { transform: translate(-50%, -50%) rotate(-8deg) scale(1.07); } }
+.store-price s { color: #b5262c; font-weight: 400; }
+.store-bot { position: absolute; top: 2px; right: 3px; font-size: 11px; }
+.shop-actions .panel-head { align-items: center; }
+.small-switch { transform: scale(.8); transform-origin: right center; }
+.chip[disabled] { opacity: .45; cursor: default; }
+
+html, body { overflow-x: clip; }
