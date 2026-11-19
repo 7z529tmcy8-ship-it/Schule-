@@ -1270,24 +1270,31 @@ function filteredListings() {
   return arr.sort(sorts[UI.sort] || sorts.neu);
 }
 
+function activeFilters() { return (UI.cat ? 1 : 0) + (UI.max ? 1 : 0) + (UI.cond >= 0 ? 1 : 0) + (UI.papers ? 1 : 0); }
+
 function pageMarket() {
   const list = filteredListings();
   const brandCount = b => S.listings.filter(l => MODEL[l.m].brand === b).length;
   const maxOpts = [0, 500, 2000, 5000, 10000, 25000, 50000, 100000];
   return `
   <div class="market">
-    <aside class="sidebar">
+    <aside class="sidebar ${UI.filtersOpen ? '' : 'sticky'}">
       <h4>Marken</h4>
+      <div class="brand-list">
       <button class="src ${UI.brand === '' ? 'on' : ''}" data-act="f-brand" data-v="">Alle Marken <span class="count">${S.listings.length}</span></button>
       ${BRANDS.map(b => { const n = brandCount(b); return n ? `<button class="src ${UI.brand === b ? 'on' : ''}" data-act="f-brand" data-v="${esc(b)}">${esc(b)} <span class="count">${n}</span></button>` : ''; }).join('')}
-      <h4>Kategorie</h4>
+      </div>
+      <button class="filter-toggle" data-act="f-toggle">⚙︎ Filter${activeFilters() ? ` (${activeFilters()})` : ''} <span>${UI.filtersOpen ? '▲' : '▼'}</span></button>
+      <div class="more-filters ${UI.filtersOpen ? 'open' : ''}">
+      <div><h4>Kategorie</h4>
       <div class="field"><select data-act="f-cat" aria-label="Kategorie"><option value="">Alle</option>${CATS.map(c => `<option ${UI.cat === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></div>
-      <h4>Preis bis</h4>
+      </div><div><h4>Preis bis</h4>
       <div class="field"><select data-act="f-max" aria-label="Höchstpreis">${maxOpts.map(v => `<option value="${v}" ${UI.max === v ? 'selected' : ''}>${v ? fmtEur(v) : 'egal'}</option>`).join('')}</select></div>
-      <h4>Zustand mindestens</h4>
+      </div><div><h4>Zustand mindestens</h4>
       <div class="field"><select data-act="f-cond" aria-label="Zustand"><option value="-1">egal</option>${COND.map((c, i) => `<option value="${i}" ${UI.cond === i ? 'selected' : ''}>${c.name}</option>`).join('')}</select></div>
-      <h4>Extras</h4>
-      <label class="check"><input type="checkbox" data-act="f-papers" ${UI.papers ? 'checked' : ''}> Nur mit Box &amp; Papieren</label>
+      </div><div><h4>Extras</h4>
+      <label class="check"><input type="checkbox" data-act="f-papers" ${UI.papers ? 'checked' : ''}> Nur mit Box &amp; Papieren</label></div>
+      </div>
     </aside>
     <section>
       <div class="toolbar">
@@ -2181,6 +2188,7 @@ document.addEventListener('click', e => {
       break;
     }
     case 'f-brand': UI.brand = t.dataset.v; render(); break;
+    case 'f-toggle': UI.filtersOpen = !UI.filtersOpen; render(); break;
     case 'f-brand-go': UI.brand = t.dataset.v; UI.q = ''; break;
     case 'sort': UI.sort = t.dataset.v; render(); break;
     case 'range': UI.range = +t.dataset.v; render(); break;

@@ -283,7 +283,7 @@ h3 { font-size: 15px; }
 
 /* ---------- Marktplatz ---------- */
 .market { display: grid; grid-template-columns: 210px 1fr; gap: 18px; align-items: start; }
-@media (max-width: 760px) { .market { grid-template-columns: 1fr; } }
+@media (max-width: 760px) { .market { grid-template-columns: minmax(0, 1fr); } .market > * { min-width: 0; } }
 .sidebar {
   border-radius: 8px; border: 1px solid #b7c0cc;
   background: linear-gradient(90deg, #dfe5ed, #d6dde7);
@@ -710,3 +710,32 @@ html, body { overflow-x: clip; }
   border: 1px solid #b5b5b5; background: linear-gradient(#fff, #e6e6e6); }
 .bm-opt.on { color: #fff; border-color: #2a5ea8; background: linear-gradient(#6aa6e8, #2f72cb); }
 .bm-opt.x { margin-left: auto; }
+
+/* ---------- Marktplatz auf dem Handy: Marken als Wisch-Leiste, 2 Uhren nebeneinander ---------- */
+.filter-toggle { display: none; }
+@media (max-width: 760px) {
+  .market .sidebar { padding: 8px 0; }
+  .market .sidebar.sticky { position: sticky; top: 0; z-index: 5; box-shadow: 0 3px 8px rgba(0,0,0,.15); }
+  .market .sidebar > h4:first-child { display: none; }
+  .brand-list { display: flex; gap: 6px; overflow-x: auto; padding: 2px 10px 6px; scrollbar-width: none; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; }
+  .brand-list::-webkit-scrollbar { display: none; }
+  .sidebar .brand-list button.src { flex: none; width: auto; white-space: nowrap; padding: 6px 12px; border-radius: 16px; border: 1px solid #b9c3cf; background: rgba(255,255,255,.6); scroll-snap-align: start; }
+  .sidebar .brand-list button.src.on { border-color: #2f62a8; color: #fff; background: linear-gradient(#6aa6e8, #3277cf 50%, #1f63bd 51%, #2f72cb); text-shadow: 0 -1px 0 rgba(0,0,0,.3); }
+  .sidebar .brand-list button.src span.count { margin-left: 4px; }
+  .filter-toggle { display: flex; justify-content: space-between; width: calc(100% - 20px); margin: 4px 10px 0; padding: 7px 12px; font: 600 13px "Helvetica Neue", Arial, sans-serif; color: #333; cursor: pointer;
+    border: 1px solid #aab4c0; border-radius: 6px; background: linear-gradient(#fff, #e6e9ed); }
+  .more-filters { display: none; grid-template-columns: 1fr 1fr; gap: 0 4px; margin-top: 6px; }
+  .more-filters.open { display: grid; }
+  .more-filters h4 { margin-top: 6px !important; }
+
+  /* zwei Uhren nebeneinander */
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .card { padding: 8px 8px 10px; }
+  .card .shot, .card .shot svg { height: 104px; }
+  .card .model { font-size: 13px; }
+  .card .ref { display: none; }
+  .card .price { font-size: 15px; }
+  .card .meta { gap: 3px; }
+  .card .meta .badge { font-size: 9.5px; padding: 0 5px; }
+  .card .heart { top: 4px; right: 4px; }
+}
