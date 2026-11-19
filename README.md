@@ -43,6 +43,15 @@ Beim Öffnen erscheint kurz ein Ladebildschirm im Stil von 2010:
   - Ohne Prüfung ist das Geld weg.
 - **Rangliste 🏁**: Du trittst gegen 8 ausgedachte Sammler an (von „Max K.“ bis „Sultan of Time“ mit 6 Mio. €), gemessen am Gesamtvermögen. Überholst du jemanden, bekommst du einen Hinweis. Platz 3 und Platz 1 bringen große Belohnungen.
 
+## Eigener Uhrenladen (`#/laden`)
+
+- Eröffnung für 15.000 €, danach Miete und Lohn pro Markttag (ohne Geld bleibt der Laden zu).
+- **Gestalten:** Name, Stil (Weiß & Ahorn, Schwarz & Gold, Alte Werkstatt, Retro 70er, Neon Tokio, Mint Pastell), Schild-Farbe, Boden, Vitrinen, Licht – die Ladenfront wird live gezeichnet.
+- **Deko** (Pflanze bis Kronleuchter) gibt Ambiente → bessere Bewertungen, Kund:innen zahlen mehr.
+- **Ausbau:** Vitrinen (4–32 Plätze), Personal, Werbung (mehr Besucher), Lage (Seitenstraße bis Luxusmeile).
+- **Verkauf:** nur 2 % Kartengebühr statt 6 %; Kund:innen zahlen je nach Ausbau bis zu ~30 % über Marktwert. Jede:r hinterlässt Sterne.
+- **Einkauf:** Kund:innen bieten Uhren zum Ankauf an (70–88 % vom Wert), der Großhändler liefert alle 3 Tage neue Ware.
+
 ## Trading-Bot
 - Der Bot ist **gratis**, behält aber **20 % von jedem Gewinn**. Bei Verlust zahlst du nichts extra. Die 6 % Marktplatz-Gebühr fallen trotzdem an.
 - Jeden Markttag kauft er bis zu 2 Schnäppchen unter Marktwert, je nach Strategie. Er inseriert sie mit Aufschlag und senkt den Preis, wenn sie nicht weggehen.
@@ -56,7 +65,7 @@ Beim Öffnen erscheint kurz ein Ladebildschirm im Stil von 2010:
 
 | Upgrade | Wirkung | Stufen |
 |---|---|---|
-| ⚡ Turbo-Modus | 2 → 4 → 6 → 8 → 10 Käufe pro Tag | 4 |
+| ⚡ Turbo-Modus | 4 → 7 → 10 → … → 22 Käufe pro Tag | 6 |
 | 🔍 Deal-Scanner | findet mehr Deals, erkennt Fälschungen (ohne Scanner kann der Bot reinfallen!) | 3 |
 | 🧠 KI-Preisfindung | Bot-Inserate verkaufen sich schneller | 3 |
 | 🎯 Auktions-Sniper | bietet in den letzten 40 s automatisch bis 85 % vom Wert | 1 |
@@ -65,7 +74,7 @@ Beim Öffnen erscheint kurz ein Ladebildschirm im Stil von 2010:
 - Die Bot-Seite hat ein **Live-Terminal** in Grün auf Schwarz und eine **Gewinnkurve**.
 
 ## Uhren & Daten
-44 Modelle von 25 Marken stehen in `MODELS` in `app.js`: Name, Referenz, Startpreis, Kategorie, Durchmesser, Material und Aussehen (Form, Zifferblatt, Lünette, Band).
+90 Modelle von 38 Marken stehen in `MODELS` in `app.js`: Name, Referenz, Startpreis, Kategorie, Durchmesser, Material und Aussehen (Form, Zifferblatt, Lünette, Band).
 Neue Modelle trägst du einfach dort ein. Alte Spielstände bekommen sie automatisch dazu.
 
 ## Dateien

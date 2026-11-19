@@ -592,3 +592,79 @@ input[type=range] { width: 100%; accent-color: #2f80d8; }
 @keyframes pulse { 50% { box-shadow: 0 2px 14px rgba(229,83,26,.6), inset 0 1px 0 rgba(255,255,255,.45); } }
 .trust.warn { background: linear-gradient(#fff8f0, #fbe9d6); border-color: #e8c49a; color: #7a4a14; }
 .trust.warn div::before { content: "! "; color: #c2281f; }
+
+/* =================== Eigener Uhrenladen =================== */
+.shop-hero { padding-bottom: 26px; }
+.feat { list-style: none; padding: 0; margin: 0 0 16px; color: #444; font-size: 14px; line-height: 1.9; }
+.shop-top { display: grid; grid-template-columns: 1.25fr 1fr; gap: 18px; align-items: start; margin-bottom: 14px; }
+.shop-top .stats { grid-template-columns: repeat(2, 1fr); margin: 0; }
+@media (max-width: 760px) { .shop-top { grid-template-columns: 1fr; } }
+.shop-tabs { display: flex; width: fit-content; margin: 4px 0 16px; overflow-x: auto; max-width: 100%; }
+@media (max-width: 600px) { .shop-tabs { width: 100%; } .shop-tabs button { flex: 1; } }
+.shop-log { margin-top: 18px; }
+
+/* Ladenfront */
+.store { position: relative; padding-top: 18px; filter: drop-shadow(0 6px 10px rgba(0,0,0,.25)); }
+.store-awning {
+  height: 26px; border-radius: 6px 6px 0 0; margin: 0 -6px;
+  background: repeating-linear-gradient(90deg, var(--sign) 0 26px, #fff 26px 52px);
+  box-shadow: inset 0 -6px 8px rgba(0,0,0,.25), inset 0 2px 0 rgba(255,255,255,.4);
+  -webkit-mask: radial-gradient(circle 13px at 13px 100%, transparent 98%, #000) 0 0 / 26px 100% repeat-x;
+}
+.store-sign {
+  position: relative; text-align: center; padding: 8px 10px 9px;
+  background: linear-gradient(rgba(255,255,255,.25), rgba(255,255,255,0) 50%, rgba(0,0,0,.12) 51%), var(--sign);
+  color: #fff; border: 1px solid rgba(0,0,0,.35); border-top: 0;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.35);
+}
+.store-sign span { display: block; font-size: 24px; letter-spacing: .5px; text-shadow: 0 -1px 0 rgba(0,0,0,.4), 0 0 10px rgba(255,255,255,.25); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.store-sign small { font-family: "Helvetica Neue", Arial, sans-serif; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; opacity: .85; }
+.store-window { position: relative; border: 10px solid #3b3b3b; border-top-width: 6px; background: #222; overflow: hidden;
+  border-image: linear-gradient(#6b6b6b, #2a2a2a) 1; }
+.store-room { position: relative; height: 230px; background: linear-gradient(var(--wall), var(--wall2)); overflow: hidden; }
+.theme-neon .store-room { background: linear-gradient(var(--wall), var(--wall2)), #000; box-shadow: inset 0 0 40px rgba(255,62,165,.35); }
+.theme-neon .store-sign span { text-shadow: 0 0 6px #fff, 0 0 14px var(--acc), 0 0 24px var(--acc); }
+.store-shelf {
+  position: absolute; left: 4%; right: 4%; top: 18px;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+}
+.store-case {
+  position: relative; height: 64px; border-radius: 4px; display: flex; align-items: center; justify-content: center;
+}
+.store-case svg { height: 54px; width: auto; filter: drop-shadow(0 2px 2px rgba(0,0,0,.35)); }
+.store-price { position: absolute; bottom: -9px; left: 50%; transform: translateX(-50%); font: 600 9px/1 "Helvetica Neue", Arial, sans-serif;
+  background: #fffbe8; color: #333; padding: 2px 4px; border-radius: 2px; box-shadow: 0 1px 2px rgba(0,0,0,.3); white-space: nowrap; }
+.vit-glas .store-case { background: linear-gradient(135deg, rgba(255,255,255,.55), rgba(200,230,255,.18) 45%, rgba(255,255,255,.35)); border: 1px solid rgba(255,255,255,.8); box-shadow: inset 0 0 0 1px rgba(0,0,0,.12), 0 3px 0 var(--acc); }
+.vit-holz .store-case { background: linear-gradient(#f3e7d3, #e2cfae); border: 4px solid #6b4423; box-shadow: inset 0 2px 4px rgba(0,0,0,.3); }
+.vit-samt .store-case { background: radial-gradient(ellipse at 50% 40%, #b03050, #5c0f24); border: 2px solid #c9a44e; box-shadow: inset 0 3px 8px rgba(0,0,0,.45); }
+.store-deco { position: absolute; left: 4%; right: 4%; bottom: 46px; display: flex; justify-content: space-between; font-size: 30px; filter: drop-shadow(0 3px 2px rgba(0,0,0,.3)); }
+.store-floor { position: absolute; left: 0; right: 0; bottom: 0; height: 50px; transform-origin: bottom; }
+.floor-parkett .store-floor { background: repeating-linear-gradient(90deg, #b07c45 0 34px, #9b6a38 34px 36px, #c08a50 36px 70px, #8d5e30 70px 72px); box-shadow: inset 0 8px 10px rgba(0,0,0,.25); }
+.floor-marmor .store-floor { background: linear-gradient(115deg, transparent 40%, rgba(150,150,160,.35) 42%, transparent 45%), linear-gradient(25deg, transparent 60%, rgba(150,150,160,.3) 62%, transparent 64%), linear-gradient(#f4f4f4, #dcdcdc); box-shadow: inset 0 8px 10px rgba(0,0,0,.18); }
+.floor-beton .store-floor { background: radial-gradient(circle at 20% 40%, rgba(0,0,0,.08) 2px, transparent 3px) 0 0 / 18px 18px, linear-gradient(#a3a3a0, #8a8a86); box-shadow: inset 0 8px 10px rgba(0,0,0,.25); }
+.floor-teppich .store-floor { background: linear-gradient(90deg, transparent 20%, #c9a44e 20% 21%, #9d1c2a 21% 79%, #c9a44e 79% 80%, transparent 80%), #2d2a26; box-shadow: inset 0 8px 10px rgba(0,0,0,.3); }
+.floor-schach .store-floor { background: conic-gradient(#222 25%, #f2f2f2 0 50%, #222 0 75%, #f2f2f2 0) 0 0 / 30px 30px; box-shadow: inset 0 8px 10px rgba(0,0,0,.3); }
+.store-people { position: absolute; left: 0; right: 0; bottom: 18px; height: 40px; pointer-events: none; }
+.store-people span { position: absolute; bottom: 0; font-size: 30px; animation: walk 10s linear infinite; left: -40px; }
+@keyframes walk { from { left: calc(100% + 40px); } to { left: -40px; } }
+.store-light { position: absolute; inset: 0; pointer-events: none; }
+.light-warm .store-light { background: linear-gradient(rgba(255,190,110,.2), rgba(255,170,80,.12)); }
+.light-kalt .store-light { background: linear-gradient(rgba(190,220,255,.22), rgba(255,255,255,0)); }
+.light-spot .store-light { background: radial-gradient(ellipse 13% 70% at 16% 0, rgba(255,250,220,.55), transparent), radial-gradient(ellipse 13% 70% at 39% 0, rgba(255,250,220,.55), transparent), radial-gradient(ellipse 13% 70% at 62% 0, rgba(255,250,220,.55), transparent), radial-gradient(ellipse 13% 70% at 85% 0, rgba(255,250,220,.55), transparent), rgba(0,0,0,.18); mix-blend-mode: screen; }
+.store-glass { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, rgba(255,255,255,.28) 0 12%, transparent 12% 30%, rgba(255,255,255,.12) 30% 34%, transparent 34%); }
+.store-open, .store-closed { position: absolute; right: 8px; top: 8px; font: 700 10px/1 "Helvetica Neue", Arial, sans-serif; letter-spacing: 1px; text-transform: uppercase; padding: 4px 7px; border-radius: 3px; }
+.store-open { background: #2f9e44; color: #fff; box-shadow: 0 0 8px rgba(80,255,120,.6); }
+.store-closed { background: #b5262c; color: #fff; }
+.store.closed .store-room { filter: grayscale(.8) brightness(.6); }
+.store-base { height: 14px; background: linear-gradient(#777, #4a4a4a); border-radius: 0 0 4px 4px; margin: 0 -6px; }
+
+/* Gestalten */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: inherit; font-size: 12px; padding: 5px 11px; border-radius: 14px; cursor: pointer; color: #333;
+  border: 1px solid #b5b5b5; background: linear-gradient(#fff, #e6e6e6); box-shadow: 0 1px 0 rgba(255,255,255,.8), inset 0 1px 0 #fff; }
+.chip.on { color: #fff; border-color: #2a5ea8; background: linear-gradient(#6aa6e8, #3277cf 50%, #1f63bd 51%, #2f72cb); text-shadow: 0 -1px 0 rgba(0,0,0,.3); }
+.swatch { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid #fff; box-shadow: 0 0 0 1px #aaa, inset 0 -6px 8px rgba(0,0,0,.25), inset 0 4px 6px rgba(255,255,255,.35); }
+.swatch.on { box-shadow: 0 0 0 3px #3277cf, inset 0 -6px 8px rgba(0,0,0,.25); }
+.deco-icon { font-size: 28px; width: 44px; text-align: center; }
+.stars { color: #e8a317; letter-spacing: 1px; }
+.stars i { font-style: normal; color: #ccc; }

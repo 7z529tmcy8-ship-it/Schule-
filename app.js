@@ -13,8 +13,8 @@ const START_MONEY = 3000;
 const FEE_SELL = 0.06;         // Verkaufsgebühr Marktplatz
 const DEALER = 0.8;            // Sofortverkauf an Händler
 const PREMIUM = 0.05;          // Aufgeld bei Auktionen
-const LISTINGS = 26;
-const AUCTIONS = 4;
+const LISTINGS = 60;           // mehr Angebote auf dem Markt
+const AUCTIONS = 6;
 
 /* ---------- Zustände ---------- */
 const COND = [
@@ -74,6 +74,52 @@ const MODELS = [
   ['patek-aquanaut', 'Patek Philippe', 'Aquanaut', '5167A-001', 58000, 'Sport', 40, 'Edelstahl', 2007, { s: 'cushion', d: '#2a2a2a', m: 'steel', st: 'ru', dt: 1, tap: 1 }],
   ['patek-nautilus', 'Patek Philippe', 'Nautilus', '5711/1A-010', 115000, 'Sport', 40, 'Edelstahl', 2006, { s: 'nautilus', d: '#1f3a66', m: 'steel', st: 'int', dt: 1, lines: 1 }],
   ['rm-011', 'Richard Mille', 'RM 011 Felipe Massa', 'RM 011', 190000, 'Chronograph', 50, 'Titan', 2007, { s: 'tonneau', d: '#202020', m: 'titan', st: 'ru', c: 1, skel: 1 }],
+  ['casio-ae1200', 'Casio', 'AE-1200WH „Royale“', 'AE-1200WH-1AVEF', 32, 'Einsteiger', 42, 'Harz', 2011, { s: 'digital', m: 'gray', st: 'br' }],
+  ['casio-ga2100', 'Casio', 'G-Shock GA-2100 „CasiOak“', 'GA-2100-1A1ER', 105, 'Sport', 45.4, 'Harz', 2019, { s: 'octagon', d: '#141414', m: 'black', st: 'ru', tap: 0 }],
+  ['timex-marlin', 'Timex', 'Marlin Hand-Wound', 'TW2R47900', 210, 'Dress', 34, 'Edelstahl', 2017, { d: '#efe9dc', m: 'steel', st: 'le', nums: 1, strap: '#3a2414' }],
+  ['orient-bambino', 'Orient', 'Bambino Version 2', 'FAC00009N0', 150, 'Dress', 40.5, 'Edelstahl', 2014, { d: '#f2efe6', m: 'gold', st: 'le', roman: 1, strap: '#3a2414' }],
+  ['seiko-presage', 'Seiko', 'Presage Cocktail Time', 'SRPB43J1', 380, 'Dress', 40.5, 'Edelstahl', 2017, { d: '#5ea0c8', m: 'steel', st: 'le', dt: 1, strap: '#1b1b1b' }],
+  ['citizen-promaster', 'Citizen', 'Promaster Diver Eco-Drive', 'BN0150-28E', 190, 'Taucher', 44, 'Edelstahl', 2014, { d: '#151515', b: '#151515', m: 'steel', st: 'ru', dive: 1, dt: 1 }],
+  ['junghans-maxbill', 'Junghans', 'max bill Automatic', '027/4700.02', 820, 'Dress', 38, 'Edelstahl', 2014, { d: '#f4f2ec', m: 'steel', st: 'le', nums: 1, thin: 1, strap: '#2a2a2a' }],
+  ['mido-ocean', 'Mido', 'Ocean Star 200', 'M026.430.11.041.00', 690, 'Taucher', 42.5, 'Edelstahl', 2019, { d: '#1d3e70', b: '#1d3e70', m: 'steel', st: 'br', dive: 1, dt: 1 }],
+  ['tissot-seastar', 'Tissot', 'Seastar 1000 Powermatic 80', 'T120.407.11.041.03', 560, 'Taucher', 43, 'Edelstahl', 2020, { d: '#0f2a52', b: '#0f2a52', m: 'steel', st: 'br', dive: 1, dt: 1, wave: 1 }],
+  ['hamilton-jazz', 'Hamilton', 'Jazzmaster Open Heart', 'H32705141', 640, 'Dress', 40, 'Edelstahl', 2016, { d: '#f1f1f1', m: 'steel', st: 'br', nums: 1 }],
+  ['laco-pilot', 'Laco', 'Flieger Augsburg 42', '861688', 340, 'Fliegeruhr', 42, 'Edelstahl', 2018, { d: '#151515', m: 'gray', st: 'le', nums: 1, strap: '#4a3020' }],
+  ['stowa-flieger', 'Stowa', 'Flieger Classic 40', 'FK40', 820, 'Fliegeruhr', 40, 'Edelstahl', 2010, { d: '#141414', m: 'steel', st: 'le', nums: 1, strap: '#5a3a20' }],
+  ['frederique-slim', 'Frederique Constant', 'Slimline Moonphase', 'FC-705S4S6', 1150, 'Dress', 42, 'Edelstahl', 2015, { d: '#f4f2ec', m: 'steel', st: 'le', roman: 1, thin: 1, strap: '#1b1b1b' }],
+  ['tudor-ranger', 'Tudor', 'Ranger', 'M79950-0001', 2400, 'Feld', 39, 'Edelstahl', 2022, { d: '#151515', m: 'steel', st: 'br', nums: 1, gilt: 1 }],
+  ['tudor-bb-gmt', 'Tudor', 'Black Bay GMT „Pepsi“', 'M79830RB-0001', 3400, 'GMT', 41, 'Edelstahl', 2018, { d: '#131313', bz: ['#9e2a2b', '#1d2f5c'], m: 'steel', st: 'br', gmt: 1, dt: 1, gilt: 1 }],
+  ['breitling-superocean', 'Breitling', 'Superocean Heritage 42', 'AB2010121B1A1', 3700, 'Taucher', 42, 'Edelstahl', 2017, { d: '#141414', b: '#141414', m: 'steel', st: 'br', dive: 1 }],
+  ['longines-legend', 'Longines', 'Legend Diver', 'L3.774.4.50.0', 2200, 'Taucher', 42, 'Edelstahl', 2016, { d: '#1b1b1b', m: 'steel', st: 'le', dt: 1, nums: 1, strap: '#2a2a2a' }],
+  ['oris-bigcrown', 'Oris', 'Big Crown Pointer Date', '01 754 7741 4065', 1500, 'Fliegeruhr', 40, 'Bronze', 2018, { d: '#2a4a3a', m: 'rose', st: 'le', nums: 1, strap: '#5a3a20' }],
+  ['sinn-104', 'Sinn', '104 St Sa I', '104.010', 1600, 'Fliegeruhr', 41, 'Edelstahl', 2014, { d: '#121212', b: '#121212', m: 'steel', st: 'br', nums: 1, dive: 1, dt: 1 }],
+  ['nomos-club', 'Nomos Glashütte', 'Club Campus', '708', 1300, 'Sport', 38.5, 'Edelstahl', 2018, { d: '#e9eef4', m: 'steel', st: 'le', nums: 1, strap: '#2a2a2a' }],
+  ['omega-constellation', 'Omega', 'Constellation 41', '131.10.41.21.06.001', 4700, 'Dress', 41, 'Edelstahl', 2020, { d: '#555', m: 'steel', st: 'br', dt: 1, roman: 1 }],
+  ['omega-railmaster', 'Omega', 'Seamaster Railmaster', '220.10.40.20.01.001', 4000, 'Feld', 40, 'Edelstahl', 2017, { d: '#222', m: 'steel', st: 'br', nums: 1 }],
+  ['cartier-ballon', 'Cartier', 'Ballon Bleu 40', 'WSBB0040', 5600, 'Dress', 40, 'Edelstahl', 2019, { d: '#efede6', m: 'steel', st: 'br', roman: 1 }],
+  ['iwc-mark', 'IWC', 'Pilot’s Watch Mark XX', 'IW328201', 4600, 'Fliegeruhr', 40, 'Edelstahl', 2022, { d: '#1b2b4d', m: 'steel', st: 'le', nums: 1, dt: 1, strap: '#1b1b1b' }],
+  ['gs-spring', 'Grand Seiko', 'Spring Drive GMT „Shunbun“', 'SBGE269', 6200, 'GMT', 44, 'Edelstahl', 2020, { d: '#e8d6dc', m: 'steel', st: 'br', gmt: 1, dt: 1 }],
+  ['panerai-radiomir', 'Panerai', 'Radiomir', 'PAM01384', 5400, 'Dress', 45, 'Edelstahl', 2021, { s: 'cushion', d: '#2b2a24', m: 'steel', st: 'le', nums: 1, strap: '#5a3a20' }],
+  ['breitling-chronomat', 'Breitling', 'Chronomat B01 42', 'AB0134101B1A1', 6800, 'Chronograph', 42, 'Edelstahl', 2020, { d: '#141414', b: '#ddd', m: 'steel', st: 'br', c: 1, dt: 1 }],
+  ['hublot-bigbang', 'Hublot', 'Big Bang Unico', '441.NX.1170.RX', 13500, 'Chronograph', 42, 'Titan', 2015, { d: '#202020', m: 'titan', st: 'ru', c: 1, skel: 1 }],
+  ['rolex-airking', 'Rolex', 'Air-King', '126900', 8200, 'Fliegeruhr', 40, 'Edelstahl', 2022, { d: '#111', m: 'steel', st: 'br', nums: 1 }],
+  ['rolex-explorer2', 'Rolex', 'Explorer II', '226570', 10500, 'GMT', 42, 'Edelstahl', 2021, { d: '#f4f4f4', m: 'steel', st: 'br', gmt: 1, dt: 1 }],
+  ['rolex-yachtmaster', 'Rolex', 'Yacht-Master 40', '126622', 13000, 'Sport', 40, 'Edelstahl / Platin', 2019, { d: '#4a4d52', b: '#cfd3d8', m: 'steel', st: 'br', dt: 1 }],
+  ['rolex-seadweller', 'Rolex', 'Sea-Dweller', '126600', 13500, 'Taucher', 43, 'Edelstahl', 2017, { d: '#111', b: '#111', m: 'steel', st: 'br', dive: 1, dt: 1 }],
+  ['rolex-gmt-sprite', 'Rolex', 'GMT-Master II „Sprite“', '126720VTNR', 19500, 'GMT', 40, 'Edelstahl', 2022, { d: '#111', bz: ['#151515', '#1f6b3a'], m: 'steel', st: 'jub', gmt: 1, dt: 1 }],
+  ['blancpain-ff', 'Blancpain', 'Fifty Fathoms Bathyscaphe', '5000-1110-B52A', 8900, 'Taucher', 43, 'Edelstahl', 2013, { d: '#222', b: '#222', m: 'steel', st: 'le', dive: 1, dt: 1, strap: '#1b1b1b' }],
+  ['jlc-polaris', 'Jaeger-LeCoultre', 'Polaris Date', 'Q9068681', 8600, 'Taucher', 42, 'Edelstahl', 2018, { d: '#1d2e52', m: 'steel', st: 'ru', dt: 1, nums: 1 }],
+  ['chopard-alpine', 'Chopard', 'Alpine Eagle 41', '298600-3001', 13000, 'Sport', 41, 'Lucent Steel', 2019, { d: '#2c4f80', m: 'steel', st: 'int', dt: 1 }],
+  ['bell-ross-br03', 'Bell & Ross', 'BR 03-92 Black Matte', 'BR0392-BL-CE', 2600, 'Fliegeruhr', 42, 'Keramik', 2014, { s: 'square', d: '#111', m: 'black', st: 'ru', nums: 1 }],
+  ['ap-code', 'Audemars Piguet', 'Code 11.59 Selfwinding', '15210ST.OO.A002KB.01', 22000, 'Dress', 41, 'Edelstahl', 2019, { d: '#1b2b4d', m: 'steel', st: 'le', dt: 1, strap: '#1b1b1b' }],
+  ['vc-fiftysix', 'Vacheron Constantin', 'Fiftysix Self-Winding', '4600E/000A-B442', 12000, 'Dress', 40, 'Edelstahl', 2018, { d: '#f1ede2', m: 'steel', st: 'le', nums: 1, maltese: 1, strap: '#3a2414' }],
+  ['patek-nautilus-chrono', 'Patek Philippe', 'Nautilus Chronograph', '5980/1A-001', 140000, 'Chronograph', 40.5, 'Edelstahl', 2006, { s: 'nautilus', d: '#1b2e4f', m: 'steel', st: 'int', c: 1, lines: 1 }],
+  ['patek-worldtime', 'Patek Philippe', 'World Time', '5230G-001', 52000, 'GMT', 38.5, 'Weißgold', 2016, { d: '#2a3a5c', m: 'white', st: 'le', gmt: 1, strap: '#1a1a1a' }],
+  ['lange-datograph', 'A. Lange & Söhne', 'Datograph Up/Down', '405.035', 72000, 'Chronograph', 41, 'Platin', 2012, { d: '#151515', m: 'white', st: 'le', c: 2, lange: 1, strap: '#1a1a1a' }],
+  ['rolex-daytona-panda-gold', 'Rolex', 'Cosmograph Daytona Gelbgold', '126518LN', 42000, 'Chronograph', 40, 'Gelbgold', 2023, { d: '#111', b: '#111', m: 'gold', st: 'ru', c: 1, tachy: 1, sub: '#c9a44e' }],
+  ['ap-ro-jumbo', 'Audemars Piguet', 'Royal Oak „Jumbo“ Extra-Thin', '16202ST.OO.1240ST.01', 120000, 'Sport', 39, 'Edelstahl', 2022, { s: 'octagon', d: '#1e3054', m: 'steel', st: 'int', tap: 1, thin: 1 }],
+  ['rm-035', 'Richard Mille', 'RM 035 Rafael Nadal', 'RM 035', 260000, 'Sport', 49, 'Carbon TPT', 2011, { s: 'tonneau', d: '#202020', m: 'black', st: 'ru', skel: 1 }],
+  ['fpj-chronometre', 'F. P. Journe', 'Chronomètre Bleu', 'CB', 160000, 'Dress', 39, 'Tantal', 2009, { d: '#1d3c78', m: 'gray', st: 'le', nums: 1, strap: '#1a1a1a' }],
 ].map(([id, brand, name, ref, price, cat, diam, material, year, look]) => ({ id, brand, name, ref, price, cat, diam, material, year, look }));
 const MODEL = Object.fromEntries(MODELS.map(m => [m.id, m]));
 const BRANDS = [...new Set(MODELS.map(m => m.brand))].sort((a, b) => a.localeCompare(b, 'de'));
@@ -128,6 +174,10 @@ const ACHIEVEMENTS = [
   { id: 'botboss', icon: '🤖', name: 'Bot-Boss', desc: 'Dein Bot macht 10.000 € netto.', reward: 2000, test: s => s.bot && s.bot.gross - s.bot.losses - s.bot.fees >= 10000 },
   { id: 'podium', icon: '🥉', name: 'Podium', desc: 'Platz 3 in der Rangliste.', reward: 20000, test: s => s.rivals && rankOf(s) <= 3 },
   { id: 'top1', icon: '🥇', name: 'Nummer 1', desc: 'Platz 1 in der Rangliste.', reward: 250000, test: s => s.rivals && rankOf(s) === 1 },
+  { id: 'shop', icon: '🏪', name: 'Ladenbesitzer', desc: 'Eröffne deinen eigenen Uhrenladen.', reward: 1000, test: s => !!s.shop },
+  { id: 'shop10', icon: '🛍', name: 'Stammkundschaft', desc: '10 Verkäufe im eigenen Laden.', reward: 3000, test: s => s.shop && s.shop.sales >= 10 },
+  { id: 'stars', icon: '⭐', name: 'Fünf Sterne', desc: 'Bewertung ab 4,5 bei 10 Bewertungen.', reward: 5000, test: s => s.shop && s.shop.reviews.length >= 10 && s.shop.reviews.reduce((a, b) => a + b.s, 0) / s.shop.reviews.length >= 4.5 },
+  { id: 'luxus', icon: '💎', name: 'Luxusmeile', desc: 'Laden in bester Lage.', reward: 20000, test: s => s.shop && s.shop.up.loc >= 3 },
   { id: 'million', icon: '🏆', name: 'Uhren-Millionär', desc: 'Gesamtvermögen über 1 Mio. €.', reward: 50000, test: s => netWorth(s) >= 1e6 },
 ];
 
@@ -184,7 +234,7 @@ function newGame(name) {
     prices: {}, owned: [], listings: [], auctions: [], watch: [], news: [],
     stats: { bought: 0, sold: 0, profit: 0, bestFlip: 0, bestDeal: 0, offers: 0, auctions: 0, services: 0, spent: 0, flash: 0, fakes: 0, fakesCaught: 0 },
     rivals: newRivals(), rank: 9,
-    ach: {}, lastBonus: '', jobReady: 0, bot: newBot(),
+    ach: {}, lastBonus: '', jobReady: 0, bot: newBot(), shop: null,
   };
   for (const m of MODELS) {
     const h = []; let p = m.price; const vol = volOf(m), tr = trendOf(m);
@@ -258,6 +308,8 @@ function load() {
     s.bot.up = Object.assign(newBot().up, s.bot.up || {});
     s.stats = Object.assign({ flash: 0, fakes: 0, fakesCaught: 0 }, s.stats);
     if (!s.rivals) { s.rivals = newRivals(); s.rank = 9; }
+    if (s.shop) { s.shop.up = Object.assign({ slots: 0, staff: 0, ads: 0, loc: 0 }, s.shop.up); s.shop.deco = s.shop.deco || {}; }
+    else s.shop = null;
     return s;
   } catch (e) { return null; }
 }
@@ -306,6 +358,7 @@ function advanceDay(quiet) {
     toast(`⚡ <b>Blitz-Deal!</b> ${esc(MODEL[l.m].brand)} ${esc(MODEL[l.m].name)} für ${fmtEur(l.price)} – nur 90 Sekunden!`, 6000);
   }
   runBot(quiet);
+  runShop(quiet);
   // Rivalen wachsen
   for (const r of S.rivals) r.w *= Math.exp(r.g + 0.02 * gauss());
   const rank = rankOf(S);
@@ -352,13 +405,14 @@ function sellItem(o, pay) {
 
 /* ---------- Trading-Bot: gratis, behält einen Anteil vom Gewinn ---------- */
 const BOT_UPS = [
-  { k: 'turbo', icon: '⚡', name: 'Turbo-Modus', max: 4, base: 1500, f: 3, desc: l => `${2 + 2 * l} Käufe pro Markttag` },
+  { k: 'turbo', icon: '⚡', name: 'Turbo-Modus', max: 6, base: 1500, f: 2.6, desc: l => `${botBuys(l)} Käufe pro Markttag` },
   { k: 'scanner', icon: '🔍', name: 'Deal-Scanner', max: 3, base: 2500, f: 3, desc: l => l ? `findet ${2 * l} % mehr Deals und erkennt Fälschungen` : 'erkennt keine Fälschungen' },
   { k: 'ai', icon: '🧠', name: 'KI-Preisfindung', max: 3, base: 4000, f: 3, desc: l => l ? `verkauft ${l * 4} % „besser“ – schnellere Verkäufe` : 'Standard-Preise' },
   { k: 'sniper', icon: '🎯', name: 'Auktions-Sniper', max: 1, base: 15000, f: 1, desc: l => l ? 'bietet in den letzten 40 s bis 85 % vom Wert' : 'bietet nicht bei Auktionen' },
   { k: 'license', icon: '💼', name: 'Pro-Lizenz', max: 2, base: 20000, f: 4, desc: l => `Bot-Anteil nur noch ${20 - 5 * l} %` },
 ];
 const BOT_TIERS = ['Basic', 'Plus', 'Pro', 'Elite', 'Quant', 'Overlord'];
+function botBuys(l) { return 4 + 3 * l; }
 function botShare() { return 0.2 - 0.05 * (S.bot.up.license || 0); }
 function botUpCost(u, lvl) { return u.base * Math.pow(u.f, lvl); }
 function botTier() { const n = Object.values(S.bot.up).reduce((a, b) => a + b, 0); return BOT_TIERS[Math.min(BOT_TIERS.length - 1, Math.floor(n / 2.2))]; }
@@ -394,7 +448,7 @@ function runBot(quiet) {
   // 2. Schnäppchen kaufen (Turbo = mehr Käufe pro Tag)
   let free = Math.min(S.money, B.budget - botInUse());
   const thr = Math.min(0.99, mode.buyBelow + 0.02 * B.up.scanner) + (mode.momentum ? 0.01 : 0);
-  for (let n = 0; n < 2 + 2 * B.up.turbo; n++) {
+  for (let n = 0; n < botBuys(B.up.turbo); n++) {
     const cands = S.listings
       .map(l => ({ l, r: l.price / valueOf(l.m, l.cond, l.papers) }))
       .filter(c => !c.l.flash && !(c.l.fake && B.up.scanner > 0))
@@ -431,6 +485,116 @@ function botSold(o, pay) {
   botLog(`Verkauft: ${m.brand} ${m.name} für ${fmtEur(o.ask)} → ${profit >= 0 ? 'Gewinn' : 'Verlust'} ${fmtEur(profit)}${fee ? `, Bot-Anteil ${fmtEur(fee)}` : ''}.`);
   flashWallet();
   return { profit, fee };
+}
+
+/* ---------- Eigener Uhrenladen ---------- */
+const SHOP_COST = 15000;
+const SHOP_FEE = 0.02;          // Kartenzahlung im Laden statt 6 % Marktplatz-Gebühr
+const SHOP_THEMES = [
+  { k: 'apple', name: 'Weiß & Ahorn', wall: '#f4f4f2', wall2: '#e4e4e0', accent: '#8a8f96', text: '#333', font: '"Helvetica Neue", Helvetica, Arial, sans-serif' },
+  { k: 'boutique', name: 'Schwarz & Gold', wall: '#1d1b18', wall2: '#2c2822', accent: '#c9a44e', text: '#f3e3b5', font: 'Didot, "Bodoni 72", Georgia, serif' },
+  { k: 'werkstatt', name: 'Alte Werkstatt', wall: '#6b4a2e', wall2: '#5a3d25', accent: '#d9b98a', text: '#fff3df', font: 'Georgia, "Times New Roman", serif' },
+  { k: 'retro', name: 'Retro 70er', wall: '#e9a23b', wall2: '#c8742a', accent: '#5a3418', text: '#fff6e0', font: '"Cooper Black", "Arial Rounded MT Bold", Georgia, serif' },
+  { k: 'neon', name: 'Neon Tokio', wall: '#14122a', wall2: '#1f1b40', accent: '#ff3ea5', text: '#5ff3ff', font: '"Avenir Next", "Helvetica Neue", sans-serif' },
+  { k: 'mint', name: 'Mint Pastell', wall: '#d8efe6', wall2: '#bfe1d3', accent: '#3b8f74', text: '#24584a', font: '"Gill Sans", "Trebuchet MS", sans-serif' },
+];
+const SHOP_SIGNS = ['#2d6fd6', '#b5262c', '#1f6b3a', '#1b1b1b', '#c9a44e', '#7a3fb5'];
+const SHOP_FLOORS = [
+  { k: 'parkett', name: 'Parkett' }, { k: 'marmor', name: 'Marmor' }, { k: 'beton', name: 'Beton' },
+  { k: 'teppich', name: 'Roter Teppich' }, { k: 'schach', name: 'Schachbrett' },
+];
+const SHOP_CASES = [{ k: 'glas', name: 'Glasvitrine' }, { k: 'holz', name: 'Holzkasten' }, { k: 'samt', name: 'Samtkissen' }];
+const SHOP_LIGHTS = [{ k: 'warm', name: 'Warmweiß' }, { k: 'kalt', name: 'Tageslicht' }, { k: 'spot', name: 'Spots' }];
+const SHOP_DECO = [
+  { k: 'plant', icon: '🪴', name: 'Pflanze', cost: 300, amb: 1 },
+  { k: 'sofa', icon: '🛋', name: 'Ledersofa', cost: 2500, amb: 2 },
+  { k: 'clock', icon: '🕰', name: 'Standuhr', cost: 4000, amb: 2 },
+  { k: 'art', icon: '🖼', name: 'Kunstwerk', cost: 6000, amb: 3 },
+  { k: 'bar', icon: '🥂', name: 'Champagner-Bar', cost: 12000, amb: 4 },
+  { k: 'lamp', icon: '💡', name: 'Kronleuchter', cost: 20000, amb: 5 },
+];
+const SHOP_UPS = [
+  { k: 'slots', icon: '🗄', name: 'Vitrinen', max: 5, base: 4000, f: 2.5, desc: l => `${shopSlots(l)} Plätze im Laden` },
+  { k: 'staff', icon: '🧑‍💼', name: 'Personal', max: 3, base: 3000, f: 4, desc: l => ['Nur du selbst', '1 Aushilfe (+Verkaufschance)', '2 Verkäufer:innen', 'Top-Verkaufsteam'][l] + (l ? ` · Lohn ${fmtEur(SHOP_WAGE[l])}/Tag` : '') },
+  { k: 'ads', icon: '📣', name: 'Werbung', max: 4, base: 1500, f: 3, desc: l => ['Keine Werbung', 'Flyer', 'Zeitungsanzeige', 'Social Media', 'Plakate in der Stadt'][l] + ` · ca. ${Math.round(shopVisitorsBase(l, S.shop ? S.shop.up.loc : 0))} Besucher/Tag` },
+  { k: 'loc', icon: '📍', name: 'Lage', max: 3, base: 12000, f: 4, desc: l => SHOP_LOCS[l].name + ` · Miete ${fmtEur(SHOP_LOCS[l].rent)}/Tag` },
+];
+const SHOP_WAGE = [0, 60, 180, 450];
+const SHOP_LOCS = [
+  { name: 'Seitenstraße', rent: 40, tol: 0, vis: 1 },
+  { name: 'Einkaufsstraße', rent: 120, tol: 0.04, vis: 1.5 },
+  { name: 'Innenstadt-Passage', rent: 350, tol: 0.08, vis: 2.2 },
+  { name: 'Luxusmeile', rent: 900, tol: 0.14, vis: 3 },
+];
+const FIRST_NAMES = ['Anna', 'Ben', 'Clara', 'David', 'Elif', 'Finn', 'Greta', 'Hakan', 'Ida', 'Jonas', 'Kim', 'Lena', 'Mehmet', 'Nora', 'Ole', 'Paula', 'Rafael', 'Sofia', 'Tom', 'Yuki', 'Herr Weber', 'Frau Schmidt', 'ein Tourist', 'eine Sammlerin'];
+const CITIES = ['Köln', 'München', 'Hamburg', 'Wien', 'Zürich', 'Berlin', 'Dubai', 'Paris', 'Mailand', 'New York', 'Tokio'];
+
+function newShop(name) {
+  return { name, theme: 'apple', sign: 0, floor: 'parkett', vit: 'glas', light: 'warm', deco: {}, up: { slots: 0, staff: 0, ads: 0, loc: 0 },
+    opened: S.day, sales: 0, revenue: 0, profit: 0, costs: 0, visitors: 0, reviews: [], log: [], tradeins: [], whole: [], wholeDay: 0, closed: false };
+}
+function shopSlots(l = S.shop.up.slots) { return [4, 8, 12, 16, 24, 32][l]; }
+function shopItems() { return S.owned.filter(o => o.shop); }
+function shopAmb() { return SHOP_DECO.reduce((a, d) => a + (S.shop.deco[d.k] ? d.amb : 0), 0); }
+function shopVisitorsBase(ads, loc) { return (6 + 7 * ads) * SHOP_LOCS[loc].vis; }
+function shopRating() { const r = S.shop.reviews; return r.length ? r.reduce((a, b) => a + b.s, 0) / r.length : 0; }
+function shopDailyCost() { return SHOP_LOCS[S.shop.up.loc].rent + SHOP_WAGE[S.shop.up.staff]; }
+// So viel über Marktwert zahlen Kund:innen im Laden gerne (Beratung, Ambiente, Lage)
+function shopTol() { const sh = S.shop; return 1.04 + SHOP_LOCS[sh.up.loc].tol + 0.025 * sh.up.staff + 0.006 * shopAmb(); }
+function shopLog(text) { S.shop.log.unshift({ day: S.day, text }); S.shop.log = S.shop.log.slice(0, 30); }
+function shopChance(o, askP = o.shop) {
+  const r = askP / itemValue(o) / shopTol();
+  return r <= 0.9 ? 0.6 : r <= 1 ? 0.42 : r <= 1.06 ? 0.22 : r <= 1.15 ? 0.08 : 0.02;
+}
+
+function runShop(quiet) {
+  const sh = S.shop; if (!sh) return;
+  // Laufende Kosten
+  const cost = shopDailyCost();
+  if (S.money < cost) {
+    sh.closed = true;
+    shopLog(`Laden geschlossen: Miete/Lohn (${fmtEur(cost)}) konnte nicht bezahlt werden.`);
+    if (!quiet) toast(`🔒 Dein Laden bleibt heute zu – es fehlen ${fmtEur(cost)} für Miete und Lohn.`, 5000);
+    return;
+  }
+  sh.closed = false;
+  S.money -= cost; sh.costs += cost; sh.profit -= cost;
+  // Besucher
+  const rating = shopRating();
+  const vis = Math.max(1, Math.round(shopVisitorsBase(sh.up.ads, sh.up.loc) * (0.8 + (rating ? rating / 5 : 0.6) * 0.4 + 0.03 * shopAmb()) * rnd(0.75, 1.25)));
+  sh.visitors = vis;
+  const traffic = clamp(vis / 18, 0.25, 3);
+  let soldToday = 0;
+  for (const o of shopItems()) {
+    const p = clamp(shopChance(o) * traffic * (1 + 0.15 * sh.up.staff), 0, 0.92);
+    if (Math.random() >= p) continue;
+    const pay = Math.round(o.shop * (1 - SHOP_FEE));
+    const m = MODEL[o.m];
+    const r = o.shop / itemValue(o) / shopTol();
+    const stars = clamp(Math.round((r <= 0.95 ? 5 : r <= 1.03 ? 4.6 : r <= 1.1 ? 3.8 : 3) + 0.08 * shopAmb() + rnd(-0.6, 0.4)), 1, 5);
+    const who = pick(FIRST_NAMES), city = pick(CITIES);
+    sh.reviews.unshift({ s: stars, who, day: S.day }); sh.reviews = sh.reviews.slice(0, 20);
+    sh.sales++; sh.revenue += o.shop; sh.profit += pay - o.cost; soldToday++;
+    sellItem(o, pay);
+    shopLog(`${who} aus ${city} kauft ${m.brand} ${m.name} für ${fmtEur(o.shop)} · ${'★'.repeat(stars)}`);
+    if (!quiet) toast(`🏪 <b>${esc(who)}</b> hat in deinem Laden die <b>${esc(m.brand)} ${esc(m.name)}</b> für ${fmtEur(o.shop)} gekauft! ${'★'.repeat(stars)}`, 5000);
+  }
+  if (!soldToday) shopLog(`${vis} Besucher, heute nichts verkauft.`);
+  // Ankauf: Kund:innen bieten dir ihre Uhren an
+  sh.tradeins = sh.tradeins.filter(t => S.day - t.day < 3);
+  const nT = Math.random() < Math.min(0.9, vis / 25) ? rint(1, 1 + sh.up.loc) : 0;
+  for (let i = 0; i < nT && sh.tradeins.length < 6; i++) {
+    const m = weightedModel();
+    const cond = pick([0, 1, 1, 2, 2, 3]); const papers = Math.random() < 0.75;
+    sh.tradeins.push({ id: uid('t'), m: m.id, cond, papers, price: niceRound(valueOf(m.id, cond, papers) * rnd(0.7, 0.88)), who: pick(FIRST_NAMES), day: S.day });
+  }
+  // Großhändler: neue Liste alle 3 Tage
+  if (!sh.whole.length || S.day - sh.wholeDay >= 3) shopRestock();
+}
+function shopRestock() {
+  const sh = S.shop;
+  sh.wholeDay = S.day;
+  sh.whole = Array.from({ length: 6 }, () => { const m = weightedModel(); return { id: uid('g'), m: m.id, price: niceRound(valueOf(m.id, 0, true) * rnd(0.86, 0.94)), qty: rint(1, 3) }; });
 }
 
 function catchUp() {
@@ -897,7 +1061,7 @@ function sparkSVG(series) {
    Oberfläche
    ===================================================================== */
 const view = $('#view');
-const UI = { brand: '', cat: '', cond: -1, papers: false, max: 0, sort: 'neu', q: '', range: 30 };
+const UI = { brand: '', cat: '', cond: -1, papers: false, max: 0, sort: 'neu', q: '', range: 30, show: 24, shopTab: 'fenster' };
 
 function toast(html, ms = 4200) {
   const t = document.createElement('div');
@@ -1073,7 +1237,7 @@ function pageMarket() {
           ${[['neu', 'Neueste'], ['auf', 'Preis ↑'], ['ab', 'Preis ↓'], ['deal', 'Schnäppchen']].map(([k, n]) => `<button data-act="sort" data-v="${k}" class="${UI.sort === k ? 'on' : ''}">${n}</button>`).join('')}
         </div>
       </div>
-      ${list.length ? `<div class="grid">${list.map(listingCard).join('')}</div>` : '<div class="empty">Keine passenden Angebote. Morgen kommen neue rein!</div>'}
+      ${list.length ? `<div class="grid">${list.slice(0, UI.show).map(listingCard).join('')}</div>${list.length > UI.show ? `<div class="center" style="margin:16px 0"><button class="btn big" data-act="more">Weitere ${Math.min(24, list.length - UI.show)} Angebote anzeigen</button></div>` : ''}` : '<div class="empty">Keine passenden Angebote. Morgen kommen neue rein!</div>'}
     </section>
   </div>`;
 }
@@ -1214,7 +1378,7 @@ function pageCollection() {
     <div class="watchbox-lid"><span>${esc(S.name)}s Uhrenbox</span><span>${items.length} Uhr${items.length === 1 ? '' : 'en'}</span></div>
     <div class="watchbox-inner">
       ${items.map(o => `<button class="cushion" data-act="item" data-id="${o.id}">
-        ${o.bot ? '<span class="tag badge dark">Bot</span>' : o.ask ? '<span class="tag badge blue">Inseriert</span>' : o.service ? '<span class="tag badge gold">Revision</span>' : ''}
+        ${o.bot ? '<span class="tag badge dark">Bot</span>' : o.shop ? '<span class="tag badge green">Im Laden</span>' : o.ask ? '<span class="tag badge blue">Inseriert</span>' : o.service ? '<span class="tag badge gold">Revision</span>' : ''}
         ${watchImg(o.m)}<span class="lbl">${esc(MODEL[o.m].brand)} ${esc(MODEL[o.m].name)}</span></button>`).join('')}
       ${Array.from({ length: slots - items.length }, () => '<div class="cushion empty-slot"></div>').join('')}
     </div>
@@ -1323,6 +1487,138 @@ function pageBot() {
   <p class="muted" style="font-size:11px">Hinweis: Das ist ein Spiel. Echte „Trading-Bots“, die Gewinn versprechen, sind oft unseriös – im echten Leben lieber vorsichtig sein.</p>`;
 }
 
+/* ---------- Seite: Mein Laden ---------- */
+function storeHTML(sh, opts = {}) {
+  const th = SHOP_THEMES.find(t => t.k === sh.theme) || SHOP_THEMES[0];
+  const items = opts.demo ? ['rolex-sub', 'omega-speedmaster', 'cartier-tank-must', 'tudor-bb58'].map(m => ({ m, shop: price(m) })) : shopItems();
+  const slots = opts.demo ? 4 : shopSlots();
+  const deco = SHOP_DECO.filter(d => sh.deco[d.k]);
+  const vis = opts.demo ? 3 : Math.min(5, Math.ceil((sh.visitors || 0) / 8));
+  const people = ['🚶', '🚶‍♀️', '🧍', '🚶‍♂️', '🧍‍♀️'];
+  return `<div class="store theme-${th.k} floor-${sh.floor} vit-${sh.vit} light-${sh.light}${sh.closed ? ' closed' : ''}" style="--wall:${th.wall};--wall2:${th.wall2};--acc:${th.accent};--txt:${th.text};--sign:${SHOP_SIGNS[sh.sign] || SHOP_SIGNS[0]}">
+    <div class="store-awning"></div>
+    <div class="store-sign" style="font-family:${th.font}"><span>${esc(sh.name)}</span><small>Uhren · An- &amp; Verkauf</small></div>
+    <div class="store-window">
+      <div class="store-room">
+        <div class="store-shelf">${Array.from({ length: Math.min(slots, 8) }, (_, i) => { const o = items[i]; return `<div class="store-case">${o ? `${watchImg(o.m)}<span class="store-price">${fmtEur(o.shop)}</span>` : ''}</div>`; }).join('')}</div>
+        <div class="store-deco">${deco.map(d => `<span title="${esc(d.name)}">${d.icon}</span>`).join('')}</div>
+        <div class="store-floor"></div>
+        <div class="store-people">${Array.from({ length: vis }, (_, i) => `<span style="animation-delay:${i * -2.3}s;animation-duration:${9 + i * 1.7}s">${people[i % people.length]}</span>`).join('')}</div>
+        <div class="store-light"></div>
+      </div>
+      <div class="store-glass"></div>
+      ${sh.closed ? '<div class="store-closed">Heute geschlossen</div>' : '<div class="store-open">Geöffnet</div>'}
+    </div>
+    <div class="store-base"></div>
+  </div>`;
+}
+
+function stars(v) { const f = Math.round(v * 2) / 2; return `<span class="stars" title="${v.toFixed(1)} von 5">${'★'.repeat(Math.floor(f))}${f % 1 ? '½' : ''}<i>${'★'.repeat(5 - Math.ceil(f))}</i></span>`; }
+
+function pageShop() {
+  const sh = S.shop;
+  if (!sh) {
+    const demo = { name: `${S.name}s Uhren`, theme: 'boutique', sign: 4, floor: 'marmor', vit: 'glas', light: 'spot', deco: { plant: 1, clock: 1 }, visitors: 20 };
+    return `
+    <section class="hero shop-hero"><div>
+      <h1>Dein eigener <b>Uhrenladen</b>.</h1>
+      <p>Eröffne ein Geschäft, gestalte es so, wie du willst, und verkauf deine Uhren direkt an Kund:innen – ohne 6 % Marktplatz-Gebühr. Mit guter Lage, Personal und schönem Ambiente zahlen Kund:innen sogar <b>mehr als den Marktwert</b>.</p>
+      <ul class="feat"><li>🎨 Stil, Schild, Boden, Vitrinen &amp; Licht frei wählbar</li><li>🛋 Deko kaufen für mehr Ambiente</li><li>⭐ Kund:innen geben Bewertungen</li><li>🔁 Ankauf: Kund:innen bieten dir ihre Uhren günstig an</li><li>📦 Großhändler liefert neue Ware</li></ul>
+      <button class="btn blue big" data-act="shop-open" ${S.money >= SHOP_COST ? '' : 'disabled'}>Laden eröffnen – ${fmtEur(SHOP_COST)}</button>
+      ${S.money >= SHOP_COST ? '' : `<p class="muted" style="font-size:12px">Dir fehlen noch ${fmtEur(SHOP_COST - S.money)}.</p>`}
+    </div><div>${storeHTML(demo, { demo: true })}</div></section>`;
+  }
+  const items = shopItems();
+  const rating = shopRating();
+  const tab = UI.shopTab || 'fenster';
+  const free = S.owned.filter(o => !o.shop && !o.bot && !o.ask && !o.service);
+  let body = '';
+  if (tab === 'fenster') {
+    body = `<div class="panel"><div class="panel-head"><h2>Im Laden (${items.length}/${shopSlots()})</h2><span class="muted" style="font-size:12px">Kund:innen zahlen gern bis ca. ${fmtPct(shopTol() - 1)} über Marktwert</span></div>
+      ${items.length ? `<div class="table-wrap"><table class="table"><tr><th>Uhr</th><th>Zustand</th><th class="num">Wert</th><th class="num">Ladenpreis</th><th class="num">Chance/Tag</th><th></th></tr>
+      ${items.map(o => { const v = itemValue(o); const c = shopChance(o); return `<tr><td><a href="#/modell/${o.m}">${esc(MODEL[o.m].brand)} ${esc(MODEL[o.m].name)}</a></td><td>${condBadge(o.cond)}</td><td class="num">${fmtEur(v)}</td><td class="num"><b>${fmtEur(o.shop)}</b> <span class="${o.shop >= v ? 'up' : 'down'}" style="font-size:11px">${fmtPct(o.shop / v - 1)}</span></td><td class="num">${c >= 0.4 ? 'hoch' : c >= 0.2 ? 'mittel' : 'niedrig'}</td>
+        <td class="num"><button class="btn small" data-act="shop-put" data-id="${o.id}">Preis</button> <button class="btn small" data-act="shop-take" data-id="${o.id}">Raus</button></td></tr>`; }).join('')}</table></div>` : '<div class="empty">Deine Vitrinen sind leer. Leg unten Uhren aus deiner Sammlung hinein.</div>'}
+    </div>
+    <div class="panel"><div class="panel-head"><h2>Aus deiner Sammlung</h2></div>
+      ${free.length ? `<ul class="list">${free.map(o => `<li><span class="thumb">${watchImg(o.m)}</span><div class="grow"><div class="title">${esc(MODEL[o.m].brand)} ${esc(MODEL[o.m].name)}</div><div class="sub">${COND[o.cond].name} · Wert ${fmtEur(itemValue(o))} · gekauft ${fmtEur(o.cost)}</div></div>
+        <button class="btn small ${items.length < shopSlots() ? 'blue' : ''}" data-act="shop-put" data-id="${o.id}" ${items.length < shopSlots() ? '' : 'disabled'}>In den Laden</button></li>`).join('')}</ul>` : '<div class="empty">Keine freien Uhren. Kauf welche auf dem <a href="#/markt">Marktplatz</a>, beim Großhändler oder über den Ankauf.</div>'}
+    </div>`;
+  } else if (tab === 'design') {
+    const opt = (key, list, label) => `<h3>${label}</h3><div class="chips">${list.map(x => `<button class="chip ${sh[key] === x.k ? 'on' : ''}" data-act="shop-set" data-k="${key}" data-v="${x.k}">${esc(x.name)}</button>`).join('')}</div>`;
+    body = `<div class="cols"><div class="panel"><div class="panel-head"><h2>Gestalten</h2><span class="muted" style="font-size:12px">Ändern ist kostenlos</span></div>
+      <h3>Name</h3><form data-form="shop-name" class="form-row"><input class="input" id="shop-name" maxlength="22" value="${esc(sh.name)}"><button class="btn">Speichern</button></form>
+      ${opt('theme', SHOP_THEMES, 'Stil')}
+      <h3>Schild-Farbe</h3><div class="chips">${SHOP_SIGNS.map((c, i) => `<button class="swatch ${sh.sign === i ? 'on' : ''}" style="background:${c}" data-act="shop-set" data-k="sign" data-v="${i}" aria-label="Farbe ${i + 1}"></button>`).join('')}</div>
+      ${opt('floor', SHOP_FLOORS, 'Boden')}${opt('vit', SHOP_CASES, 'Vitrinen')}${opt('light', SHOP_LIGHTS, 'Licht')}
+    </div>
+    <div class="panel"><div class="panel-head"><h2>Deko &amp; Ambiente</h2><span class="muted" style="font-size:12px">Ambiente: ${shopAmb()} Punkte</span></div>
+      <p class="muted" style="font-size:12px;margin-top:0">Mehr Ambiente = bessere Bewertungen und Kund:innen zahlen etwas mehr.</p>
+      <ul class="list">${SHOP_DECO.map(d => `<li><span class="deco-icon">${d.icon}</span><div class="grow"><div class="title">${esc(d.name)}</div><div class="sub">+${d.amb} Ambiente</div></div>
+        ${sh.deco[d.k] ? '<span class="badge green">Gekauft</span>' : `<button class="btn small ${S.money >= d.cost ? 'blue' : ''}" data-act="shop-deco" data-k="${d.k}" ${S.money >= d.cost ? '' : 'disabled'}>${fmtEur(d.cost)}</button>`}</li>`).join('')}</ul>
+    </div></div>`;
+  } else if (tab === 'ausbau') {
+    body = `<div class="panel"><div class="panel-head"><h2>Ausbau</h2><span class="muted" style="font-size:12px">Laufende Kosten: ${fmtEur(shopDailyCost())} pro Markttag</span></div>
+      <div class="up-grid">${SHOP_UPS.map(u => { const lvl = sh.up[u.k] || 0, maxed = lvl >= u.max, cost = Math.round(u.base * Math.pow(u.f, lvl));
+        return `<div class="up-card ${maxed ? 'maxed' : ''}"><div class="up-icon">${u.icon}</div><div class="up-name">${u.name}</div>
+          <div class="up-lvl">${Array.from({ length: u.max }, (_, i) => `<i class="${i < lvl ? 'on' : ''}"></i>`).join('')}</div>
+          <div class="up-desc">${esc(u.desc(lvl))}</div>
+          ${maxed ? '<span class="badge gold">Maximal</span>' : `<div class="up-next muted">Nächste Stufe: ${esc(u.desc(lvl + 1))}</div>
+          <button class="btn ${S.money >= cost ? 'blue' : ''} small" data-act="shop-up" data-k="${u.k}" ${S.money >= cost ? '' : 'disabled'}>${fmtEur(cost)}</button>`}</div>`; }).join('')}</div>
+    </div>`;
+  } else {
+    body = `<div class="cols"><div class="panel"><div class="panel-head"><h2>Ankauf von Kund:innen</h2><span class="muted" style="font-size:12px">Angebote gelten 3 Tage</span></div>
+      ${sh.tradeins.length ? `<ul class="list">${sh.tradeins.map(t => { const v = valueOf(t.m, t.cond, t.papers); return `<li><span class="thumb">${watchImg(t.m)}</span><div class="grow"><div class="title">${esc(MODEL[t.m].brand)} ${esc(MODEL[t.m].name)}</div>
+        <div class="sub">${esc(t.who)} · ${COND[t.cond].name} · ${t.papers ? 'mit Papieren' : 'ohne Papiere'} · Wert ${fmtEur(v)}</div></div>
+        <div style="text-align:right"><b>${fmtEur(t.price)}</b><div class="up" style="font-size:11px">${fmtPct(t.price / v - 1)}</div></div>
+        <button class="btn small ${S.money >= t.price ? 'green' : ''}" data-act="shop-trade" data-id="${t.id}" ${S.money >= t.price ? '' : 'disabled'}>Ankaufen</button></li>`; }).join('')}</ul>`
+        : '<div class="empty">Gerade bietet niemand etwas an. Mehr Besucher = mehr Angebote.</div>'}
+    </div>
+    <div class="panel"><div class="panel-head"><h2>Großhändler</h2><span class="muted" style="font-size:12px">neu ab Tag ${sh.wholeDay + 3}</span></div>
+      <p class="muted" style="font-size:12px;margin-top:0">Fabrikneu mit Box &amp; Papieren, etwas unter Marktwert. Nur für Ladenbesitzer.</p>
+      <ul class="list">${sh.whole.map(g => `<li><span class="thumb">${watchImg(g.m)}</span><div class="grow"><div class="title">${esc(MODEL[g.m].brand)} ${esc(MODEL[g.m].name)}</div><div class="sub">noch ${g.qty} Stück · Wert ${fmtEur(valueOf(g.m, 0, true))}</div></div>
+        <b>${fmtEur(g.price)}</b> <button class="btn small ${S.money >= g.price && g.qty ? 'blue' : ''}" data-act="shop-whole" data-id="${g.id}" ${S.money >= g.price && g.qty ? '' : 'disabled'}>Bestellen</button></li>`).join('')}</ul>
+    </div></div>`;
+  }
+  return `
+  <div class="shop-top">
+    ${storeHTML(sh)}
+    <div class="stats">
+      <div class="stat"><small>Besucher heute</small><strong>${sh.closed ? '–' : sh.visitors}</strong><div class="sub muted">${SHOP_LOCS[sh.up.loc].name}</div></div>
+      <div class="stat"><small>Bewertung</small><strong>${rating ? rating.toFixed(1) : '–'}</strong><div class="sub">${rating ? stars(rating) : '<span class="muted">noch keine</span>'}</div></div>
+      <div class="stat"><small>Verkäufe</small><strong>${sh.sales}</strong><div class="sub muted">Umsatz ${fmtEur(sh.revenue)}</div></div>
+      <div class="stat"><small>Laden-Gewinn</small><strong class="${sh.profit >= 0 ? 'up' : 'down'}">${fmtEur(sh.profit)}</strong><div class="sub muted">nach Miete &amp; Lohn</div></div>
+    </div>
+  </div>
+  <div class="segmented shop-tabs">${[['fenster', '🗄 Schaufenster'], ['design', '🎨 Gestalten'], ['ausbau', '🏗 Ausbau'], ['ankauf', '🔁 Einkauf']].map(([k, n]) => `<button data-act="shop-tab" data-v="${k}" class="${tab === k ? 'on' : ''}">${n}</button>`).join('')}</div>
+  ${body}
+  <div class="terminal shop-log"><div class="terminal-bar"><i></i><i></i><i></i><span>Kassenbuch – ${esc(sh.name)}</span></div>
+    <div class="terminal-body">${sh.log.slice(0, 8).map(n => `<div><span class="t-dim">[Tag ${n.day}]</span> ${esc(n.text)}</div>`).join('') || '<div class="t-dim">Noch keine Einträge – am nächsten Markttag kommen die ersten Kund:innen.</div>'}</div></div>`;
+}
+
+function openShopPut(id) {
+  const o = S.owned.find(x => x.id === id); if (!o) return;
+  const v = itemValue(o);
+  const min = niceRound(v * 0.8), max = niceRound(v * 1.6), def = o.shop || niceRound(v * shopTol());
+  const upd = (root, p) => {
+    $('#sp-val', root).textContent = fmtEur(p);
+    $('#sp-pay', root).textContent = fmtEur(p * (1 - SHOP_FEE));
+    $('#sp-gain', root).textContent = fmtEur(p * (1 - SHOP_FEE) - o.cost);
+    const c = shopChance(o, p); const el = $('#sp-chance', root);
+    el.textContent = c >= 0.4 ? 'hoch' : c >= 0.2 ? 'mittel' : c >= 0.08 ? 'niedrig' : 'sehr niedrig'; el.className = c >= 0.4 ? 'up' : c >= 0.2 ? '' : 'down';
+  };
+  modal('Preisschild', `
+    <div class="shot">${watchImg(o.m)}</div>
+    <p style="margin-top:0" class="center"><b>${esc(MODEL[o.m].brand)} ${esc(MODEL[o.m].name)}</b><br><span class="muted">Marktwert ${fmtEur(v)} · in deinem Laden zahlen Kund:innen gern bis ${fmtEur(v * shopTol())}</span></p>
+    <div class="center" style="font-size:24px;font-weight:300" id="sp-val"></div>
+    <input type="range" id="sp-range" min="${min}" max="${max}" step="${v > 5000 ? 50 : 5}" value="${clamp(def, min, max)}">
+    <table class="sum"><tr><td>Verkaufschance</td><td id="sp-chance"></td></tr>
+      <tr><td>Kartengebühr (2 %)</td><td>abgezogen</td></tr>
+      <tr><td>Gewinn ggü. Einkauf</td><td id="sp-gain"></td></tr>
+      <tr class="total"><td>Du bekommst</td><td id="sp-pay"></td></tr></table>`,
+    `<button class="btn" data-act="close">Abbrechen</button><button class="btn blue" data-act="shop-confirm" data-id="${o.id}">In die Vitrine</button>`,
+    root => { const r = $('#sp-range', root); upd(root, +r.value); r.addEventListener('input', () => upd(root, +r.value)); });
+}
+
 function botLiveLine() {
   const B = S.bot;
   if (!B.on) return '&gt; Bot pausiert. Schalter oben umlegen.';
@@ -1404,6 +1700,7 @@ function render() {
     case 'merkliste': html = pageWatchlist(); break;
     case 'profil': html = pageProfile(); break;
     case 'bot': html = pageBot(); break;
+    case 'laden': html = pageShop(); break;
     default: html = pageHome();
   }
   view.innerHTML = flashBanner() + html;
@@ -1490,7 +1787,7 @@ function openItem(id) {
   const o = S.owned.find(x => x.id === id); if (!o) return;
   const m = MODEL[o.m];
   const v = itemValue(o);
-  const canService = o.cond >= 2 && !o.service && !o.ask;
+  const canService = o.cond >= 2 && !o.service && !o.ask && !o.shop;
   modal(`${m.brand} ${m.name}`, `
     <div class="shot">${watchImg(o.m)}</div>
     <table class="sum">
@@ -1500,8 +1797,10 @@ function openItem(id) {
       <tr><td>Aktueller Wert</td><td><b>${fmtEur(v)}</b></td></tr>
       <tr><td>Gewinn/Verlust</td><td class="${v - o.cost >= 0 ? 'up' : 'down'}">${fmtEur(v - o.cost)} (${fmtPct(v / o.cost - 1)})</td></tr>
       ${o.ask ? `<tr><td>Dein Inserat</td><td>${fmtEur(o.ask)}</td></tr>` : ''}
+      ${o.shop ? `<tr><td>Ladenpreis</td><td>${fmtEur(o.shop)}</td></tr>` : ''}
     </table>`,
-    `${o.ask ? `<button class="btn" data-act="unlist" data-id="${o.id}">Inserat zurückziehen</button>` : `<button class="btn blue" data-act="list" data-id="${o.id}" ${o.service ? 'disabled' : ''}>Inserieren</button>`}
+    `${S.shop && !o.bot && !o.ask && !o.service ? (o.shop ? `<button class="btn" data-act="shop-take" data-id="${o.id}">Aus dem Laden nehmen</button>` : `<button class="btn green" data-act="shop-put" data-id="${o.id}">In den Laden</button>`) : ''}
+     ${o.shop ? '' : o.ask ? `<button class="btn" data-act="unlist" data-id="${o.id}">Inserat zurückziehen</button>` : `<button class="btn blue" data-act="list" data-id="${o.id}" ${o.service ? 'disabled' : ''}>Inserieren</button>`}
      <button class="btn" data-act="dealer" data-id="${o.id}" ${o.service ? 'disabled' : ''}>Sofort an Händler: ${fmtEur(v * DEALER)}</button>
      ${o.cond >= 2 ? `<button class="btn" data-act="service" data-id="${o.id}" ${canService ? '' : 'disabled'}>Revision: ${fmtEur(serviceCost(o))}</button>` : ''}
      ${o.bot ? `<button class="btn" data-act="takeover" data-id="${o.id}">Vom Bot übernehmen</button>` : ''}
@@ -1609,6 +1908,61 @@ document.addEventListener('click', e => {
       save(); render(); toast(`${u.icon} <b>${u.name}</b> Stufe ${lvl + 1} installiert – Bot ist jetzt <b>${botTier()}</b>.`);
       break;
     }
+    case 'shop-open': {
+      if (S.shop || S.money < SHOP_COST) break;
+      modal('Laden eröffnen', `<p style="margin-top:0">Wie soll dein Laden heißen?</p>
+        <form data-form="shop-new" class="form-row"><input class="input" id="shop-new-name" maxlength="22" value="${esc(S.name)}s Uhren" autocomplete="off"></form>
+        <p class="muted" style="font-size:12px">Kosten: ${fmtEur(SHOP_COST)} einmalig, danach Miete ab ${fmtEur(SHOP_LOCS[0].rent)} pro Markttag.</p>`,
+        `<button class="btn" data-act="close">Abbrechen</button><button class="btn blue" data-act="shop-create">Eröffnen</button>`,
+        root => setTimeout(() => $('#shop-new-name', root)?.select(), 50));
+      break;
+    }
+    case 'shop-create': createShop(); break;
+    case 'shop-tab': UI.shopTab = t.dataset.v; render(); break;
+    case 'shop-set': {
+      const k = t.dataset.k; S.shop[k] = k === 'sign' ? +t.dataset.v : t.dataset.v; save(); render(); break;
+    }
+    case 'shop-deco': {
+      const d = SHOP_DECO.find(x => x.k === t.dataset.k); if (!d || S.shop.deco[d.k]) break;
+      if (S.money < d.cost) { toast('Dafür reicht dein Kontostand nicht.'); break; }
+      S.money -= d.cost; S.shop.deco[d.k] = 1; shopLog(`Neue Deko: ${d.name}.`);
+      save(); render(); toast(`${d.icon} <b>${d.name}</b> steht jetzt in deinem Laden.`); break;
+    }
+    case 'shop-up': {
+      const u = SHOP_UPS.find(x => x.k === t.dataset.k); if (!u) break;
+      const lvl = S.shop.up[u.k] || 0; if (lvl >= u.max) break;
+      const c = Math.round(u.base * Math.pow(u.f, lvl));
+      if (S.money < c) { toast('Dafür reicht dein Kontostand nicht.'); break; }
+      S.money -= c; S.shop.up[u.k] = lvl + 1; shopLog(`Ausbau: ${u.name} → ${u.desc(lvl + 1)}`);
+      checkAchievements(); save(); render(); toast(`${u.icon} <b>${u.name}</b> ausgebaut: ${esc(u.desc(lvl + 1))}`); break;
+    }
+    case 'shop-put': {
+      const o = S.owned.find(x => x.id === id); if (!o) break;
+      if (!o.shop && shopItems().length >= shopSlots()) { toast('Alle Vitrinen sind voll – bau unter „Ausbau“ mehr Plätze.'); break; }
+      openShopPut(id); break;
+    }
+    case 'shop-confirm': {
+      const o = S.owned.find(x => x.id === id);
+      if (o) { o.shop = +$('#sp-range').value; o.ask = 0; save(); closeModal(); render(); toast('🏷 Preisschild hängt – die Uhr liegt in der Vitrine.'); }
+      break;
+    }
+    case 'shop-take': { const o = S.owned.find(x => x.id === id); if (o) { o.shop = 0; save(); closeModal(); render(); } break; }
+    case 'shop-trade': {
+      const tr = S.shop.tradeins.find(x => x.id === id); if (!tr) break;
+      if (S.money < tr.price) { toast('Dafür reicht dein Kontostand nicht.'); break; }
+      S.shop.tradeins = S.shop.tradeins.filter(x => x !== tr);
+      S.money -= tr.price; addOwned(tr.m, tr.cond, tr.papers, tr.price, `Ankauf von ${tr.who}`);
+      S.stats.bestDeal = Math.max(S.stats.bestDeal, 1 - tr.price / valueOf(tr.m, tr.cond, tr.papers));
+      shopLog(`Angekauft von ${tr.who}: ${MODEL[tr.m].brand} ${MODEL[tr.m].name} für ${fmtEur(tr.price)}.`);
+      checkAchievements(); save(); render(); toast(`🔁 Angekauft: <b>${esc(MODEL[tr.m].name)}</b> für ${fmtEur(tr.price)}.`); break;
+    }
+    case 'shop-whole': {
+      const g = S.shop.whole.find(x => x.id === id); if (!g || !g.qty) break;
+      if (S.money < g.price) { toast('Dafür reicht dein Kontostand nicht.'); break; }
+      g.qty--; S.money -= g.price; addOwned(g.m, 0, true, g.price, 'Großhändler');
+      checkAchievements(); save(); render(); toast(`📦 Geliefert: <b>${esc(MODEL[g.m].brand)} ${esc(MODEL[g.m].name)}</b> (fabrikneu).`); break;
+    }
+    case 'more': UI.show += 24; render(); break;
     case 'list': openList(id); break;
     case 'confirm-list': {
       const o = S.owned.find(x => x.id === id);
@@ -1660,6 +2014,16 @@ document.addEventListener('click', e => {
   }
 });
 
+function createShop() {
+  if (S.shop || S.money < SHOP_COST) return;
+  const name = ($('#shop-new-name')?.value || '').trim() || `${S.name}s Uhren`;
+  S.money -= SHOP_COST; S.shop = newShop(name); shopRestock();
+  shopLog(`Eröffnung von „${name}“ – herzlich willkommen!`);
+  UI.shopTab = 'design';
+  checkAchievements(); save(); closeModal(); location.hash = '#/laden'; render();
+  toast(`🏪 <b>${esc(name)}</b> ist eröffnet! Gestalte deinen Laden und leg Uhren in die Vitrinen.`, 6000);
+}
+
 function startFromModal() {
   const name = ($('#start-name')?.value || '').trim() || 'Sammler:in';
   newGame(name); save(); closeModal(); location.hash = '#/'; render();
@@ -1685,6 +2049,8 @@ document.addEventListener('submit', e => {
   } else if (f.dataset.form === 'name') {
     S.name = ($('#nm').value || '').trim() || S.name; save(); render(); toast('Gespeichert.');
   } else if (f.dataset.form === 'start') startFromModal();
+  else if (f.dataset.form === 'shop-new') createShop();
+  else if (f.dataset.form === 'shop-name') { S.shop.name = ($('#shop-name').value || '').trim() || S.shop.name; save(); render(); toast('Neues Schild hängt.'); }
 });
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && S) closeModal(); });
