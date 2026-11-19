@@ -678,3 +678,17 @@ input[type=range] { width: 100%; accent-color: #2f80d8; }
 .chip[disabled] { opacity: .45; cursor: default; }
 
 html, body { overflow-x: clip; }
+
+/* Bot-Befehlszeile */
+.bot-term .terminal-body { max-height: 340px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.t-prompt { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.t-prompt label { color: #b8ffb8; white-space: nowrap; }
+.t-prompt input { flex: 1; min-width: 0; background: transparent; border: 0; outline: 0; color: #eaffea; caret-color: #5cf25c;
+  font: 16px/1.6 Menlo, Monaco, "Courier New", monospace; text-shadow: 0 0 6px rgba(92,242,92,.35); padding: 0; }
+.t-prompt input::placeholder { color: #2f7a2f; }
+.terminal-body .t-me { color: #eaffea; }
+.terminal-body .t-err { color: #ff6b6b; text-shadow: 0 0 6px rgba(255,80,80,.35); }
+.terminal-body b { color: #eaffea; }
+.t-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px; background: #1b1e1b; border-top: 1px solid #000; }
+.t-chip { font: 12px Menlo, Monaco, monospace; color: #5cf25c; background: #0e100e; border: 1px solid #2f6f2f; border-radius: 4px; padding: 4px 8px; cursor: pointer; }
+.t-chip:active { background: #1f3a1f; }

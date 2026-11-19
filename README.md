@@ -75,6 +75,29 @@ Beim Öffnen erscheint kurz ein Ladebildschirm im Stil von 2010:
 
 - Die Bot-Seite hat ein **Live-Terminal** in Grün auf Schwarz und eine **Gewinnkurve**.
 
+### Bot-Befehle (Terminal)
+
+Unter dem Bot-Terminal gibt es eine Befehlszeile (↑/↓ = letzte Befehle) und Schnell-Buttons:
+
+| Befehl | Wirkung |
+|---|---|
+| `hilfe` | alle Befehle |
+| `status` | Modus, Budget, Positionen, Netto |
+| `an` / `aus` | Bot starten / pausieren |
+| `modus hai` | Strategie wechseln (vorsichtig, ausgewogen, riskant, hai) |
+| `budget 20k` / `budget max` | Budget setzen |
+| `scan` / `scan 10` | beste Deals anzeigen |
+| `kauf rolex` | sofort das beste passende Angebot kaufen |
+| `fokus omega` / `fokus aus` | nur noch diese Marke/Modelle kaufen |
+| `maxpreis 5000` | keine Uhr teurer als … |
+| `positionen` | alles, was der Bot hält |
+| `preis -5%` | alle Bot-Preise ändern |
+| `verkauf alles` | alles knapp unter Marktwert inserieren |
+| `notverkauf` | alles sofort an Händler (80 %) |
+| `laden an` / `laden aus` | Bot beliefert den Laden |
+| `sniper an` / `sniper aus` | Auktions-Sniper |
+| `clear` | Terminal leeren |
+
 ## Uhren & Daten
 90 Modelle von 38 Marken stehen in `MODELS` in `app.js`: Name, Referenz, Startpreis, Kategorie, Durchmesser, Material und Aussehen (Form, Zifferblatt, Lünette, Band).
 Neue Modelle trägst du einfach dort ein. Alte Spielstände bekommen sie automatisch dazu.

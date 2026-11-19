@@ -424,7 +424,7 @@ const BOT_MODES = [
   { name: 'Riskant', buyBelow: 0.96, perTrade: 1, markup: 1.08, desc: 'Kauft fast alles leicht unter Wert, auch teure Uhren, und will mehr Gewinn. Dauert länger, kann auch Verlust bringen.' },
   { name: '🦈 Hai', buyBelow: 1.0, perTrade: 1, markup: 1.12, momentum: true, desc: 'Kauft auch zum vollen Preis, wenn ein Modell gerade steigt (Momentum), und will 12 % mehr. Großer Gewinn – oder großer Verlust.' },
 ];
-function newBot() { return { on: false, stock: false, budget: 2000, mode: 1, trades: 0, gross: 0, fees: 0, losses: 0, log: [], hist: [], up: { turbo: 0, scanner: 0, ai: 0, sniper: 0, license: 0 } }; }
+function newBot() { return { on: false, stock: false, focus: '', maxPrice: 0, snipeOff: false, budget: 2000, mode: 1, trades: 0, gross: 0, fees: 0, losses: 0, log: [], hist: [], up: { turbo: 0, scanner: 0, ai: 0, sniper: 0, license: 0 } }; }
 function botItems() { return S.owned.filter(o => o.bot); }
 function botInUse() { return botItems().reduce((s, o) => s + o.cost, 0); }
 function botLog(text) { S.bot.log.unshift({ day: S.day, text }); S.bot.log = S.bot.log.slice(0, 25); }
@@ -456,25 +456,37 @@ function runBot(quiet) {
   for (let n = 0; n < botBuys(B.up.turbo); n++) {
     const cands = S.listings
       .map(l => ({ l, r: l.price / valueOf(l.m, l.cond, l.papers) }))
-      .filter(c => !c.l.flash && !(c.l.fake && B.up.scanner > 0))
+      .filter(c => !c.l.flash && !(c.l.fake && B.up.scanner > 0) && botMatches(c.l))
       .filter(c => c.l.price <= free && c.l.price <= B.budget * mode.perTrade)
       .filter(c => c.r <= thr && (!mode.momentum || c.r <= 0.92 || changeOver(c.l.m, 7) > 0.02))
       .sort((a, b) => a.r - b.r);
     if (!cands.length) break;
     const { l, r } = cands[0];
-    S.money -= l.price; free -= l.price;
-    S.listings = S.listings.filter(x => x !== l);
-    if (l.fake) {
-      B.trades++; B.losses += l.price; S.stats.fakes++;
-      botLog(`Reingefallen! ${MODEL[l.m].brand} ${MODEL[l.m].name} war eine Fälschung – ${fmtEur(l.price)} weg. (Tipp: Deal-Scanner)`);
-      if (!quiet) toast(`😱 Dein Bot hat eine <b>Fälschung</b> gekauft: −${fmtEur(l.price)}. Der Deal-Scanner hätte das erkannt.`, 6000);
-      continue;
-    }
-    S.owned.push({ id: uid('o'), m: l.m, cond: l.cond, papers: l.papers, cost: l.price, day: S.day, source: 'Trading-Bot', ask: 0, service: 0, bot: true });
-    const m = MODEL[l.m];
-    botLog(`Gekauft: ${m.brand} ${m.name} für ${fmtEur(l.price)} (${Math.round((1 - r) * 100)} % unter Wert).`);
-    if (!quiet) toast(`🤖 Bot kauft <b>${esc(m.brand)} ${esc(m.name)}</b> für ${fmtEur(l.price)}`);
+    free -= l.price;
+    botBuy(l, r, quiet);
   }
+}
+function botMatches(l) {
+  const B = S.bot, m = MODEL[l.m];
+  if (B.focus && !`${m.brand} ${m.name} ${m.cat}`.toLowerCase().includes(B.focus)) return false;
+  if (B.maxPrice && l.price > B.maxPrice) return false;
+  return true;
+}
+function botBuy(l, r, quiet) {
+  const B = S.bot;
+  S.money -= l.price;
+  S.listings = S.listings.filter(x => x !== l);
+  if (l.fake) {
+    B.trades++; B.losses += l.price; S.stats.fakes++;
+    botLog(`Reingefallen! ${MODEL[l.m].brand} ${MODEL[l.m].name} war eine Fälschung – ${fmtEur(l.price)} weg. (Tipp: Deal-Scanner)`);
+    if (!quiet) toast(`😱 Dein Bot hat eine <b>Fälschung</b> gekauft: −${fmtEur(l.price)}. Der Deal-Scanner hätte das erkannt.`, 6000);
+    return 'fake';
+  }
+  S.owned.push({ id: uid('o'), m: l.m, cond: l.cond, papers: l.papers, cost: l.price, day: S.day, source: 'Trading-Bot', ask: 0, service: 0, bot: true });
+  const m = MODEL[l.m];
+  botLog(`Gekauft: ${m.brand} ${m.name} für ${fmtEur(l.price)} (${r <= 1 ? `${Math.round((1 - r) * 100)} % unter` : `${Math.round((r - 1) * 100)} % über`} Wert).`);
+  if (!quiet) toast(`🤖 Bot kauft <b>${esc(m.brand)} ${esc(m.name)}</b> für ${fmtEur(l.price)}`);
+  return true;
 }
 
 // Bot legt seine Uhren in freie Vitrinen deines Ladens (statt Marktplatz)
@@ -641,10 +653,10 @@ function catchUp() {
 /* ---------- Auktions-Sniper des Bots ---------- */
 function botSnipe(now) {
   const B = S.bot;
-  if (!B.on || !B.up.sniper) return false;
+  if (!B.on || !B.up.sniper || B.snipeOff) return false;
   let changed = false;
   for (const a of S.auctions) {
-    if (a.me || a.ends - now > 40000 || a.ends <= now) continue;
+    if (a.me || a.ends - now > 40000 || a.ends <= now || (B.focus || B.maxPrice) && !botMatches({ m: a.m, price: a.bid })) continue;
     const max = valueOf(a.m, a.cond, a.papers) * 0.85;
     const next = a.bid + aucStep(a.bid);
     const free = Math.min(S.money, B.budget - botInUse());
@@ -1464,12 +1476,15 @@ function pageBot() {
     </div>
   </section>
 
-  <div class="terminal" aria-label="Bot-Terminal">
+  <div class="terminal bot-term" aria-label="Bot-Terminal">
     <div class="terminal-bar"><i></i><i></i><i></i><span>chronobot — ${botTier().toLowerCase()} — ${B.on ? 'aktiv' : 'pausiert'}</span></div>
     <div class="terminal-body">
       ${B.log.slice(0, 7).reverse().map(n => `<div><span class="t-dim">[Tag ${n.day}]</span> ${esc(n.text)}</div>`).join('') || '<div class="t-dim">Noch keine Aktionen.</div>'}
       <div id="bot-live" class="t-live">${B.on ? '&gt; starte Scan …' : '&gt; Bot pausiert. Schalter oben umlegen.'}</div>
+      <div id="bot-con">${CON.map(conLine).join('')}</div>
+      <form data-form="botcmd" class="t-prompt"><label for="bot-cmd">chronobot $</label><input id="bot-cmd" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="send" placeholder="Befehl eingeben … (hilfe)"></form>
     </div>
+    <div class="t-chips">${['hilfe', 'status', 'scan', 'kauf rolex', 'fokus omega', 'modus hai', 'budget max', 'verkauf alles', 'notverkauf'].map(c => `<button class="t-chip" data-act="botcmd" data-v="${c}">${c}</button>`).join('')}</div>
   </div>
 
   <div class="cols">
@@ -1672,7 +1687,178 @@ function openShopPut(id) {
     root => { const r = $('#sp-range', root); upd(root, +r.value); r.addEventListener('input', () => upd(root, +r.value)); });
 }
 
+/* ---------- Bot-Befehle (Terminal) ---------- */
+const CON = [];               // Ausgabe der Befehlszeile (nur für diese Sitzung)
+const CMD_HIST = []; let cmdPos = 0;
+function conLine(l) { return `<div class="${l.c || ''}">${l.h}</div>`; }
+function out(h, c = '') { CON.push({ h, c }); while (CON.length > 60) CON.shift(); }
+function parseAmount(t) {
+  if (!t) return NaN;
+  t = t.toLowerCase().replace(/€|eur/g, '').trim();
+  let f = 1;
+  if (/(k|tsd)$/.test(t)) { f = 1e3; t = t.replace(/(k|tsd)$/, ''); }
+  else if (/(m|mio)$/.test(t)) { f = 1e6; t = t.replace(/(m|mio)$/, ''); }
+  t = t.replace(/\./g, '').replace(',', '.');
+  return parseFloat(t) * f;
+}
+const BOT_HELP = [
+  ['status', 'Überblick: Modus, Budget, Positionen, Gewinn'],
+  ['an / aus', 'Bot starten oder pausieren'],
+  ['modus vorsichtig|ausgewogen|riskant|hai', 'Strategie wechseln'],
+  ['budget 20000 | 20k | max', 'Budget setzen'],
+  ['scan', 'die 5 besten Deals gerade auf dem Markt'],
+  ['kauf rolex', 'sofort das beste passende Angebot kaufen'],
+  ['fokus omega | fokus aus', 'nur noch diese Marke/dieses Modell kaufen'],
+  ['maxpreis 5000 | maxpreis aus', 'keine Uhr teurer als …'],
+  ['positionen', 'alles, was der Bot gerade hält'],
+  ['preis -5% | preis +3%', 'alle Verkaufspreise des Bots ändern'],
+  ['verkauf alles', 'alles zum Marktwert inserieren (schneller Verkauf)'],
+  ['notverkauf', 'alles sofort an Händler (80 % vom Wert)'],
+  ['laden an|aus', 'Bot beliefert deinen Laden'],
+  ['sniper an|aus', 'Auktions-Sniper ein/aus'],
+  ['clear', 'Terminal leeren'],
+];
+function modeByName(n) {
+  n = (n || '').toLowerCase();
+  return BOT_MODES.findIndex(m => m.name.toLowerCase().replace(/[^a-zäöü]/g, '').startsWith(n.replace(/[^a-zäöü]/g, '')) && n);
+}
+function runCmd(raw) {
+  const B = S.bot;
+  const line = raw.trim().replace(/^\//, '');
+  if (!line) return;
+  CMD_HIST.push(line); cmdPos = CMD_HIST.length;
+  out(`<span class="t-me">chronobot $ ${esc(line)}</span>`);
+  const [cmd, ...rest] = line.toLowerCase().split(/\s+/);
+  const arg = rest.join(' ');
+  const ok = t => out('✔ ' + t);
+  const err = t => out('✖ ' + t, 't-err');
+  switch (cmd) {
+    case 'hilfe': case 'help': case '?':
+      out('Verfügbare Befehle:');
+      BOT_HELP.forEach(([c, d]) => out(`  <b>${esc(c)}</b> <span class="t-dim">– ${esc(d)}</span>`));
+      break;
+    case 'status': {
+      const items = botItems();
+      out(`Bot: <b>${B.on ? 'AN' : 'AUS'}</b> · Stufe ${botTier()} · Modus ${BOT_MODES[B.mode].name}`);
+      out(`Budget ${fmtEur(B.budget)} · gebunden ${fmtEur(botInUse())} · frei ${fmtEur(Math.max(0, Math.min(S.money, B.budget - botInUse())))}`);
+      out(`Positionen ${items.length} · Trades ${B.trades} · Netto <b>${fmtEur(botNet())}</b> · Anteil ${Math.round(botShare() * 100)} %`);
+      out(`Fokus: ${B.focus ? esc(B.focus) : 'alle'} · Maxpreis: ${B.maxPrice ? fmtEur(B.maxPrice) : 'egal'} · Laden: ${B.stock ? 'an' : 'aus'} · Sniper: ${B.up.sniper ? (B.snipeOff ? 'aus' : 'an') : 'nicht gekauft'}`);
+      break;
+    }
+    case 'an': case 'start': case 'go':
+      if (B.on) ok('Läuft schon.'); else { B.on = true; ok('Bot gestartet. Er handelt ab dem nächsten Markttag.'); }
+      break;
+    case 'aus': case 'stop': case 'pause':
+      if (!B.on) ok('Ist schon aus.'); else { B.on = false; ok('Bot pausiert. Seine Uhren bleiben inseriert.'); }
+      break;
+    case 'modus': case 'mode': case 'strategie': {
+      const i = modeByName(arg);
+      if (i < 0) { err('Unbekannter Modus. Möglich: vorsichtig, ausgewogen, riskant, hai'); break; }
+      B.mode = i; ok(`Modus: ${BOT_MODES[i].name}`);
+      break;
+    }
+    case 'budget': {
+      const max = Math.floor((S.money + botInUse()) / 500) * 500;
+      const v = arg === 'max' || arg === 'alles' ? max : parseAmount(arg);
+      if (!(v > 0)) { err('Beispiel: budget 20000, budget 20k oder budget max'); break; }
+      B.budget = Math.max(500, Math.round(v)); ok(`Budget: ${fmtEur(B.budget)}`);
+      break;
+    }
+    case 'scan': {
+      const n = clamp(parseInt(arg) || 5, 1, 15);
+      const deals = S.listings.filter(l => !l.flash && botMatches(l)).map(l => ({ l, r: l.price / valueOf(l.m, l.cond, l.papers) })).sort((a, b) => a.r - b.r).slice(0, n);
+      if (!deals.length) { err('Keine passenden Angebote.'); break; }
+      out(`Top ${deals.length} Deals${B.focus ? ` (Fokus: ${esc(B.focus)})` : ''}:`);
+      deals.forEach(({ l, r }, i) => out(`  ${i + 1}. ${esc(MODEL[l.m].brand)} ${esc(MODEL[l.m].name)} – ${fmtEur(l.price)} <span class="${r < 1 ? '' : 't-err'}">(${r < 1 ? '−' : '+'}${Math.abs(Math.round((1 - r) * 100))} %)</span>${l.fake && B.up.scanner ? ' <span class="t-err">⚠ Fälschung!</span>' : !l.dealer && !l.papers ? ' <span class="t-dim">privat, ohne Papiere</span>' : ''}`));
+      break;
+    }
+    case 'kauf': case 'kaufe': case 'buy': {
+      if (!arg) { err('Was soll ich kaufen? Beispiel: kauf rolex'); break; }
+      const free = Math.min(S.money, B.budget - botInUse());
+      const c = S.listings.filter(l => !l.flash && `${MODEL[l.m].brand} ${MODEL[l.m].name} ${MODEL[l.m].ref}`.toLowerCase().includes(arg))
+        .filter(l => !(l.fake && B.up.scanner > 0))
+        .map(l => ({ l, r: l.price / valueOf(l.m, l.cond, l.papers) })).sort((a, b) => a.r - b.r);
+      if (!c.length) { err(`Kein Angebot für „${esc(arg)}“ gefunden.`); break; }
+      const fit = c.find(x => x.l.price <= free);
+      if (!fit) { err(`Zu teuer: günstigstes passendes Angebot ${fmtEur(Math.min(...c.map(x => x.l.price)))}, frei sind ${fmtEur(Math.max(0, free))}. Tipp: budget max`); break; }
+      const res = botBuy(fit.l, fit.r, false);
+      if (res === 'fake') err(`Gekauft – aber es war eine FÄLSCHUNG. −${fmtEur(fit.l.price)}`);
+      else ok(`Gekauft: ${esc(MODEL[fit.l.m].brand)} ${esc(MODEL[fit.l.m].name)} für ${fmtEur(fit.l.price)}. Der Bot verkauft sie weiter.`);
+      if (!B.on) out('Hinweis: Der Bot ist aus – er verkauft erst, wenn du „an“ eingibst.', 't-dim');
+      checkAchievements();
+      break;
+    }
+    case 'fokus': case 'nur': {
+      if (!arg || arg === 'aus' || arg === 'alle') { B.focus = ''; ok('Fokus aufgehoben – der Bot kauft wieder alles.'); break; }
+      const n = MODELS.filter(m => `${m.brand} ${m.name} ${m.cat}`.toLowerCase().includes(arg)).length;
+      if (!n) { err(`Keine Uhr passt zu „${esc(arg)}“.`); break; }
+      B.focus = arg; ok(`Fokus: nur noch „${esc(arg)}“ (${n} Modell${n === 1 ? '' : 'e'}).`);
+      break;
+    }
+    case 'maxpreis': case 'max': {
+      if (!arg || arg === 'aus') { B.maxPrice = 0; ok('Kein Maxpreis mehr.'); break; }
+      const v = parseAmount(arg);
+      if (!(v > 0)) { err('Beispiel: maxpreis 5000'); break; }
+      B.maxPrice = Math.round(v); ok(`Maxpreis pro Uhr: ${fmtEur(B.maxPrice)}`);
+      break;
+    }
+    case 'positionen': case 'pos': case 'depot': {
+      const items = botItems();
+      if (!items.length) { out('Keine Positionen.'); break; }
+      items.forEach(o => { const v = itemValue(o); out(`  ${esc(MODEL[o.m].brand)} ${esc(MODEL[o.m].name)} · gekauft ${fmtEur(o.cost)} · Wert ${fmtEur(v)} · ${o.service ? 'Revision' : o.shop ? `Laden ${fmtEur(o.shop)}` : o.ask ? `inseriert ${fmtEur(o.ask)}` : 'wartet'} <span class="${v >= o.cost ? '' : 't-err'}">${fmtPct(v / o.cost - 1)}</span>`); });
+      break;
+    }
+    case 'preis': {
+      const pct = parseFloat(arg.replace('%', '').replace(',', '.'));
+      if (!isFinite(pct) || Math.abs(pct) > 50) { err('Beispiel: preis -5% oder preis +3%'); break; }
+      let n = 0;
+      for (const o of botItems()) { if (o.ask) { o.ask = niceRound(o.ask * (1 + pct / 100)); n++; } if (o.shop) { o.shop = niceRound(o.shop * (1 + pct / 100)); n++; } }
+      ok(`${n} Preis${n === 1 ? '' : 'e'} um ${pct > 0 ? '+' : ''}${pct} % geändert. (Am nächsten Markttag passt der Bot seine Preise wieder selbst an.)`);
+      break;
+    }
+    case 'verkauf': case 'verkaufe': case 'sell': {
+      const items = botItems().filter(o => !o.service);
+      if (!items.length) { out('Nichts zu verkaufen.'); break; }
+      items.forEach(o => { o.shop = 0; o.ask = niceRound(itemValue(o) * 0.98); });
+      ok(`${items.length} Uhr${items.length === 1 ? '' : 'en'} knapp unter Marktwert inseriert – die gehen schnell weg.`);
+      break;
+    }
+    case 'notverkauf': case 'panik': {
+      const items = botItems().filter(o => !o.service);
+      if (!items.length) { out('Nichts zu verkaufen.'); break; }
+      let sum = 0, prof = 0;
+      items.forEach(o => { o.shop = 0; o.ask = Math.round(itemValue(o) * DEALER); const pay = o.ask; sum += pay; prof += botSold(o, pay).profit; });
+      out(`Alles an Händler verkauft: ${items.length} Uhren für ${fmtEur(sum)} → ${prof >= 0 ? 'Gewinn' : 'Verlust'} ${fmtEur(prof)}`, prof >= 0 ? '' : 't-err');
+      break;
+    }
+    case 'laden': {
+      if (!S.shop) { err('Du hast noch keinen Laden. → Menü „Laden“'); break; }
+      B.stock = arg !== 'aus';
+      if (B.stock) { const n = botStockShop(true); ok(`Bot beliefert den Laden${n ? ` – ${n} Uhr${n === 1 ? '' : 'en'} in die Vitrinen gelegt` : ''}.`); }
+      else { botItems().forEach(o => { o.shop = 0; }); ok('Bot verkauft wieder über den Marktplatz.'); }
+      break;
+    }
+    case 'sniper': {
+      if (!B.up.sniper) { err('Sniper-Upgrade fehlt (15.000 €, siehe unten).'); break; }
+      B.snipeOff = arg === 'aus'; ok(`Sniper ${B.snipeOff ? 'aus' : 'an'}.`);
+      break;
+    }
+    case 'clear': case 'cls': CON.length = 0; break;
+    case 'hallo': case 'hi': out(`Hallo ${esc(S.name)}! Ich bin chronobot ${botTier()}. Tipp „hilfe“ für alle Befehle.`); break;
+    case 'kaffee': out('☕ Ich bin ein Bot. Ich trinke nur Marktdaten.'); break;
+    default: err(`Unbekannter Befehl „${esc(cmd)}“. Tipp „hilfe“.`);
+  }
+  save();
+}
+function submitCmd(text) {
+  runCmd(text);
+  render();
+  const inp = $('#bot-cmd'); if (inp) inp.focus();
+  const body = $('.terminal-body'); if (body) body.scrollTop = body.scrollHeight;
+}
+
 function botLiveLine() {
+
   const B = S.bot;
   if (!B.on) return '&gt; Bot pausiert. Schalter oben umlegen.';
   const deals = S.listings.map(l => ({ l, r: l.price / valueOf(l.m, l.cond, l.papers) })).sort((a, b) => a.r - b.r);
@@ -1757,6 +1943,7 @@ function render() {
     default: html = pageHome();
   }
   view.innerHTML = flashBanner() + html;
+  const tb = $('.bot-term .terminal-body'); if (tb) tb.scrollTop = tb.scrollHeight;
   updateTop();
 }
 
@@ -1972,6 +2159,7 @@ document.addEventListener('click', e => {
     }
     case 'shop-create': createShop(); break;
     case 'shop-tab': UI.shopTab = t.dataset.v; render(); break;
+    case 'botcmd': submitCmd(t.dataset.v); break;
     case 'bot-stock': {
       S.bot.stock = !S.bot.stock;
       if (S.bot.stock) botStockShop(false);
@@ -2118,10 +2306,18 @@ document.addEventListener('submit', e => {
     S.name = ($('#nm').value || '').trim() || S.name; save(); render(); toast('Gespeichert.');
   } else if (f.dataset.form === 'start') startFromModal();
   else if (f.dataset.form === 'shop-new') createShop();
+  else if (f.dataset.form === 'botcmd') submitCmd($('#bot-cmd').value);
   else if (f.dataset.form === 'shop-name') { S.shop.name = ($('#shop-name').value || '').trim() || S.shop.name; save(); render(); toast('Neues Schild hängt.'); }
 });
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && S) closeModal(); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && S) closeModal();
+  if (e.target.id === 'bot-cmd' && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) { // Befehlsverlauf
+    e.preventDefault();
+    cmdPos = clamp(cmdPos + (e.key === 'ArrowUp' ? -1 : 1), 0, CMD_HIST.length);
+    e.target.value = CMD_HIST[cmdPos] || '';
+  }
+});
 
 /* ---------- Takt ---------- */
 function loop() {
